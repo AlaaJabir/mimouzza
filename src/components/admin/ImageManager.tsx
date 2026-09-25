@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Upload, Link, Star } from 'lucide-react';
 import { Button } from '../ui/button';
 
 interface ImageManagerProps {
@@ -18,6 +18,9 @@ const PRESET_STUDIO_IMAGES = [
 
 export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) => {
   const [newUrl, setNewUrl] = useState('');
+  const [mode, setMode] = useState<'upload' | 'url'>('upload');
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddUrl = () => {
     if (!newUrl.trim()) return;
@@ -25,9 +28,41 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
     setNewUrl('');
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsProcessingFile(true);
+    const newImgs: string[] = [];
+    let processed = 0;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          newImgs.push(event.target.result as string);
+        }
+        processed++;
+        if (processed === files.length) {
+          onChange([...images, ...newImgs]);
+          setIsProcessingFile(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleRemove = (index: number) => {
     const updated = images.filter((_, i) => i !== index);
     onChange(updated);
+  };
+
+  const handleSetPrimary = (index: number) => {
+    if (index === 0) return;
+    const target = images[index];
+    const rest = images.filter((_, i) => i !== index);
+    onChange([target, ...rest]);
   };
 
   const handleMove = (index: number, direction: 'up' | 'down') => {
@@ -54,41 +89,91 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
             ({images.length} صور مضافة — الصورة الأولى هي الصورة الرئيسية)
           </span>
         </label>
+
+        {/* Upload Mode Selector */}
+        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <button
+            type="button"
+            onClick={() => setMode('upload')}
+            className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              mode === 'upload' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <Upload className="w-3 h-3" />
+            <span>رفع من الجهاز (Upload)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('url')}
+            className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              mode === 'url' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <Link className="w-3 h-3" />
+            <span>رابط صورة (URL)</span>
+          </button>
+        </div>
       </div>
 
-      {/* Add by URL */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      {/* Upload Box */}
+      {mode === 'upload' ? (
+        <div className="border-2 border-dashed border-slate-300 hover:border-amber-400 rounded-xl p-4 text-center bg-slate-50/50 transition-colors">
           <input
-            type="text"
-            value={newUrl}
-            onChange={(e) => setNewUrl(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAddUrl();
-              }
-            }}
-            placeholder="أدخل رابط الصورة (URL) ثم اضغط إضافة"
-            className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileUpload}
+            className="hidden"
+            id="product-image-file-input"
           />
+          <label
+            htmlFor="product-image-file-input"
+            className="cursor-pointer flex flex-col items-center justify-center space-y-1.5"
+          >
+            <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+              <Upload className="w-4 h-4" />
+            </div>
+            <div className="text-xs font-bold text-slate-800">
+              {isProcessingFile ? 'جاري معالجة الصور...' : 'انقر لاختيار صور من جهازك (JPG, PNG, WEBP)'}
+            </div>
+            <p className="text-[11px] text-slate-400">يدعم اختيار عدة صور معاً وحفظها في التخزين</p>
+          </label>
         </div>
-        <Button
-          type="button"
-          onClick={handleAddUrl}
-          size="sm"
-          className="text-xs shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          إضافة صورة
-        </Button>
-      </div>
+      ) : (
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddUrl();
+                }
+              }}
+              placeholder="الصق رابط الصورة (https://...) ثم اضغط إضافة"
+              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleAddUrl}
+            size="sm"
+            className="text-xs shrink-0 bg-slate-900 text-white"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            إضافة الرابط
+          </Button>
+        </div>
+      )}
 
       {/* Quick Studio Presets */}
       <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
         <div className="text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>صور احترافية جاهزة للاستخدام (High-Res Studio Presets):</span>
+          <span>صور استوديو احترافية جاهزة (Studio Presets):</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {PRESET_STUDIO_IMAGES.map((preset, idx) => (
@@ -108,7 +193,7 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
       {images.length === 0 ? (
         <div className="p-8 border-2 border-dashed border-slate-200 rounded-xl text-center text-slate-400 space-y-2">
           <ImageIcon className="w-8 h-8 mx-auto text-slate-300" />
-          <div className="text-xs">لم تتم إضافة أي صور بعد. أضف رابط صورة أو اختر من القوالب أعلاه.</div>
+          <div className="text-xs">لم تتم إضافة أي صور بعد. ارفع صورة أو الصق رابطاً أعلاه.</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -134,11 +219,21 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-bold text-slate-800 truncate">
-                  صورة #{index + 1}
+                <div className="text-[11px] font-bold text-slate-800 truncate flex items-center gap-1.5">
+                  <span>صورة #{index + 1}</span>
+                  {index !== 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetPrimary(index)}
+                      className="text-[10px] text-amber-600 hover:text-amber-700 font-semibold cursor-pointer underline"
+                      title="تعيين كصورة رئيسية"
+                    >
+                      (تعيين كرئيسية)
+                    </button>
+                  )}
                 </div>
                 <div className="text-[10px] text-slate-400 truncate font-mono">
-                  {imgUrl}
+                  {imgUrl.startsWith('data:') ? 'صورة مرفوعة (Base64/Storage)' : imgUrl}
                 </div>
               </div>
 

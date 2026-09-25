@@ -7,7 +7,8 @@ import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
-import { Flame, Clock, ShieldAlert, ShoppingCart, Zap, Star } from 'lucide-react';
+import { trackEvent } from '../../../lib/tracking';
+import { Flame, Clock, ShieldAlert, ShoppingCart, Zap, Star, MessageCircle } from 'lucide-react';
 
 interface BigOfferProps {
   product: Product;
@@ -21,34 +22,71 @@ interface BigOfferProps {
 }
 
 export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
-  const [timeLeft, setTimeLeft] = useState({ hours: 1, minutes: 27, seconds: 44 });
-  const [stockRemaining, setStockRemaining] = useState(7);
+  // Real countdown timer driven by product settings if enabled
+  const initialDuration = (product.countdownDurationMinutes || 120) * 60;
+  const [secondsRemaining, setSecondsRemaining] = useState(initialDuration);
 
   useEffect(() => {
+    trackEvent({
+      eventType: 'PAGE_VIEW',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+    });
+    trackEvent({
+      eventType: 'VIEW_CONTENT',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+    });
+  }, [product._id]);
+
+  useEffect(() => {
+    if (!product.countdownEnabled) return;
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        return { hours: 2, minutes: 15, seconds: 0 };
-      });
+      setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : initialDuration));
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [product.countdownEnabled, initialDuration]);
+
+  const hours = Math.floor(secondsRemaining / 3600);
+  const minutes = Math.floor((secondsRemaining % 3600) / 60);
+  const seconds = secondsRemaining % 60;
 
   const discountAmount = product.compareAtPrice > product.price ? product.compareAtPrice - product.price : 0;
   const discountPct = product.compareAtPrice > product.price
     ? Math.round((discountAmount / product.compareAtPrice) * 100)
     : 45;
 
-  const scrollToOrder = () => {
+  const handleHeroCtaClick = () => {
+    trackEvent({
+      eventType: 'CTA_CLICK',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+      metadata: { elementId: 'hero_cta' },
+    });
     document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleWhatsAppClick = () => {
+    trackEvent({
+      eventType: 'WHATSAPP_CLICK',
+      productId: product._id,
+      productName: product.name,
+      metadata: { whatsappNumber: product.whatsappNumber },
+    });
+    const message = encodeURIComponent(`السلام عليكم، أريد الاستفسار بخصوص عرض: ${product.name}`);
+    window.open(`https://wa.me/${product.whatsappNumber}?text=${message}`, '_blank');
   };
 
   return (
     <div className="min-h-screen bg-rose-50/30 text-slate-900 pb-20 md:pb-12" dir="rtl">
       {/* Top Banner */}
-      <TopAnnouncementBar text="🔥 عرض حصري محدود — ينتهي التخفيض عند نفاد الكمية المتبقية!" />
+      <TopAnnouncementBar text="🔥 عرض حصري محدود — ينتهي التخفيض قريباً!" />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Flash Sale Header */}
@@ -67,38 +105,42 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
             </div>
           </div>
 
-          {/* Countdown Clock */}
-          <div className="flex items-center gap-2 bg-black/30 backdrop-blur-xs px-4 py-2 rounded-xl border border-white/20">
-            <Clock className="w-4 h-4 text-amber-300 shrink-0" />
-            <span className="text-xs font-semibold text-white/90">ينتهي العرض في:</span>
-            <div className="flex items-center gap-1 font-mono font-black text-sm text-amber-300">
-              <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
-                {String(timeLeft.hours).padStart(2, '0')}
-              </span>
-              <span>:</span>
-              <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
-                {String(timeLeft.minutes).padStart(2, '0')}
-              </span>
-              <span>:</span>
-              <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
-                {String(timeLeft.seconds).padStart(2, '0')}
-              </span>
+          {/* Real Countdown Clock (Configurable) */}
+          {product.countdownEnabled && (
+            <div className="flex items-center gap-2 bg-black/30 backdrop-blur-xs px-4 py-2 rounded-xl border border-white/20">
+              <Clock className="w-4 h-4 text-amber-300 shrink-0" />
+              <span className="text-xs font-semibold text-white/90">ينتهي العرض في:</span>
+              <div className="flex items-center gap-1 font-mono font-black text-sm text-amber-300">
+                <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
+                  {String(hours).padStart(2, '0')}
+                </span>
+                <span>:</span>
+                <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
+                  {String(minutes).padStart(2, '0')}
+                </span>
+                <span>:</span>
+                <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
+                  {String(seconds).padStart(2, '0')}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Stock Scarcity Bar */}
-        <div className="bg-amber-100/80 border border-amber-300 rounded-xl p-3 flex items-center justify-between gap-2 text-xs font-bold text-amber-950">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
-            <span>
-              تنبيه: متبقي فقط <span className="text-rose-600 font-black text-sm underline">{stockRemaining} قطع</span> في المخزون بهذا السعر المخفض!
-            </span>
+        {/* Real Stock Scarcity Bar (Configurable) */}
+        {product.scarcityEnabled && (
+          <div className="bg-amber-100/80 border border-amber-300 rounded-xl p-3 flex items-center justify-between gap-2 text-xs font-bold text-amber-950">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
+              <span>
+                تنبيه: متبقي فقط <span className="text-rose-600 font-black text-sm underline">{product.stockQuantity ?? 7} قطع</span> في المخزون بهذا السعر المخفض!
+              </span>
+            </div>
+            <div className="w-24 sm:w-36 h-2.5 bg-amber-200 rounded-full overflow-hidden shrink-0">
+              <div className="w-3/4 h-full bg-rose-600 rounded-full animate-pulse"></div>
+            </div>
           </div>
-          <div className="w-24 sm:w-36 h-2.5 bg-amber-200 rounded-full overflow-hidden shrink-0">
-            <div className="w-3/4 h-full bg-rose-600 rounded-full animate-pulse"></div>
-          </div>
-        </div>
+        )}
 
         {/* Product Hero Block */}
         <div className="bg-white rounded-2xl border-2 border-rose-500/20 p-5 sm:p-6 shadow-sm">
@@ -107,8 +149,9 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
               <ProductGallery
                 images={product.images}
                 productName={product.name}
-                badgeText="خصم قنبلة"
+                badgeText={product.badgeText || 'خصم قنبلة'}
                 discountPercentage={discountPct}
+                productId={product._id}
               />
             </div>
 
@@ -150,9 +193,11 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-emerald-700 font-bold mt-1">
-                  ✓ وفر {discountAmount} {product.currency || 'DH'} فورياً عند الطلب الآن
-                </div>
+                {discountAmount > 0 && (
+                  <div className="text-[11px] text-emerald-700 font-bold mt-1">
+                    ✓ وفر {discountAmount} {product.currency || 'DH'} فورياً عند الطلب الآن
+                  </div>
+                )}
               </div>
 
               {product.shortDescription && (
@@ -163,12 +208,23 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
 
               {/* Big Red/Amber CTA */}
               <button
-                onClick={scrollToOrder}
+                onClick={handleHeroCtaClick}
                 className="w-full py-4 px-6 rounded-xl font-black text-base sm:text-lg bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 hover:from-rose-500 hover:to-rose-500 text-white shadow-xl shadow-rose-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Zap className="w-5 h-5 fill-amber-300 text-amber-300" />
                 <span>{product.ctaText || 'اغتنم العرض الآن قبل نفاد الكمية'}</span>
               </button>
+
+              {product.whatsappEnabled && product.whatsappNumber && (
+                <button
+                  type="button"
+                  onClick={handleWhatsAppClick}
+                  className="w-full py-2.5 px-4 rounded-xl border border-emerald-600 text-emerald-700 hover:bg-emerald-50 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                  <span>تواصل عبر الواتساب (WhatsApp)</span>
+                </button>
+              )}
 
               <div className="text-[11px] text-slate-500 text-center font-medium">
                 🔒 شحن مجاني لكافة المدن • الدفع عند الاستلام • معاينة قبل الدفع
@@ -218,6 +274,8 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
         price={product.price}
         currency={product.currency || 'DH'}
         ctaText={product.ctaText}
+        productId={product._id}
+        productName={product.name}
       />
     </div>
   );

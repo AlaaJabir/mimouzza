@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Product } from '../../../../convex/schema';
 import { TopAnnouncementBar, OfferBanner } from '../OfferBanner';
 import { ProductGallery } from '../ProductGallery';
@@ -7,7 +7,8 @@ import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
-import { Star, ShieldCheck, Truck, ShoppingCart, Award, Check } from 'lucide-react';
+import { trackEvent } from '../../../lib/tracking';
+import { Star, ShieldCheck, Truck, ShoppingCart, Award, Check, MessageCircle, AlertCircle } from 'lucide-react';
 
 interface ClassicCODProps {
   product: Product;
@@ -26,8 +27,57 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
       ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
       : undefined;
 
-  const scrollToOrder = () => {
+  // Track initial PAGE_VIEW and VIEW_CONTENT on mount
+  useEffect(() => {
+    trackEvent({
+      eventType: 'PAGE_VIEW',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+    });
+    trackEvent({
+      eventType: 'VIEW_CONTENT',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+    });
+  }, [product._id]);
+
+  const handleHeroCtaClick = () => {
+    trackEvent({
+      eventType: 'CTA_CLICK',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+      metadata: { elementId: 'hero_cta' },
+    });
     document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleMidCtaClick = () => {
+    trackEvent({
+      eventType: 'CTA_CLICK',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+      metadata: { elementId: 'mid_page_cta' },
+    });
+    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleWhatsAppClick = () => {
+    trackEvent({
+      eventType: 'WHATSAPP_CLICK',
+      productId: product._id,
+      productName: product.name,
+      metadata: { whatsappNumber: product.whatsappNumber },
+    });
+    const message = encodeURIComponent(`السلام عليكم، أريد الاستفسار بخصوص منتج: ${product.name}`);
+    window.open(`https://wa.me/${product.whatsappNumber}?text=${message}`, '_blank');
   };
 
   return (
@@ -47,6 +97,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
                 productName={product.name}
                 badgeText={product.badgeText}
                 discountPercentage={discountPct}
+                productId={product._id}
               />
             </div>
 
@@ -72,6 +123,19 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
                   متوفر في المخزون
                 </span>
               </div>
+
+              {/* Stock Scarcity if configured */}
+              {product.scarcityEnabled && (
+                <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-900 font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>الكمية المتبقية:</span>
+                  </div>
+                  <span className="font-bold text-rose-600 font-mono">
+                    فقط {product.stockQuantity || 7} قطع في المخزون
+                  </span>
+                </div>
+              )}
 
               {/* Pricing Box */}
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-baseline justify-between">
@@ -107,12 +171,24 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
 
               {/* Instant CTA to jump to form */}
               <button
-                onClick={scrollToOrder}
+                onClick={handleHeroCtaClick}
                 className="w-full py-3.5 px-6 rounded-xl font-black text-base bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
               >
                 <ShoppingCart className="w-5 h-5" />
                 <span>{product.ctaText || 'اطلب الآن — الدفع عند الاستلام'}</span>
               </button>
+
+              {/* WhatsApp CTA (Optional) */}
+              {product.whatsappEnabled && product.whatsappNumber && (
+                <button
+                  type="button"
+                  onClick={handleWhatsAppClick}
+                  className="w-full py-2.5 px-4 rounded-xl border-2 border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                  <span>اطلب أو استفسر عبر الواتساب (WhatsApp)</span>
+                </button>
+              )}
 
               {/* Short Description */}
               {product.shortDescription && (
@@ -137,7 +213,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
         </div>
 
         {/* Offer Banner */}
-        <OfferBanner offerText={product.offerText} withCountdown={true} />
+        <OfferBanner offerText={product.offerText} withCountdown={product.countdownEnabled} />
 
         {/* Benefits Section */}
         {product.benefits && product.benefits.length > 0 && (
@@ -162,6 +238,17 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
             <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
               {product.description}
             </div>
+
+            <div className="pt-4 text-center">
+              <button
+                type="button"
+                onClick={handleMidCtaClick}
+                className="py-3 px-8 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs inline-flex items-center gap-2 cursor-pointer"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>اطلب الآن قبل نفاد الكمية</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -185,6 +272,8 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
         price={product.price}
         currency={product.currency || 'DH'}
         ctaText={product.ctaText}
+        productId={product._id}
+        productName={product.name}
       />
     </div>
   );

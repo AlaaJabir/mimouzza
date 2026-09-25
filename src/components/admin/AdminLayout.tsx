@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Product } from '../../../convex/schema';
 import { useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
-import { AdminSidebar } from './AdminSidebar';
+import { AdminSidebar, AdminSection } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { DashboardStats } from './DashboardStats';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
+import { TrackingDiagnostics } from './TrackingDiagnostics';
 import { ProductTable } from './ProductTable';
 import { ProductEditor } from './ProductEditor';
 import { OrderTable } from './OrderTable';
@@ -12,10 +14,10 @@ import { TemplatesPage } from './TemplatesPage';
 import { SettingsPage } from './SettingsPage';
 import { LivePreview } from './LivePreview';
 import { Button } from '../ui/button';
-import { Plus, ExternalLink, ArrowRight, X, Package, ShoppingBag } from 'lucide-react';
+import { Plus, ExternalLink, ArrowRight, X, Package, ShoppingBag, BarChart3, TrendingUp } from 'lucide-react';
 
 interface AdminLayoutProps {
-  initialSection?: 'dashboard' | 'products' | 'templates' | 'orders' | 'settings';
+  initialSection?: AdminSection;
   initialProductId?: string;
   initialIsNew?: boolean;
   onNavigateUrl?: (path: string) => void;
@@ -27,16 +29,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   initialIsNew = false,
   onNavigateUrl,
 }) => {
-  const [currentSection, setCurrentSection] = useState<'dashboard' | 'products' | 'templates' | 'orders' | 'settings'>(
-    initialSection
-  );
-
+  const [currentSection, setCurrentSection] = useState<AdminSection>(initialSection);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(initialIsNew);
   const [previewModalProduct, setPreviewModalProduct] = useState<Product | null>(null);
 
   const products = useQuery(api.products.list);
   const orders = useQuery(api.orders.list);
+  const funnel = useQuery(api.analytics.getFunnelMetrics, { range: '7days' });
 
   // If initialProductId was passed
   React.useEffect(() => {
@@ -79,14 +79,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     switch (currentSection) {
       case 'dashboard':
         return 'لوحة التحكم والتحليلات (Dashboard)';
+      case 'analytics':
+        return 'تحليلات مسار التحويل والحملات (Conversion Funnel & Analytics)';
       case 'products':
         return 'إدارة المنتجات وصفحات الهبوط (Products)';
       case 'templates':
         return 'قوالب صفحات الهبوط (Templates)';
       case 'orders':
         return 'إدارة طلبيات الدفع عند الاستلام (Orders)';
+      case 'diagnostics':
+        return 'تشخيص واختبار تتبع الإعلانات (Tracking Diagnostics)';
       case 'settings':
-        return 'إعدادات المتجر (Settings)';
+        return 'إعدادات المتجر والتتبع الإعلاني (Settings)';
       default:
         return 'لوحة التحكم';
     }
@@ -108,7 +112,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <AdminHeader
           title={getSectionTitle()}
-          subtitle="COD Landing Builder — نظام بناء صفحات الهبوط متعددة المنتجات مع التحديث الفوري"
+          subtitle="COD Landing Builder — نظام بناء صفحات الهبوط متعددة المنتجات مع التتبع والتحليلات الفورية"
         />
 
         <main className="flex-1 overflow-y-auto p-6">
@@ -116,6 +120,29 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           {currentSection === 'dashboard' && (
             <div className="space-y-6 max-w-7xl mx-auto">
               <DashboardStats />
+
+              {/* Quick Funnel Banner */}
+              {funnel && (
+                <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-5 text-white shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="space-y-1 text-center sm:text-right">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-bold">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span>مسار التحويل خلال 7 أيام</span>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-200">
+                      {funnel.visitors} زائر ➔ {funnel.ctaClicks} نقرة CTA ➔ {funnel.totalOrders} طلب مسجل ({funnel.orderConversionRate}% تحويل)
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentSection('analytics')}
+                    className="py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer shrink-0"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>عرض تقرير التحليلات الكامل ←</span>
+                  </button>
+                </div>
+              )}
 
               {/* Quick Split: Recent Products & Recent Orders */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -224,6 +251,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
           )}
 
+          {/* Full Real Analytics & Funnel View */}
+          {currentSection === 'analytics' && <AnalyticsDashboard />}
+
           {/* Products View */}
           {currentSection === 'products' && (
             <div className="h-full">
@@ -259,8 +289,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           {/* Orders View */}
           {currentSection === 'orders' && <OrderTable />}
 
+          {/* Tracking Diagnostics View */}
+          {currentSection === 'diagnostics' && <TrackingDiagnostics />}
+
           {/* Settings View */}
-          {currentSection === 'settings' && <SettingsPage />}
+          {currentSection === 'settings' && (
+            <SettingsPage onOpenDiagnostics={() => setCurrentSection('diagnostics')} />
+          )}
         </main>
       </div>
 

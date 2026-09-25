@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 export interface RouteState {
   path: string;
   type: 'admin' | 'public-product' | 'home';
-  adminSection: 'dashboard' | 'products' | 'templates' | 'orders' | 'settings';
+  adminSection: 'dashboard' | 'analytics' | 'products' | 'templates' | 'orders' | 'diagnostics' | 'settings';
   productId?: string;
   isNew?: boolean;
   slug?: string;
@@ -65,7 +65,7 @@ export function parseCurrentRoute(): RouteState {
       return { path, type: 'admin', adminSection: 'products', utmParams };
     }
 
-    if (['dashboard', 'templates', 'orders', 'settings'].includes(section)) {
+    if (['dashboard', 'analytics', 'templates', 'orders', 'diagnostics', 'settings'].includes(section)) {
       return {
         path,
         type: 'admin',

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Product } from '../../../convex/schema';
+import React, { useState, useEffect, useRef } from 'react';
+import { Product, Order } from '../../../convex/schema';
 import { useMutation, useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 import { Button } from '../ui/button';
-import { CheckCircle2, ShieldCheck, Truck, PhoneCall, AlertCircle, ShoppingCart } from 'lucide-react';
+import { trackEvent, getSessionId } from '../../lib/tracking';
+import { CheckCircle2, ShieldCheck, Truck, PhoneCall, AlertCircle, ShoppingCart, AlertTriangle } from 'lucide-react';
 
 interface CODFormProps {
   product: Product;
@@ -36,6 +37,7 @@ export const CODForm: React.FC<CODFormProps> = ({
   const [address, setAddress] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [honeypot, setHoneypot] = useState(''); // Anti-bot honeypot
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     if (product.variants && product.variants.length > 0) {
@@ -51,17 +53,57 @@ export const CODForm: React.FC<CODFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState<{ id: string; orderNumber: string } | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<Order | null>(null);
+  const [forceSubmitDuplicate, setForceSubmitDuplicate] = useState(false);
+
+  const formStartedRef = useRef(false);
+  const formViewedRef = useRef(false);
+
+  // 1. Track FORM_VIEW on mount
+  useEffect(() => {
+    if (!formViewedRef.current) {
+      formViewedRef.current = true;
+      trackEvent({
+        eventType: 'FORM_VIEW',
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        currency: product.currency,
+        metadata: { formId: 'cod_order_form' },
+      });
+    }
+  }, [product._id]);
+
+  // Track FORM_START when user starts typing
+  const handleFirstInteraction = (field: string) => {
+    if (!formStartedRef.current) {
+      formStartedRef.current = true;
+      trackEvent({
+        eventType: 'FORM_START',
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        currency: product.currency,
+        metadata: { firstField: field },
+      });
+    }
+  };
 
   // Validation
   const validateMoroccanPhone = (input: string): boolean => {
     const cleaned = input.replace(/[\s\-\(\)\.]/g, '');
-    // Moroccan formats: 06XXXXXXXX, 07XXXXXXXX, 05XXXXXXXX, +2126XXXXXXXX, 002126XXXXXXXX
     const regex = /^(?:(?:\+|00)212|0)[5-7]\d{8}$/;
     return regex.test(cleaned);
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
+
+    // Basic anti-spam honeypot
+    if (honeypot.trim()) {
+      newErrors.form = 'Submission rejected. Please try again.';
+      return false;
+    }
 
     if (!customerName.trim()) {
       newErrors.customerName = 'الرجاء إدخال الاسم الكامل / Full name required';
@@ -81,7 +123,7 @@ export const CODForm: React.FC<CODFormProps> = ({
 
     if (!address.trim()) {
       newErrors.address = 'الرجاء إدخال عنوان التوصيل أو الحي / Address required';
-    } else if (address.trim().length < 5) {
+    } else if (address.trim().length < 4) {
       newErrors.address = 'الرجاء كتابة العنوان كاملاً لتسهيل التوصيل';
     }
 
@@ -94,10 +136,27 @@ export const CODForm: React.FC<CODFormProps> = ({
   };
 
   const handleVariantSelect = (variantName: string, optionValue: string) => {
+    handleFirstInteraction('variants');
     setSelectedVariants((prev) => ({
       ...prev,
       [variantName]: optionValue,
     }));
+    trackEvent({
+      eventType: 'VARIANT_SELECT',
+      productId: product._id,
+      metadata: { variantGroup: variantName, selectedValue: optionValue },
+    });
+  };
+
+  const handleQuantityChange = (newQty: number) => {
+    const clamped = Math.max(1, newQty);
+    setQuantity(clamped);
+    handleFirstInteraction('quantity');
+    trackEvent({
+      eventType: 'QUANTITY_CHANGE',
+      productId: product._id,
+      metadata: { newQuantity: clamped },
+    });
   };
 
   const totalPrice = product.price * quantity;
@@ -106,8 +165,41 @@ export const CODForm: React.FC<CODFormProps> = ({
     e.preventDefault();
     if (!validate()) return;
 
+    // Check duplicate order protection
+    if (!forceSubmitDuplicate) {
+      try {
+        const existingRecent = api.orders.checkDuplicate.query({
+          productId: product._id,
+          phone: phone.trim(),
+          timeWindowMinutes: 10,
+        });
+
+        if (existingRecent) {
+          setDuplicateWarning(existingRecent);
+          return;
+        }
+      } catch (err) {
+        console.warn('Duplicate check error:', err);
+      }
+    }
+
     setIsSubmitting(true);
+    const sessionId = getSessionId();
+    const eventId = 'ev_ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+
     try {
+      // 1. Track FORM_SUBMIT event
+      trackEvent({
+        eventType: 'FORM_SUBMIT',
+        productId: product._id,
+        productName: product.name,
+        price: totalPrice,
+        currency: product.currency,
+        customEventId: eventId,
+        metadata: { quantity, city: city.trim() },
+      });
+
+      // 2. Create Order in Convex
       const order = await createOrder({
         productId: product._id,
         productName: product.name,
@@ -122,6 +214,8 @@ export const CODForm: React.FC<CODFormProps> = ({
         total: totalPrice,
         currency: product.currency || 'DH',
         status: 'NEW',
+        sessionId,
+        eventId,
         utmSource: utmParams.utmSource || '',
         utmMedium: utmParams.utmMedium || '',
         utmCampaign: utmParams.utmCampaign || '',
@@ -129,7 +223,24 @@ export const CODForm: React.FC<CODFormProps> = ({
         utmTerm: utmParams.utmTerm || '',
       });
 
+      // 3. Track ORDER_SUCCESS event
+      trackEvent({
+        eventType: 'ORDER_SUCCESS',
+        productId: product._id,
+        productName: product.name,
+        price: totalPrice,
+        currency: product.currency,
+        customEventId: eventId,
+        metadata: {
+          orderNumber: order.orderNumber,
+          quantity,
+          city: city.trim(),
+        },
+      });
+
       setSubmittedOrder({ id: order._id, orderNumber: order.orderNumber });
+      setDuplicateWarning(null);
+
       if (onOrderSuccess) {
         onOrderSuccess(order._id, order.orderNumber);
       }
@@ -207,6 +318,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             setCustomerName('');
             setPhone('');
             setAddress('');
+            setForceSubmitDuplicate(false);
           }}
           variant="outline"
           className="w-full text-xs"
@@ -236,7 +348,53 @@ export const CODForm: React.FC<CODFormProps> = ({
         </p>
       </div>
 
+      {/* Duplicate Order Warning Modal / Notice */}
+      {duplicateWarning && (
+        <div className="p-4 m-4 bg-amber-50 border-2 border-amber-400 rounded-xl space-y-3">
+          <div className="flex items-start gap-2.5 text-amber-900">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <div className="font-bold text-sm">تنبيه: يوجد طلب مسجل مسبقاً بنفس رقم الهاتف!</div>
+              <p className="text-amber-800 mt-1">
+                لقد تم تسجيل طلب لنفس هذا المنتج برقم <span className="font-mono font-bold">{duplicateWarning.orderNumber}</span> خلال العشر دقائق الماضية. طلبك قيد التجهيز بالفعل وسيتصل بك فريقنا لتأكيده.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setForceSubmitDuplicate(true);
+                setDuplicateWarning(null);
+              }}
+              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer"
+            >
+              نعم، أريد تأكيد طلب إضافي آخر
+            </button>
+            <button
+              type="button"
+              onClick={() => setDuplicateWarning(null)}
+              className="px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-900 text-xs font-semibold hover:bg-amber-100 cursor-pointer"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+        {/* Anti-spam hidden honeypot */}
+        <input
+          type="text"
+          name="b_website"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+          className="hidden"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+        />
+
         {errors.form && (
           <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -288,7 +446,7 @@ export const CODForm: React.FC<CODFormProps> = ({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              onClick={() => handleQuantityChange(quantity - 1)}
               className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-800 font-bold hover:bg-slate-100 flex items-center justify-center cursor-pointer shadow-xs"
               aria-label="Decrease quantity"
             >
@@ -299,7 +457,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             </span>
             <button
               type="button"
-              onClick={() => setQuantity((q) => q + 1)}
+              onClick={() => handleQuantityChange(quantity + 1)}
               className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-800 font-bold hover:bg-slate-100 flex items-center justify-center cursor-pointer shadow-xs"
               aria-label="Increase quantity"
             >
@@ -318,6 +476,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={customerName}
+              onFocus={() => handleFirstInteraction('customerName')}
               onChange={(e) => {
                 setCustomerName(e.target.value);
                 if (errors.customerName) setErrors((prev) => ({ ...prev, customerName: '' }));
@@ -341,6 +500,7 @@ export const CODForm: React.FC<CODFormProps> = ({
               <input
                 type="tel"
                 value={phone}
+                onFocus={() => handleFirstInteraction('phone')}
                 onChange={(e) => {
                   setPhone(e.target.value);
                   if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
@@ -372,6 +532,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             <div className="relative">
               <select
                 value={city}
+                onFocus={() => handleFirstInteraction('city')}
                 onChange={(e) => {
                   setCity(e.target.value);
                   if (errors.city) setErrors((prev) => ({ ...prev, city: '' }));
@@ -404,6 +565,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={address}
+              onFocus={() => handleFirstInteraction('address')}
               onChange={(e) => {
                 setAddress(e.target.value);
                 if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
@@ -426,6 +588,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={notes}
+              onFocus={() => handleFirstInteraction('notes')}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="مثال: يفضل الاتصال في المساء"
               className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-700 bg-slate-50/50 placeholder:text-slate-400 focus:outline-none focus:border-slate-400"

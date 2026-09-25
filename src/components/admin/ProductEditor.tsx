@@ -583,6 +583,224 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
               onChange={(variants) => setFormData((prev) => ({ ...prev, variants }))}
             />
           </div>
+
+          {/* Section 8: Scarcity & Urgency (Stock & Timer) */}
+          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
+              إعدادات الندرة والعداد التنازلي (Scarcity & Countdown)
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+                  <input
+                    type="checkbox"
+                    checked={formData.scarcityEnabled || false}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, scarcityEnabled: e.target.checked }))}
+                    className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                  />
+                  <span>تفعيل شريط نفاذ المخزون (Stock Scarcity Warning)</span>
+                </label>
+                {formData.scarcityEnabled && (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      الكمية المتبقية للعرض
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.stockQuantity ?? 7}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          stockQuantity: Number(e.target.value) || 0,
+                        }))
+                      }
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                      placeholder="7"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+                  <input
+                    type="checkbox"
+                    checked={formData.countdownEnabled || false}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, countdownEnabled: e.target.checked }))}
+                    className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                  />
+                  <span>تفعيل العداد التنازلي للعرض (Countdown Timer)</span>
+                </label>
+                {formData.countdownEnabled && (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      مدة العداد بالدقائق (مثال: 120 دقيقة = ساعتان)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.countdownDurationMinutes ?? 120}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          countdownDurationMinutes: Number(e.target.value) || 60,
+                        }))
+                      }
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 9: WhatsApp Direct CTA */}
+          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
+              طلب مباشر عبر الواتساب (WhatsApp CTA)
+            </h3>
+
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={formData.whatsappEnabled || false}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, whatsappEnabled: e.target.checked }))}
+                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span>إظهار زر "طلب أو استفسار عبر الواتساب" في صفحة المنتج</span>
+              </label>
+
+              {formData.whatsappEnabled && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    رقم الواتساب مع كود الدولة (مثال: 212661234567)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.whatsappNumber || ''}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, whatsappNumber: e.target.value }))}
+                    placeholder="2126XXXXXXXX"
+                    dir="ltr"
+                    className="w-full max-w-sm px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 10: SEO & Social Share Cards */}
+          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
+              تهيئة محركات البحث ومشاركة الروابط (SEO & Social OpenGraph)
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  عنوان الصفحة في جوجل (SEO Title)
+                </label>
+                <input
+                  type="text"
+                  value={formData.seoTitle || ''}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, seoTitle: e.target.value }))}
+                  placeholder="عنوان جذاب يظهر في نتائج البحث..."
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  عنوان المشاركة الاجتماعية (OG Title)
+                </label>
+                <input
+                  type="text"
+                  value={formData.ogTitle || ''}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, ogTitle: e.target.value }))}
+                  placeholder="عنوان كارت فيسبوك / واتساب..."
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  وصف الصفحة في محركات البحث (SEO Description)
+                </label>
+                <input
+                  type="text"
+                  value={formData.seoDescription || ''}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, seoDescription: e.target.value }))}
+                  placeholder="وصف مختصر ومقنع للمنتج..."
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  رابط صورة المشاركة (OG Image URL)
+                </label>
+                <input
+                  type="text"
+                  value={formData.ogImage || ''}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, ogImage: e.target.value }))}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 11: Per-Product Tracking Pixels */}
+          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
+              تتبع الإعلانات المخصص للمنتج (Tracking & Pixels)
+            </h3>
+
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={formData.useCustomPixels || false}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, useCustomPixels: e.target.checked }))}
+                  className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                />
+                <span>تخصيص بكسل مستقل لهذا المنتج (تجاوز إعدادات المتجر العامة)</span>
+              </label>
+
+              {formData.useCustomPixels && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                      Custom Meta Pixel ID
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customMetaPixelId || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, customMetaPixelId: e.target.value }))}
+                      placeholder="123456789012345"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                      Custom TikTok Pixel ID
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customTikTokPixelId || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, customTikTokPixelId: e.target.value }))}
+                      placeholder="C9XXXXXXXXXXXXXX"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Live Preview Panel (Sticky Right / Side-by-Side) */}

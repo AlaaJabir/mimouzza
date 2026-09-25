@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuery } from '../lib/convex-client';
 import { api } from '../../convex/api';
 import { LandingPage } from '../components/landing/LandingPage';
+import { initMarketingPixels } from '../lib/tracking';
 import { ShoppingBag, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
 
 interface PublicProductPageProps {
@@ -23,6 +24,69 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
 }) => {
   // Convex reactive query for this product
   const product = useQuery(api.products.getBySlug, { slug });
+  const settings = useQuery(api.settings.get);
+
+  // SEO & OpenGraph dynamic meta injection
+  useEffect(() => {
+    if (!product) return;
+
+    // Document Title
+    document.title = product.seoTitle || `${product.name} | الدفع عند الاستلام`;
+
+    // Helper to update or create meta tags
+    const setMetaTag = (attrName: string, attrVal: string, content: string) => {
+      let el = document.querySelector(`meta[${attrName}="${attrVal}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attrName, attrVal);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+    };
+
+    if (product.seoDescription || product.shortDescription) {
+      setMetaTag('name', 'description', product.seoDescription || product.shortDescription);
+    }
+    setMetaTag('property', 'og:title', product.ogTitle || product.name);
+    setMetaTag('property', 'og:description', product.ogDescription || product.shortDescription || '');
+    if (product.ogImage || (product.images && product.images[0])) {
+      setMetaTag('property', 'og:image', product.ogImage || product.images[0]);
+    }
+  }, [product]);
+
+  // Pixel Initialization (Global with per-product override)
+  useEffect(() => {
+    if (!product || !settings) return;
+
+    const metaPixelId =
+      product.useCustomPixels && product.customMetaPixelId
+        ? product.customMetaPixelId
+        : settings.metaPixelId;
+
+    const tiktokPixelId =
+      product.useCustomPixels && product.customTikTokPixelId
+        ? product.customTikTokPixelId
+        : settings.tiktokPixelId;
+
+    const enableMeta =
+      product.useCustomPixels
+        ? Boolean(product.customMetaPixelId)
+        : Boolean(settings.enableMetaPixel && settings.metaPixelId);
+
+    const enableTikTok =
+      product.useCustomPixels
+        ? Boolean(product.customTikTokPixelId)
+        : Boolean(settings.enableTikTokPixel && settings.tiktokPixelId);
+
+    initMarketingPixels({
+      metaPixelId,
+      enableMeta,
+      tiktokPixelId,
+      enableTikTok,
+      gaId: settings.googleAnalyticsId,
+      enableGA: settings.enableGoogleAnalytics,
+    });
+  }, [product, settings]);
 
   // Loading state
   if (product === undefined) {

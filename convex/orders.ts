@@ -15,6 +15,13 @@ export const getByProductId = {
   },
 };
 
+export const checkDuplicate = {
+  name: 'orders:checkDuplicate',
+  query: (args: { productId: string; phone: string; timeWindowMinutes?: number }) => {
+    return db.checkDuplicateOrder(args.productId, args.phone, args.timeWindowMinutes ?? 10);
+  },
+};
+
 export const create = {
   name: 'orders:create',
   mutation: (args: Omit<Order, '_id' | 'orderNumber' | 'createdAt'>) => {
@@ -37,7 +44,9 @@ export const getMetrics = {
 
     const totalOrders = orders.length;
     const newOrders = orders.filter((o) => o.status === 'NEW').length;
-    const confirmedOrders = orders.filter((o) => o.status === 'CONFIRMED' || o.status === 'PROCESSING' || o.status === 'SHIPPED' || o.status === 'DELIVERED').length;
+    const confirmedOrders = orders.filter((o) =>
+      ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(o.status)
+    ).length;
     const deliveredOrders = orders.filter((o) => o.status === 'DELIVERED').length;
     const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED').length;
 

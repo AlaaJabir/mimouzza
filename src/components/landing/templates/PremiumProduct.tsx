@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Product } from '../../../../convex/schema';
 import { TopAnnouncementBar } from '../OfferBanner';
 import { ProductGallery } from '../ProductGallery';
@@ -7,7 +7,8 @@ import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
-import { Star, ShieldCheck, Sparkles, ShoppingBag, ArrowDown } from 'lucide-react';
+import { trackEvent } from '../../../lib/tracking';
+import { Star, ShieldCheck, Sparkles, ShoppingBag, ArrowDown, MessageCircle } from 'lucide-react';
 
 interface PremiumProductProps {
   product: Product;
@@ -26,8 +27,44 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
       ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
       : undefined;
 
-  const scrollToOrder = () => {
+  useEffect(() => {
+    trackEvent({
+      eventType: 'PAGE_VIEW',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+    });
+    trackEvent({
+      eventType: 'VIEW_CONTENT',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+    });
+  }, [product._id]);
+
+  const handleHeroCtaClick = () => {
+    trackEvent({
+      eventType: 'CTA_CLICK',
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      currency: product.currency,
+      metadata: { elementId: 'hero_cta' },
+    });
     document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleWhatsAppClick = () => {
+    trackEvent({
+      eventType: 'WHATSAPP_CLICK',
+      productId: product._id,
+      productName: product.name,
+      metadata: { whatsappNumber: product.whatsappNumber },
+    });
+    const message = encodeURIComponent(`السلام عليكم، أريد الاستفسار بخصوص منتج: ${product.name}`);
+    window.open(`https://wa.me/${product.whatsappNumber}?text=${message}`, '_blank');
   };
 
   return (
@@ -74,6 +111,7 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
                 images={product.images}
                 productName={product.name}
                 discountPercentage={discountPct}
+                productId={product._id}
               />
             </div>
 
@@ -104,12 +142,23 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
               )}
 
               <button
-                onClick={scrollToOrder}
+                onClick={handleHeroCtaClick}
                 className="w-full py-4 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-base shadow-lg shadow-amber-400/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ShoppingBag className="w-5 h-5 text-neutral-950" />
                 <span>{product.ctaText || 'اطلب الآن بالدفع عند الاستلام'}</span>
               </button>
+
+              {product.whatsappEnabled && product.whatsappNumber && (
+                <button
+                  type="button"
+                  onClick={handleWhatsAppClick}
+                  className="w-full py-2.5 px-4 rounded-xl border border-emerald-500 text-emerald-400 hover:bg-emerald-950/40 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-400" />
+                  <span>تواصل عبر الواتساب (WhatsApp)</span>
+                </button>
+              )}
 
               <div className="pt-2 border-t border-neutral-700/60 text-xs text-neutral-400 space-y-2">
                 <div className="flex items-center gap-2">
@@ -186,6 +235,8 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
         price={product.price}
         currency={product.currency || 'DH'}
         ctaText={product.ctaText}
+        productId={product._id}
+        productName={product.name}
       />
     </div>
   );

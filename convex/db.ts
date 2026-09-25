@@ -4,14 +4,15 @@
  * and immediate local reactive dispatch for zero-latency UI updates.
  */
 
-import { Product, Order, Template, StoreSettings } from './schema';
+import { Product, Order, Template, StoreSettings, AnalyticsEvent } from './schema';
 
 const STORAGE_KEYS = {
-  PRODUCTS: 'cod_convex_products',
-  ORDERS: 'cod_convex_orders',
-  TEMPLATES: 'cod_convex_templates',
-  SETTINGS: 'cod_convex_settings',
-  INITIALIZED: 'cod_convex_v1_init',
+  PRODUCTS: 'cod_convex_products_v2',
+  ORDERS: 'cod_convex_orders_v2',
+  TEMPLATES: 'cod_convex_templates_v2',
+  SETTINGS: 'cod_convex_settings_v2',
+  ANALYTICS: 'cod_convex_analytics_v2',
+  INITIALIZED: 'cod_convex_v2_init',
 };
 
 export const INITIAL_TEMPLATES: Template[] = [
@@ -45,7 +46,7 @@ export const INITIAL_TEMPLATES: Template[] = [
     description: 'Aggressive sales page with live countdown timer, limited stock urgency indicators, massive savings comparison, and prominent multi-variant selection.',
     previewImage: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=800&q=80',
     tag: 'Flash Sales & Bundles',
-    features: ['Live Urgency Countdown Timer', 'Stock Scarcity Warning (متبقي فقط 7 قطع)', 'Price Comparison Strikethrough', 'Dual CTA Triggers', 'Highlight Testimonial Proof'],
+    features: ['Configurable Countdown Timer', 'Configurable Stock Scarcity Warning', 'Price Comparison Strikethrough', 'Dual CTA Triggers', 'Highlight Testimonial Proof'],
     active: true,
   },
 ];
@@ -82,6 +83,17 @@ export const INITIAL_SETTINGS: StoreSettings = {
     'مدينة أخرى بالمغرب',
   ],
   contactPhone: '+212 661-234567',
+  metaPixelId: '',
+  enableMetaPixel: false,
+  tiktokPixelId: '',
+  enableTikTokPixel: false,
+  googleAnalyticsId: '',
+  enableGoogleAnalytics: false,
+  campaignAdSpends: {
+    elixir_spring_tiktok: 600,
+    prosound_audiophiles: 450,
+    aviator_luxury_v1: 350,
+  },
 };
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -131,6 +143,16 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.9,
     reviewCount: 248,
     badgeText: 'الأكثر طلباً هذا الأسبوع',
+    scarcityEnabled: false,
+    stockQuantity: 15,
+    countdownEnabled: false,
+    seoTitle: "L'Élixir Précieux 7-en-1 | زيت الأرغان وماء الورد المغربي",
+    seoDescription: 'سيروم الأرغان المغربي النقي 100% لبشرة مشرقة وشعر صحي. الدفع عند الاستلام مع شحن مجاني.',
+    ogTitle: "L'Élixir Précieux 7-en-1 — عرض حصري بالمغرب",
+    ogDescription: 'توصيل سريع مجاني لباب المنزل والدفع بعد المعاينة.',
+    ogImage: '/src/assets/images/seed_beauty_serum_1790331758543.jpg',
+    whatsappEnabled: true,
+    whatsappNumber: '212661234567',
     faqs: [
       { question: 'هل المنتج أصلي وطبيعي 100%؟', answer: 'نعم، إكسير الأرغان معصور على البارد من حبات الأرغان المغربية النقية مع خلاصة الورد الدمشقي، خالي من أي إضافات كيميائية أو مواد حافظة.' },
       { question: 'متى سأستلم طلبي؟', answer: 'نقوم بشحن الطلبيات فور تأكيدها هاتفياً، ويصلك الطرد خلال 24 إلى 48 ساعة لباب منزلك في أي مدينة مغربية.' },
@@ -184,6 +206,16 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.95,
     reviewCount: 312,
     badgeText: 'الإصدار المتميز 2026',
+    scarcityEnabled: false,
+    stockQuantity: 20,
+    countdownEnabled: false,
+    seoTitle: 'ProSound Wave Ultra-ANC | سماعات عزل الضوضاء اللاسلكية',
+    seoDescription: 'سماعات بلوتوث عازلة للضوضاء ANC مع بطارية 50 ساعة وصوت Hi-Res فائق النقاء.',
+    ogTitle: 'ProSound Wave Ultra-ANC اللاسلكية — توصيل مجاني بالمغرب',
+    ogDescription: 'ضمان رسمي سنة كاملة مع الدفع نقداً عند الاستلام.',
+    ogImage: '/src/assets/images/seed_headphones_1790331773135.jpg',
+    whatsappEnabled: true,
+    whatsappNumber: '212661234567',
     faqs: [
       { question: 'هل تتوافق السماعات مع هواتف آيفون وأندرويد؟', answer: 'نعم، تدعم تقنية Bluetooth 5.3 وتتصل فورياً بجميع أجهزة iPhone و Android والحواسيب المحمولة والتلفزيونات الذكية.' },
       { question: 'ماذا يوجد داخل العلبة؟', answer: 'تحتوي العلبة على السماعة الفاخرة، حقيبة حمل مضادة للصدمات، كابل شحن Type-C سريع، كابل صوت 3.5mm، ودليل المستخدم.' },
@@ -236,6 +268,17 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.88,
     reviewCount: 179,
     badgeText: 'عرض ترويجي عاجل',
+    scarcityEnabled: true,
+    stockQuantity: 7,
+    countdownEnabled: true,
+    countdownDurationMinutes: 120,
+    seoTitle: 'ساعة ChronoPrecision Aviator الياقوتية المقاومة للخدش',
+    seoDescription: 'ساعة رجالية فخمة بزجاج ياقوتي Sapphire مقاوم للخدش والماء. الدفع عند الاستلام.',
+    ogTitle: 'ساعة Aviator الكلاسيكية للرجال — عرض اليوم',
+    ogDescription: 'علبة خشبية فاخرة مجاناً مع التوصيل السريع لجميع مدن المغرب.',
+    ogImage: '/src/assets/images/seed_luxury_watch_1790331784875.jpg',
+    whatsappEnabled: true,
+    whatsappNumber: '212661234567',
     faqs: [
       { question: 'هل زجاج الساعة ياقوتي حقيقي؟', answer: 'نعم، زجاج كريستال ياقوتي مقسى Sapphire عالي الجودة ومقاوم لأشد الخدوش.' },
       { question: 'هل يشمل العرض علبة الساعة؟', answer: 'نعم، تأتي الساعة داخل علبة خشبية أنيقة ومبطنة بمخمل ناعم مع شهادة الضمان.' },
@@ -263,6 +306,8 @@ export const INITIAL_ORDERS: Order[] = [
     total: 299,
     currency: 'DH',
     status: 'NEW',
+    sessionId: 'sess_seed_1',
+    eventId: 'evt_order_1',
     utmSource: 'tiktok',
     utmMedium: 'cpc',
     utmCampaign: 'elixir_spring_tiktok',
@@ -286,6 +331,8 @@ export const INITIAL_ORDERS: Order[] = [
     total: 389,
     currency: 'DH',
     status: 'CONFIRMED',
+    sessionId: 'sess_seed_2',
+    eventId: 'evt_order_2',
     utmSource: 'facebook',
     utmMedium: 'feed',
     utmCampaign: 'prosound_audiophiles',
@@ -309,6 +356,8 @@ export const INITIAL_ORDERS: Order[] = [
     total: 698,
     currency: 'DH',
     status: 'PROCESSING',
+    sessionId: 'sess_seed_3',
+    eventId: 'evt_order_3',
     utmSource: 'instagram',
     utmMedium: 'story',
     utmCampaign: 'aviator_luxury_v1',
@@ -332,6 +381,8 @@ export const INITIAL_ORDERS: Order[] = [
     total: 499,
     currency: 'DH',
     status: 'SHIPPED',
+    sessionId: 'sess_seed_4',
+    eventId: 'evt_order_4',
     utmSource: 'tiktok',
     utmMedium: 'cpc',
     utmCampaign: 'elixir_spring_tiktok',
@@ -355,6 +406,8 @@ export const INITIAL_ORDERS: Order[] = [
     total: 389,
     currency: 'DH',
     status: 'DELIVERED',
+    sessionId: 'sess_seed_5',
+    eventId: 'evt_order_5',
     utmSource: 'google',
     utmMedium: 'cpc',
     utmCampaign: 'search_morocco_anc',
@@ -364,11 +417,135 @@ export const INITIAL_ORDERS: Order[] = [
   },
 ];
 
+// Helper to generate seed events matching realistic funnel history
+function generateSeedEvents(): AnalyticsEvent[] {
+  const events: AnalyticsEvent[] = [];
+  const baseTime = Date.now() - 1000 * 3600 * 48;
+
+  // Let's create realistic visitor flows for TikTok, Facebook, Instagram, Google, and Direct traffic
+  const campaigns = [
+    { source: 'tiktok', medium: 'cpc', campaign: 'elixir_spring_tiktok', prodId: 'prod_beauty_1', sessions: 28 },
+    { source: 'facebook', medium: 'feed', campaign: 'prosound_audiophiles', prodId: 'prod_electronics_2', sessions: 22 },
+    { source: 'instagram', medium: 'story', campaign: 'aviator_luxury_v1', prodId: 'prod_fashion_3', sessions: 18 },
+    { source: 'google', medium: 'cpc', campaign: 'search_morocco_anc', prodId: 'prod_electronics_2', sessions: 12 },
+    { source: 'direct', medium: '', campaign: '', prodId: 'prod_beauty_1', sessions: 10 },
+  ];
+
+  let evtCounter = 1;
+
+  campaigns.forEach((camp) => {
+    for (let s = 0; s < camp.sessions; s++) {
+      const sessId = `sess_gen_${camp.source}_${s}`;
+      const timeOffset = Math.floor(Math.random() * (Date.now() - baseTime));
+      const sessTime = baseTime + timeOffset;
+
+      // 1. PAGE_VIEW
+      events.push({
+        _id: `evt_${evtCounter++}`,
+        eventId: `ev_${evtCounter}`,
+        eventType: 'PAGE_VIEW',
+        productId: camp.prodId,
+        sessionId: sessId,
+        timestamp: sessTime,
+        pageUrl: `/p/${camp.prodId}`,
+        referrer: camp.source === 'direct' ? '' : `https://${camp.source}.com`,
+        utmSource: camp.source,
+        utmMedium: camp.medium,
+        utmCampaign: camp.campaign,
+        utmContent: 'ad_v1',
+        utmTerm: '',
+        metadata: {},
+      });
+
+      // 2. VIEW_CONTENT
+      events.push({
+        _id: `evt_${evtCounter++}`,
+        eventId: `ev_${evtCounter}`,
+        eventType: 'VIEW_CONTENT',
+        productId: camp.prodId,
+        sessionId: sessId,
+        timestamp: sessTime + 2000,
+        pageUrl: `/p/${camp.prodId}`,
+        referrer: '',
+        utmSource: camp.source,
+        utmMedium: camp.medium,
+        utmCampaign: camp.campaign,
+        utmContent: '',
+        utmTerm: '',
+        metadata: {},
+      });
+
+      // ~65% click a CTA
+      if (Math.random() < 0.65) {
+        const ctaList = ['hero_cta', 'sticky_cta', 'mid_page_cta', 'final_cta'];
+        const chosenCta = ctaList[Math.floor(Math.random() * ctaList.length)];
+
+        events.push({
+          _id: `evt_${evtCounter++}`,
+          eventId: `ev_${evtCounter}`,
+          eventType: 'CTA_CLICK',
+          productId: camp.prodId,
+          sessionId: sessId,
+          timestamp: sessTime + 8000,
+          pageUrl: `/p/${camp.prodId}`,
+          referrer: '',
+          utmSource: camp.source,
+          utmMedium: camp.medium,
+          utmCampaign: camp.campaign,
+          utmContent: '',
+          utmTerm: '',
+          metadata: { elementId: chosenCta },
+        });
+
+        // FORM_VIEW
+        events.push({
+          _id: `evt_${evtCounter++}`,
+          eventId: `ev_${evtCounter}`,
+          eventType: 'FORM_VIEW',
+          productId: camp.prodId,
+          sessionId: sessId,
+          timestamp: sessTime + 9000,
+          pageUrl: `/p/${camp.prodId}`,
+          referrer: '',
+          utmSource: camp.source,
+          utmMedium: camp.medium,
+          utmCampaign: camp.campaign,
+          utmContent: '',
+          utmTerm: '',
+          metadata: {},
+        });
+
+        // ~70% of CTA clickers start filling the form
+        if (Math.random() < 0.7) {
+          events.push({
+            _id: `evt_${evtCounter++}`,
+            eventId: `ev_${evtCounter}`,
+            eventType: 'FORM_START',
+            productId: camp.prodId,
+            sessionId: sessId,
+            timestamp: sessTime + 12000,
+            pageUrl: `/p/${camp.prodId}`,
+            referrer: '',
+            utmSource: camp.source,
+            utmMedium: camp.medium,
+            utmCampaign: camp.campaign,
+            utmContent: '',
+            utmTerm: '',
+            metadata: { firstField: 'customerName' },
+          });
+        }
+      }
+    }
+  });
+
+  return events;
+}
+
 // Broadcast Channel for multi-tab real-time reactivity
 let broadcastChannel: BroadcastChannel | null = null;
 if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
   try {
-    broadcastChannel = new BroadcastChannel('convex_reactive_sync_v1');
+    broadcastChannel = new BroadcastChannel('convex_reactive_sync_v2');
   } catch (err) {
     console.warn('BroadcastChannel not supported', err);
   }
@@ -417,6 +594,7 @@ class ConvexMemoryStore {
   private orders: Order[] = [];
   private templates: Template[] = [];
   private settings: StoreSettings = INITIAL_SETTINGS;
+  private analyticsEvents: AnalyticsEvent[] = [];
   private initialized = false;
 
   constructor() {
@@ -429,6 +607,7 @@ class ConvexMemoryStore {
       this.orders = [...INITIAL_ORDERS];
       this.templates = [...INITIAL_TEMPLATES];
       this.settings = { ...INITIAL_SETTINGS };
+      this.analyticsEvents = generateSeedEvents();
       return;
     }
 
@@ -439,6 +618,7 @@ class ConvexMemoryStore {
         this.orders = [...INITIAL_ORDERS];
         this.templates = [...INITIAL_TEMPLATES];
         this.settings = { ...INITIAL_SETTINGS };
+        this.analyticsEvents = generateSeedEvents();
         this.persist();
         localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
       } else {
@@ -446,11 +626,13 @@ class ConvexMemoryStore {
         const orderData = localStorage.getItem(STORAGE_KEYS.ORDERS);
         const tplData = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
         const setData = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+        const anData = localStorage.getItem(STORAGE_KEYS.ANALYTICS);
 
         this.products = prodData ? JSON.parse(prodData) : [...INITIAL_PRODUCTS];
         this.orders = orderData ? JSON.parse(orderData) : [...INITIAL_ORDERS];
         this.templates = tplData ? JSON.parse(tplData) : [...INITIAL_TEMPLATES];
         this.settings = setData ? JSON.parse(setData) : { ...INITIAL_SETTINGS };
+        this.analyticsEvents = anData ? JSON.parse(anData) : generateSeedEvents();
       }
     } catch (e) {
       console.error('Error initializing store:', e);
@@ -458,6 +640,7 @@ class ConvexMemoryStore {
       this.orders = [...INITIAL_ORDERS];
       this.templates = [...INITIAL_TEMPLATES];
       this.settings = { ...INITIAL_SETTINGS };
+      this.analyticsEvents = generateSeedEvents();
     }
     this.initialized = true;
   }
@@ -469,6 +652,9 @@ class ConvexMemoryStore {
       localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(this.orders));
       localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(this.templates));
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
+      // Keep up to 2000 events to prevent quota overflow
+      const trimmedEvents = this.analyticsEvents.slice(-2000);
+      localStorage.setItem(STORAGE_KEYS.ANALYTICS, JSON.stringify(trimmedEvents));
     } catch (e) {
       console.error('Failed to persist to localStorage', e);
     }
@@ -546,9 +732,26 @@ class ConvexMemoryStore {
     return false;
   }
 
-  // --- ORDERS ---
+  // --- ORDERS & DUPLICATE PROTECTION ---
   public getOrders(): Order[] {
     return [...this.orders].sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  public checkDuplicateOrder(productId: string, phone: string, timeWindowMinutes = 10): Order | null {
+    const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
+    const threshold = Date.now() - timeWindowMinutes * 60 * 1000;
+
+    const existing = this.orders.find((o) => {
+      const orderCleanPhone = o.phone.replace(/[\s\-\(\)\.]/g, '');
+      return (
+        o.productId === productId &&
+        orderCleanPhone === cleanPhone &&
+        o.createdAt >= threshold &&
+        o.status !== 'CANCELLED'
+      );
+    });
+
+    return existing || null;
   }
 
   public createOrder(data: Omit<Order, '_id' | 'orderNumber' | 'createdAt'>): Order {
@@ -560,6 +763,15 @@ class ConvexMemoryStore {
       createdAt: Date.now(),
     };
     this.orders.unshift(newOrder);
+
+    // If stock quantity is managed and enabled, decrement stock
+    const product = this.getProductById(data.productId);
+    if (product && product.scarcityEnabled && product.stockQuantity && product.stockQuantity > 0) {
+      this.updateProduct(product._id, {
+        stockQuantity: Math.max(0, product.stockQuantity - data.quantity),
+      });
+    }
+
     this.persist();
     notifySubscribers();
     return newOrder;
@@ -572,6 +784,47 @@ class ConvexMemoryStore {
     this.persist();
     notifySubscribers();
     return this.orders[idx];
+  }
+
+  // --- ANALYTICS EVENTS ---
+  public logAnalyticsEvent(event: Omit<AnalyticsEvent, '_id'>): AnalyticsEvent {
+    const newEvent: AnalyticsEvent = {
+      ...event,
+      _id: 'evt_' + Math.random().toString(36).substring(2, 11),
+      timestamp: event.timestamp || Date.now(),
+    };
+    this.analyticsEvents.push(newEvent);
+
+    // Cap events in memory
+    if (this.analyticsEvents.length > 5000) {
+      this.analyticsEvents = this.analyticsEvents.slice(-4000);
+    }
+
+    this.persist();
+    notifySubscribers();
+    return newEvent;
+  }
+
+  public getAnalyticsEvents(filter?: {
+    productId?: string;
+    since?: number;
+    until?: number;
+    eventType?: string;
+  }): AnalyticsEvent[] {
+    let list = this.analyticsEvents;
+    if (filter?.productId) {
+      list = list.filter((e) => e.productId === filter.productId);
+    }
+    if (filter?.since) {
+      list = list.filter((e) => e.timestamp >= filter.since!);
+    }
+    if (filter?.until) {
+      list = list.filter((e) => e.timestamp <= filter.until!);
+    }
+    if (filter?.eventType) {
+      list = list.filter((e) => e.eventType === filter.eventType);
+    }
+    return list;
   }
 
   // --- TEMPLATES ---
@@ -591,11 +844,21 @@ class ConvexMemoryStore {
     return this.settings;
   }
 
+  public updateCampaignAdSpend(campaign: string, spend: number): StoreSettings {
+    const spends = { ...(this.settings.campaignAdSpends || {}) };
+    spends[campaign] = spend;
+    this.settings.campaignAdSpends = spends;
+    this.persist();
+    notifySubscribers();
+    return this.settings;
+  }
+
   public resetToSeed(): void {
     this.products = [...INITIAL_PRODUCTS];
     this.orders = [...INITIAL_ORDERS];
     this.templates = [...INITIAL_TEMPLATES];
     this.settings = { ...INITIAL_SETTINGS };
+    this.analyticsEvents = generateSeedEvents();
     this.persist();
     notifySubscribers();
   }

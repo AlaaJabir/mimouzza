@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart } from 'lucide-react';
+import { trackEvent } from '../../lib/tracking';
 
 interface StickyOrderButtonProps {
   price: number;
   currency: string;
   ctaText?: string;
+  productId?: string;
+  productName?: string;
 }
 
 export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
   price,
   currency,
   ctaText = 'اطلب الآن بالدفع عند الاستلام',
+  productId,
+  productName,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      // Show when scrolled down slightly, but hide if already at the order form
       const formEl = document.getElementById('order-form-container');
       const scrollY = window.scrollY;
 
@@ -36,10 +40,20 @@ export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
   }, []);
 
   const scrollToForm = () => {
+    if (productId) {
+      trackEvent({
+        eventType: 'CTA_CLICK',
+        productId,
+        productName,
+        price,
+        currency,
+        metadata: { elementId: 'sticky_cta' },
+      });
+    }
+
     const formEl = document.getElementById('order-form-container');
     if (formEl) {
       formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Focus name input after a short delay
       setTimeout(() => {
         const input = formEl.querySelector('input') as HTMLInputElement | null;
         input?.focus();

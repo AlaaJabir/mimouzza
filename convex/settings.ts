@@ -15,6 +15,13 @@ export const update = {
   },
 };
 
+export const updateAdSpend = {
+  name: 'settings:updateAdSpend',
+  mutation: (args: { campaign: string; spend: number }) => {
+    return db.updateCampaignAdSpend(args.campaign, args.spend);
+  },
+};
+
 export const resetSeed = {
   name: 'settings:resetSeed',
   mutation: () => {

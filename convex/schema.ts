@@ -42,6 +42,31 @@ export interface Product {
   reviewCount: number;
   badgeText?: string;
   faqs?: ProductFAQ[];
+
+  // Scarcity & Countdown Settings
+  scarcityEnabled?: boolean;
+  stockQuantity?: number;
+  countdownEnabled?: boolean;
+  countdownDurationMinutes?: number;
+  countdownEndsAt?: string;
+
+  // SEO & Social Share Settings
+  seoTitle?: string;
+  seoDescription?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  canonicalUrl?: string;
+
+  // WhatsApp CTA
+  whatsappEnabled?: boolean;
+  whatsappNumber?: string;
+
+  // Per-Product Tracking Overrides
+  useCustomPixels?: boolean;
+  customMetaPixelId?: string;
+  customTikTokPixelId?: string;
+
   createdAt: number;
   updatedAt: number;
 }
@@ -70,12 +95,45 @@ export interface Order {
   total: number;
   currency: string;
   status: OrderStatus;
+  sessionId?: string;
+  eventId?: string;
   utmSource: string;
   utmMedium: string;
   utmCampaign: string;
   utmContent: string;
   utmTerm: string;
   createdAt: number;
+}
+
+export type AnalyticsEventType =
+  | 'PAGE_VIEW'
+  | 'VIEW_CONTENT'
+  | 'CTA_CLICK'
+  | 'FORM_VIEW'
+  | 'FORM_START'
+  | 'VARIANT_SELECT'
+  | 'QUANTITY_CHANGE'
+  | 'FORM_SUBMIT'
+  | 'ORDER_SUCCESS'
+  | 'WHATSAPP_CLICK'
+  | 'PRODUCT_IMAGE_VIEW';
+
+export interface AnalyticsEvent {
+  _id: string;
+  eventId: string;
+  eventType: AnalyticsEventType;
+  productId: string;
+  sessionId: string;
+  timestamp: number;
+  pageUrl: string;
+  referrer: string;
+  userAgent?: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  utmContent: string;
+  utmTerm: string;
+  metadata?: Record<string, any>;
 }
 
 export interface Template {
@@ -98,4 +156,15 @@ export interface StoreSettings {
   defaultReturnPolicy: string;
   moroccoCities: string[];
   contactPhone: string;
+
+  // Marketing & Tracking Pixels
+  metaPixelId?: string;
+  enableMetaPixel?: boolean;
+  tiktokPixelId?: string;
+  enableTikTokPixel?: boolean;
+  googleAnalyticsId?: string;
+  enableGoogleAnalytics?: boolean;
+
+  // Manual Ad Spend per campaign (e.g. { "elixir_spring_tiktok": 450 })
+  campaignAdSpends?: Record<string, number>;
 }

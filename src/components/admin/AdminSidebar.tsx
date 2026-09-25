@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  BarChart3,
   Package,
   Layers,
   ShoppingBag,
@@ -8,13 +9,23 @@ import {
   ExternalLink,
   Store,
   PlusCircle,
+  Activity,
 } from 'lucide-react';
 import { useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 
+export type AdminSection =
+  | 'dashboard'
+  | 'analytics'
+  | 'products'
+  | 'templates'
+  | 'orders'
+  | 'diagnostics'
+  | 'settings';
+
 interface AdminSidebarProps {
-  currentSection: 'dashboard' | 'products' | 'templates' | 'orders' | 'settings';
-  onNavigate: (section: 'dashboard' | 'products' | 'templates' | 'orders' | 'settings') => void;
+  currentSection: AdminSection;
+  onNavigate: (section: AdminSection) => void;
   onCreateProduct: () => void;
 }
 
@@ -33,6 +44,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       label: 'Dashboard',
       arabicLabel: 'لوحة القيادة',
       icon: <LayoutDashboard className="w-4 h-4" />,
+    },
+    {
+      id: 'analytics' as const,
+      label: 'Analytics & Funnel',
+      arabicLabel: 'التحليلات ومسار التحويل',
+      icon: <BarChart3 className="w-4 h-4" />,
+      badge: 'PRO',
     },
     {
       id: 'products' as const,
@@ -56,9 +74,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       highlightBadge: metrics?.newOrders && metrics.newOrders > 0 ? metrics.newOrders : undefined,
     },
     {
+      id: 'diagnostics' as const,
+      label: 'Tracking Diagnostics',
+      arabicLabel: 'فحص التتبع والبكسل',
+      icon: <Activity className="w-4 h-4" />,
+    },
+    {
       id: 'settings' as const,
       label: 'Settings',
-      arabicLabel: 'الإعدادات',
+      arabicLabel: 'الإعدادات والتتبع',
       icon: <Settings className="w-4 h-4" />,
     },
   ];
@@ -96,7 +120,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 px-3 py-2 space-y-1">
+      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = currentSection === item.id;
           return (
@@ -114,9 +138,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
-                <span className="text-[10px] text-slate-500 font-normal">
-                  ({item.arabicLabel})
-                </span>
               </div>
 
               {item.highlightBadge !== undefined && (
@@ -126,7 +147,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               )}
 
               {item.badge !== undefined && item.highlightBadge === undefined && (
-                <span className="text-[11px] text-slate-500 font-mono">
+                <span
+                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                    item.badge === 'PRO'
+                      ? 'bg-amber-400/20 text-amber-300 font-bold'
+                      : 'text-slate-500'
+                  }`}
+                >
                   {item.badge}
                 </span>
               )}

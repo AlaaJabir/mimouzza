@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { trackEvent } from '../../lib/tracking';
 
 interface ProductGalleryProps {
   images: string[];
   productName: string;
   badgeText?: string;
   discountPercentage?: number;
+  productId?: string;
 }
 
 export const ProductGallery: React.FC<ProductGalleryProps> = ({
@@ -12,6 +14,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
   productName,
   badgeText,
   discountPercentage,
+  productId,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -20,6 +23,18 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
     : ['/src/assets/images/seed_beauty_serum_1790331758543.jpg'];
 
   const currentImage = displayImages[selectedIndex] || displayImages[0];
+
+  const handleSelectImage = (idx: number) => {
+    setSelectedIndex(idx);
+    if (productId) {
+      trackEvent({
+        eventType: 'PRODUCT_IMAGE_VIEW',
+        productId,
+        productName,
+        metadata: { imageIndex: idx, imageUrl: displayImages[idx] },
+      });
+    }
+  };
 
   return (
     <div className="w-full space-y-3">
@@ -63,7 +78,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
               <button
                 key={idx}
                 type="button"
-                onClick={() => setSelectedIndex(idx)}
+                onClick={() => handleSelectImage(idx)}
                 className={`relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
                   isSelected
                     ? 'border-amber-500 ring-2 ring-amber-500/20 opacity-100 shadow-xs'
