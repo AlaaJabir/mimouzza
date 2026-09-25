@@ -1,0 +1,162 @@
+import React from 'react';
+import {
+  LayoutDashboard,
+  Package,
+  Layers,
+  ShoppingBag,
+  Settings,
+  ExternalLink,
+  Store,
+  PlusCircle,
+} from 'lucide-react';
+import { useQuery } from '../../lib/convex-client';
+import { api } from '../../../convex/api';
+
+interface AdminSidebarProps {
+  currentSection: 'dashboard' | 'products' | 'templates' | 'orders' | 'settings';
+  onNavigate: (section: 'dashboard' | 'products' | 'templates' | 'orders' | 'settings') => void;
+  onCreateProduct: () => void;
+}
+
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({
+  currentSection,
+  onNavigate,
+  onCreateProduct,
+}) => {
+  const metrics = useQuery(api.orders.getMetrics);
+  const settings = useQuery(api.settings.get);
+  const products = useQuery(api.products.listPublished);
+
+  const navItems = [
+    {
+      id: 'dashboard' as const,
+      label: 'Dashboard',
+      arabicLabel: 'لوحة القيادة',
+      icon: <LayoutDashboard className="w-4 h-4" />,
+    },
+    {
+      id: 'products' as const,
+      label: 'Products',
+      arabicLabel: 'المنتجات',
+      icon: <Package className="w-4 h-4" />,
+      badge: metrics?.totalProducts,
+    },
+    {
+      id: 'templates' as const,
+      label: 'Templates',
+      arabicLabel: 'القوالب',
+      icon: <Layers className="w-4 h-4" />,
+      badge: 3,
+    },
+    {
+      id: 'orders' as const,
+      label: 'Orders',
+      arabicLabel: 'الطلبيات (COD)',
+      icon: <ShoppingBag className="w-4 h-4" />,
+      highlightBadge: metrics?.newOrders && metrics.newOrders > 0 ? metrics.newOrders : undefined,
+    },
+    {
+      id: 'settings' as const,
+      label: 'Settings',
+      arabicLabel: 'الإعدادات',
+      icon: <Settings className="w-4 h-4" />,
+    },
+  ];
+
+  const firstPublishedSlug = products && products.length > 0 ? products[0].slug : null;
+
+  return (
+    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 shrink-0 select-none">
+      {/* Brand Zone */}
+      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm">
+            COD
+          </div>
+          <div>
+            <div className="text-sm font-bold text-white tracking-tight">
+              COD Landing Builder
+            </div>
+            <div className="text-[11px] text-slate-400 font-medium">
+              {settings?.storeName || 'المتجر الإلكتروني'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Action Button */}
+      <div className="p-4 pb-2">
+        <button
+          onClick={onCreateProduct}
+          className="w-full py-2.5 px-3 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+        >
+          <PlusCircle className="w-4 h-4" />
+          <span>+ منتج جديد / Create Product</span>
+        </button>
+      </div>
+
+      {/* Navigation Links */}
+      <nav className="flex-1 px-3 py-2 space-y-1">
+        {navItems.map((item) => {
+          const isActive = currentSection === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                isActive
+                  ? 'bg-slate-800 text-amber-400'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className={isActive ? 'text-amber-400' : 'text-slate-400'}>
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+                <span className="text-[10px] text-slate-500 font-normal">
+                  ({item.arabicLabel})
+                </span>
+              </div>
+
+              {item.highlightBadge !== undefined && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                  {item.highlightBadge} جديد
+                </span>
+              )}
+
+              {item.badge !== undefined && item.highlightBadge === undefined && (
+                <span className="text-[11px] text-slate-500 font-mono">
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Live Store Preview Link */}
+      <div className="p-4 border-t border-slate-800 space-y-2">
+        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-1">
+          صفحات الهبوط المباشرة
+        </div>
+        {firstPublishedSlug ? (
+          <a
+            href={`/p/${firstPublishedSlug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-800 text-xs text-slate-300 hover:text-white transition-colors"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate font-mono text-[11px]">/p/{firstPublishedSlug}</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          </a>
+        ) : (
+          <div className="text-[11px] text-slate-500 px-1">لا يوجد منتج منشور حالياً</div>
+        )}
+      </div>
+    </aside>
+  );
+};
