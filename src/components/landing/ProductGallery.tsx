@@ -37,9 +37,9 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
   };
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full max-w-md mx-auto space-y-3">
       {/* Main Image Frame */}
-      <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm group">
+      <div className="relative aspect-square w-full max-h-[380px] sm:max-h-[420px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm group mx-auto">
         <img
           src={currentImage}
           alt={productName}
@@ -71,7 +71,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
 
       {/* Thumbnails */}
       {displayImages.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
+        <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-thin justify-center">
           {displayImages.map((imgUrl, idx) => {
             const isSelected = selectedIndex === idx;
             return (

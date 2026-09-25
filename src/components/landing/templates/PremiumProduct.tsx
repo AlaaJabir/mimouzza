@@ -72,114 +72,130 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
       {/* Top Bar */}
       <TopAnnouncementBar text={product.shippingText || 'التوصيل مجاني لكافة مدن المغرب — الدفع عند الاستلام'} />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-10">
-        {/* Editorial Hero */}
-        <div className="text-center max-w-2xl mx-auto space-y-3 pt-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-800 border border-neutral-700 text-amber-400 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{product.badgeText || 'الإصدار الحصري المميز'}</span>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Hero Card: Image on top, title, price, button, and guarantees */}
+        <div className="bg-neutral-800/90 rounded-2xl border border-neutral-700/80 p-4 sm:p-6 shadow-xl space-y-4">
+          {product.badgeText && (
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-amber-400 text-xs font-semibold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{product.badgeText}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Image on top (image tji foq) */}
+          <ProductGallery
+            images={product.images}
+            productName={product.name}
+            discountPercentage={discountPct}
+            productId={product._id}
+          />
+
+          {/* Title directly under image (otahtha titre) in reasonable size (size m3qol) */}
+          <div className="text-center space-y-1.5 pt-1">
+            <h1 className="text-lg sm:text-xl font-bold text-white leading-snug">
+              {product.name}
+            </h1>
+
+            {/* Social Proof */}
+            <div className="flex items-center justify-center gap-2 text-xs text-neutral-400">
+              <div className="flex text-amber-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <span className="font-bold text-white">{product.rating || 4.9}</span>
+              <span>·</span>
+              <span>({product.reviewCount || 190}+ عميل راضٍ)</span>
+              <span>·</span>
+              <span className="text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded text-[11px]">
+                متوفر للشحن الفوري
+              </span>
+            </div>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
-            {product.name}
-          </h1>
+          {/* Price box in reasonable size */}
+          <div className="flex items-center justify-center gap-3 py-1 bg-neutral-900/80 rounded-xl border border-neutral-700/70 p-3">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
+                {product.price}
+              </span>
+              <span className="text-sm font-bold text-neutral-300">
+                {product.currency || 'DH'}
+              </span>
+            </div>
 
+            {product.compareAtPrice > product.price && (
+              <div className="flex items-center gap-2 text-xs text-neutral-400">
+                <span className="line-through font-mono font-medium">
+                  {product.compareAtPrice} {product.currency || 'DH'}
+                </span>
+                {discountPct && (
+                  <span className="bg-amber-400/20 text-amber-300 font-bold px-2 py-0.5 rounded-full text-[11px] border border-amber-400/40">
+                    وفر {discountPct}%
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Offer text */}
+          {product.offerText && (
+            <div className="p-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs font-semibold text-center">
+              {product.offerText}
+            </div>
+          )}
+
+          {/* CTA Order Button (o boutton) */}
+          <div className="space-y-2">
+            <button
+              onClick={handleHeroCtaClick}
+              className="w-full py-3.5 px-6 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-bold text-base shadow-lg shadow-amber-400/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <ShoppingBag className="w-5 h-5 text-neutral-950" />
+              <span>{product.ctaText || 'اطلب الآن بالدفع عند الاستلام'}</span>
+            </button>
+
+            {/* WhatsApp CTA */}
+            {product.whatsappEnabled && product.whatsappNumber && (
+              <button
+                type="button"
+                onClick={handleWhatsAppClick}
+                className="w-full py-2.5 px-4 rounded-xl border border-emerald-500 text-emerald-400 hover:bg-emerald-950/40 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4 text-emerald-400" />
+                <span>تواصل عبر الواتساب (WhatsApp)</span>
+              </button>
+            )}
+          </div>
+
+          {/* Guarantees */}
+          <div className="grid grid-cols-2 gap-2 text-xs text-neutral-300 pt-1">
+            <div className="flex items-center justify-center gap-1.5 bg-neutral-900/60 p-2 rounded-lg border border-neutral-700/60 text-center">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="text-[11px] font-medium">معاينة الطرد قبل الدفع</span>
+            </div>
+            <div className="flex items-center justify-center gap-1.5 bg-neutral-900/60 p-2 rounded-lg border border-neutral-700/60 text-center">
+              <ArrowDown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="text-[11px] font-medium">توصيل سريع 24/48 ساعة</span>
+            </div>
+          </div>
+
+          {/* Short Description */}
           {product.shortDescription && (
-            <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed text-center pt-2 border-t border-neutral-700/60">
               {product.shortDescription}
             </p>
           )}
-
-          {/* Social Proof */}
-          <div className="flex items-center justify-center gap-2 text-xs text-neutral-400 pt-1">
-            <div className="flex text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-              ))}
-            </div>
-            <span className="font-bold text-white">{product.rating || 4.9}</span>
-            <span>·</span>
-            <span>({product.reviewCount || 190}+ عميل راضٍ بالمغرب)</span>
-          </div>
-        </div>
-
-        {/* Gallery & Showcase */}
-        <div className="bg-neutral-800/80 rounded-3xl border border-neutral-700/80 p-5 sm:p-8 backdrop-blur-md">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div>
-              <ProductGallery
-                images={product.images}
-                productName={product.name}
-                discountPercentage={discountPct}
-                productId={product._id}
-              />
-            </div>
-
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <div className="text-xs uppercase tracking-widest text-neutral-400 font-bold">
-                  سعر العرض الحصري
-                </div>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-4xl sm:text-5xl font-black text-amber-400 font-mono">
-                    {product.price}
-                  </span>
-                  <span className="text-lg font-bold text-neutral-300">
-                    {product.currency || 'DH'}
-                  </span>
-                  {product.compareAtPrice > product.price && (
-                    <span className="text-lg line-through text-neutral-500 font-mono mr-2">
-                      {product.compareAtPrice} {product.currency || 'DH'}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {product.offerText && (
-                <div className="p-3.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs sm:text-sm font-semibold">
-                  {product.offerText}
-                </div>
-              )}
-
-              <button
-                onClick={handleHeroCtaClick}
-                className="w-full py-4 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-base shadow-lg shadow-amber-400/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <ShoppingBag className="w-5 h-5 text-neutral-950" />
-                <span>{product.ctaText || 'اطلب الآن بالدفع عند الاستلام'}</span>
-              </button>
-
-              {product.whatsappEnabled && product.whatsappNumber && (
-                <button
-                  type="button"
-                  onClick={handleWhatsAppClick}
-                  className="w-full py-2.5 px-4 rounded-xl border border-emerald-500 text-emerald-400 hover:bg-emerald-950/40 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <MessageCircle className="w-4 h-4 text-emerald-400" />
-                  <span>تواصل عبر الواتساب (WhatsApp)</span>
-                </button>
-              )}
-
-              <div className="pt-2 border-t border-neutral-700/60 text-xs text-neutral-400 space-y-2">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>ضمان الجودة ومعاينة الطرد قبل الدفع للموزع</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ArrowDown className="w-4 h-4 text-amber-400 animate-bounce" />
-                  <span>توصيل سريع خلال 24 إلى 48 ساعة لكافة أنحاء المملكة</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Benefits Section */}
         {product.benefits && product.benefits.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="text-center">
-              <h2 className="text-xl sm:text-2xl font-bold text-white">المميزات الاستثنائية</h2>
-              <p className="text-xs text-neutral-400 mt-1">معايير دقيقة صُنعت لأجود تجربة</p>
+              <h2 className="text-base sm:text-lg font-bold text-white">المميزات الاستثنائية</h2>
+              <p className="text-xs text-neutral-400 mt-0.5">معايير دقيقة صُنعت لأجود تجربة</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {product.benefits.map((b) => (
