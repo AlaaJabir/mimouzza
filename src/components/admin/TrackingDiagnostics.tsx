@@ -48,10 +48,19 @@ export const TrackingDiagnostics: React.FC = () => {
   const tiktokSubmitForm = localEvents.some((e) => e.target === 'TikTok' && e.eventType === 'SubmitForm');
   const tiktokCompletePayment = localEvents.some((e) => e.target === 'TikTok' && e.eventType === 'CompletePayment');
 
-  const internalPageView = (recentEvents || []).some((e) => e.eventType === 'PAGE_VIEW');
-  const internalCtaClick = (recentEvents || []).some((e) => e.eventType === 'CTA_CLICK');
-  const internalFormStart = (recentEvents || []).some((e) => e.eventType === 'FORM_START');
-  const internalOrderSuccess = (recentEvents || []).some((e) => e.eventType === 'ORDER_SUCCESS');
+  const allEventTypes = [
+    { type: 'PAGE_VIEW', label: 'PageView (زيارة الصفحة)' },
+    { type: 'VIEW_CONTENT', label: 'ViewContent (معاينة المنتج)' },
+    { type: 'CTA_CLICK', label: 'CTA Click (نقرات أزرار الطلب)' },
+    { type: 'FORM_VIEW', label: 'Form View (مشاهدة الاستمارة)' },
+    { type: 'FORM_START', label: 'Form Start (بدء إدخال البيانات)' },
+    { type: 'VARIANT_SELECT', label: 'Variant Select (اختيار القياس/اللون)' },
+    { type: 'QUANTITY_CHANGE', label: 'Quantity Change (تعديل الكمية)' },
+    { type: 'FORM_SUBMIT', label: 'Form Submit (إرسال الطلب)' },
+    { type: 'ORDER_SUCCESS', label: 'Order Success (نجاح الطلب وحفظه)' },
+    { type: 'WHATSAPP_CLICK', label: 'WhatsApp Click (نقرة الواتساب)' },
+    { type: 'PRODUCT_IMAGE_VIEW', label: 'Image View (استعراض صور المنتج)' },
+  ];
 
   const handleRunTestEvent = () => {
     const sampleProd = products && products.length > 0 ? products[0] : null;
@@ -235,47 +244,26 @@ export const TrackingDiagnostics: React.FC = () => {
             </span>
           </div>
 
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600">PAGE_VIEW</span>
-              {internalPageView ? (
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> مسجل بالـ DB
-                </span>
-              ) : (
-                <span className="text-slate-400">لا يوجد</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600">CTA_CLICK</span>
-              {internalCtaClick ? (
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> مسجل بالـ DB
-                </span>
-              ) : (
-                <span className="text-slate-400">لا يوجد</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600">FORM_START</span>
-              {internalFormStart ? (
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> مسجل بالـ DB
-                </span>
-              ) : (
-                <span className="text-slate-400">لا يوجد</span>
-              )}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600">ORDER_SUCCESS</span>
-              {internalOrderSuccess ? (
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> مسجل بالـ DB
-                </span>
-              ) : (
-                <span className="text-slate-400">لا يوجد</span>
-              )}
-            </div>
+          <div className="space-y-1.5 text-xs max-h-52 overflow-y-auto pr-1">
+            {allEventTypes.map((item) => {
+              const count = (recentEvents || []).filter((e) => e.eventType === item.type).length;
+              const hasRecorded = count > 0;
+              return (
+                <div key={item.type} className="flex items-center justify-between py-1 border-b border-slate-50 last:border-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[11px] font-semibold text-slate-700">{item.type}</span>
+                  </div>
+                  {hasRecorded ? (
+                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>{count} رصد</span>
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 text-[10px]">جاهز للرصد</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -295,8 +283,10 @@ export const TrackingDiagnostics: React.FC = () => {
               <tr>
                 <th className="py-2">نوع الحدث (Event)</th>
                 <th className="py-2">معرّف الحدث (EventID)</th>
+                <th className="py-2">الجلسة (Session ID)</th>
                 <th className="py-2">المنتج</th>
                 <th className="py-2">مصدر الإعلان (UTM)</th>
+                <th className="py-2">بيانات إضافية (Metadata)</th>
                 <th className="py-2">التوقيت</th>
               </tr>
             </thead>
@@ -309,9 +299,13 @@ export const TrackingDiagnostics: React.FC = () => {
                     </span>
                   </td>
                   <td className="py-2 text-slate-500">{e.eventId}</td>
-                  <td className="py-2 text-slate-700 truncate max-w-[150px]">{e.productId}</td>
-                  <td className="py-2 text-blue-700">{e.utmSource || '(direct)'}</td>
-                  <td className="py-2 text-slate-400">
+                  <td className="py-2 text-slate-400 truncate max-w-[100px]">{e.sessionId}</td>
+                  <td className="py-2 text-slate-700 truncate max-w-[130px]">{e.productId}</td>
+                  <td className="py-2 text-blue-700">{e.utmSource ? `${e.utmSource} / ${e.utmMedium || 'cpc'}` : '(direct)'}</td>
+                  <td className="py-2 text-slate-500 truncate max-w-[150px]">
+                    {e.metadata && Object.keys(e.metadata).length > 0 ? JSON.stringify(e.metadata) : '—'}
+                  </td>
+                  <td className="py-2 text-slate-400 whitespace-nowrap">
                     {new Date(e.timestamp).toLocaleTimeString('ar-MA')}
                   </td>
                 </tr>

@@ -58,21 +58,56 @@ export const CODForm: React.FC<CODFormProps> = ({
 
   const formStartedRef = useRef(false);
   const formViewedRef = useRef(false);
+  const formContainerRef = useRef<HTMLDivElement>(null);
 
-  // 1. Track FORM_VIEW on mount
+  // 1. Track FORM_VIEW when form enters viewport
   useEffect(() => {
-    if (!formViewedRef.current) {
-      formViewedRef.current = true;
-      trackEvent({
-        eventType: 'FORM_VIEW',
-        productId: product._id,
-        productName: product.name,
-        price: product.price,
-        currency: product.currency,
-        metadata: { formId: 'cod_order_form' },
-      });
+    if (typeof window === 'undefined') return;
+
+    if (!('IntersectionObserver' in window)) {
+      // Fallback for environments without IntersectionObserver
+      if (!formViewedRef.current) {
+        formViewedRef.current = true;
+        trackEvent({
+          eventType: 'FORM_VIEW',
+          productId: product._id,
+          productName: product.name,
+          price: product.price,
+          currency: product.currency,
+          metadata: { formId: 'cod_order_form' },
+        });
+      }
+      return;
     }
-  }, [product._id]);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !formViewedRef.current) {
+            formViewedRef.current = true;
+            trackEvent({
+              eventType: 'FORM_VIEW',
+              productId: product._id,
+              productName: product.name,
+              price: product.price,
+              currency: product.currency,
+              metadata: { formId: 'cod_order_form' },
+            });
+            observer.disconnect();
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    if (formContainerRef.current) {
+      observer.observe(formContainerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [product._id, product.name, product.price, product.currency]);
 
   // Track FORM_START when user starts typing
   const handleFirstInteraction = (field: string) => {
@@ -332,6 +367,7 @@ export const CODForm: React.FC<CODFormProps> = ({
   // Active Order Form
   return (
     <div
+      ref={formContainerRef}
       id="order-form-container"
       className={`bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden ${className}`}
       dir="rtl"

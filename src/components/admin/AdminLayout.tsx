@@ -49,26 +49,47 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     }
   }, [initialProductId, products]);
 
+  const handleNavigateSection = (sec: AdminSection) => {
+    handleCloseEditor();
+    setCurrentSection(sec);
+    const targetPath = sec === 'dashboard' ? '/admin' : `/admin/${sec}`;
+    if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+  };
+
   const handleCreateNewProduct = (templateId?: 'classic-cod' | 'premium' | 'big-offer') => {
     setEditingProduct(null);
     setIsCreatingNew(true);
     setCurrentSection('products');
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/admin/products/new');
+    }
   };
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setIsCreatingNew(false);
     setCurrentSection('products');
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `/admin/products/edit/${product._id}`);
+    }
   };
 
   const handleCloseEditor = () => {
     setEditingProduct(null);
     setIsCreatingNew(false);
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin/products/')) {
+      window.history.pushState({}, '', '/admin/products');
+    }
   };
 
   const handleSavedProduct = (saved: Product) => {
     setEditingProduct(null);
     setIsCreatingNew(false);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/admin/products');
+    }
   };
 
   // Section titles
@@ -101,10 +122,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Sidebar */}
       <AdminSidebar
         currentSection={currentSection}
-        onNavigate={(sec) => {
-          handleCloseEditor();
-          setCurrentSection(sec);
-        }}
+        onNavigate={handleNavigateSection}
         onCreateProduct={() => handleCreateNewProduct()}
       />
 
@@ -135,7 +153,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </div>
 
                   <button
-                    onClick={() => setCurrentSection('analytics')}
+                    onClick={() => handleNavigateSection('analytics')}
                     className="py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer shrink-0"
                   >
                     <BarChart3 className="w-4 h-4" />
@@ -150,7 +168,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <button
-                      onClick={() => setCurrentSection('products')}
+                      onClick={() => handleNavigateSection('products')}
                       className="text-xs text-amber-600 hover:text-amber-700 font-semibold"
                     >
                       عرض جميع المنتجات ←
@@ -209,7 +227,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <button
-                      onClick={() => setCurrentSection('orders')}
+                      onClick={() => handleNavigateSection('orders')}
                       className="text-xs text-amber-600 hover:text-amber-700 font-semibold"
                     >
                       عرض جميع الطلبيات ←
@@ -294,7 +312,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
           {/* Settings View */}
           {currentSection === 'settings' && (
-            <SettingsPage onOpenDiagnostics={() => setCurrentSection('diagnostics')} />
+            <SettingsPage onOpenDiagnostics={() => handleNavigateSection('diagnostics')} />
           )}
         </main>
       </div>
