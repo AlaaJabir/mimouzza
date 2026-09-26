@@ -13,10 +13,10 @@ export const TopAnnouncementBar: React.FC<{ text?: string }> = ({
 }) => {
   return (
     <div
-      className="w-full bg-slate-950 text-amber-300 text-xs py-2 px-4 text-center font-bold flex items-center justify-center gap-2 border-b border-amber-400/20"
+      className="w-full bg-slate-950 text-amber-300 text-xs sm:text-sm py-2.5 px-4 text-center font-extrabold flex items-center justify-center gap-2 border-b border-amber-400/20"
       dir="rtl"
     >
-      <Truck className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+      <Truck className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
       <span className="truncate">{text}</span>
     </div>
   );

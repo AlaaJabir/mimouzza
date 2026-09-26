@@ -37,16 +37,16 @@ export const TrustBadges: React.FC<TrustBadgesProps> = ({
 
   return (
     <div
-      className={`grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 ${className}`}
+      className={`grid grid-cols-2 md:grid-cols-4 gap-3.5 p-4 sm:p-5 bg-slate-50/80 rounded-2xl border border-slate-200/80 ${className}`}
       dir="rtl"
     >
       {badges.map((b, idx) => (
         <div key={idx} className="flex flex-col items-center text-center p-2">
-          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-2 shadow-2xs">
+          <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-2.5 shadow-2xs">
             {b.icon}
           </div>
-          <h4 className="text-xs font-bold text-slate-900 mb-1">{b.title}</h4>
-          <p className="text-[11px] text-slate-500 leading-tight">{b.desc}</p>
+          <h4 className="text-xs sm:text-sm font-extrabold mb-1">{b.title}</h4>
+          <p className="text-xs opacity-80 leading-relaxed font-medium">{b.desc}</p>
         </div>
       ))}
     </div>

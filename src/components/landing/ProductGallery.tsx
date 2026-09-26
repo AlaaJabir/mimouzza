@@ -37,9 +37,9 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-3">
+    <div className="w-full max-w-xl mx-auto space-y-3.5">
       {/* Main Image Frame */}
-      <div className="relative aspect-square w-full max-h-[380px] sm:max-h-[420px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm group mx-auto">
+      <div className="relative aspect-square w-full max-h-[440px] sm:max-h-[500px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm group mx-auto">
         <img
           src={currentImage}
           alt={productName}
@@ -49,21 +49,21 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
 
         {/* Discount Badge */}
         {discountPercentage && discountPercentage > 0 && (
-          <div className="absolute top-3 right-3 bg-rose-600 text-white font-black text-xs sm:text-sm px-3 py-1.5 rounded-lg shadow-md tracking-wider">
+          <div className="absolute top-3.5 right-3.5 bg-rose-600 text-white font-black text-sm sm:text-base px-3.5 py-1.5 rounded-xl shadow-md tracking-wider">
             خصم {discountPercentage}%
           </div>
         )}
 
         {/* Custom Highlight Tag */}
         {badgeText && (
-          <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-xs text-amber-300 font-semibold text-[11px] sm:text-xs px-2.5 py-1 rounded-md shadow-xs">
+          <div className="absolute top-3.5 left-3.5 bg-slate-900/90 backdrop-blur-xs text-amber-300 font-bold text-xs sm:text-sm px-3 py-1.5 rounded-lg shadow-xs">
             {badgeText}
           </div>
         )}
 
         {/* Counter indicator */}
         {displayImages.length > 1 && (
-          <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs text-white text-[11px] px-2 py-0.5 rounded-md font-mono">
+          <div className="absolute bottom-3.5 left-3.5 bg-black/65 backdrop-blur-xs text-white text-xs px-2.5 py-1 rounded-md font-mono font-bold">
             {selectedIndex + 1} / {displayImages.length}
           </div>
         )}

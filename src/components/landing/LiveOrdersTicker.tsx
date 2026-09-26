@@ -124,24 +124,24 @@ export const LiveOrdersTicker: React.FC<LiveOrdersTickerProps> = ({
       `}</style>
 
       {/* Top Red/Coral Header Bar */}
-      <div className="bg-[#ff5252] text-white px-3.5 py-2.5 flex items-center justify-between gap-2">
+      <div className="bg-[#ff5252] text-white px-4 py-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <ShoppingBag className="w-5 h-5 text-white fill-white/20 shrink-0" />
-          <span className="font-bold text-sm sm:text-base tracking-wide">
+          <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white/20 shrink-0" />
+          <span className="font-extrabold text-base sm:text-lg tracking-wide">
             إشعار عند التسليم
           </span>
         </div>
 
-        <div className="flex items-center gap-1 bg-black/20 px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-amber-200">
-          <Flame className="w-3.5 h-3.5 text-amber-300 fill-amber-300 animate-pulse shrink-0" />
+        <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full text-xs sm:text-sm font-bold text-amber-200">
+          <Flame className="w-4 h-4 text-amber-300 fill-amber-300 animate-pulse shrink-0" />
           <span>إقبال كبير — الكمية قريبة تسالي</span>
         </div>
       </div>
 
       {/* Auto-Scrolling Orders List (Moves Up Automatically, Pauses on Mouse Hover) */}
-      <div className="relative h-[220px] overflow-hidden bg-white px-2.5 py-1.5">
+      <div className="relative h-[245px] overflow-hidden bg-white px-3 py-2">
         <div
-          className="cod-ticker-track flex flex-col gap-1.5"
+          className="cod-ticker-track flex flex-col gap-2"
           style={{
             animationPlayState: isPaused ? 'paused' : 'running',
           }}
@@ -151,17 +151,17 @@ export const LiveOrdersTicker: React.FC<LiveOrdersTickerProps> = ({
             return (
               <div
                 key={`${item.id}_${idx}`}
-                className={`px-3 py-2.5 rounded-md transition-colors ${
+                className={`px-3.5 py-3 rounded-lg transition-colors ${
                   isGrayRow ? 'bg-[#f1f1f1]' : 'bg-white'
                 }`}
               >
                 {/* Line 1: City Pill + Masked Phone */}
-                <div className="flex items-center justify-start gap-2 mb-1">
-                  <span className="bg-[#ff004c] text-white font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded-[4px] uppercase tracking-wider font-mono leading-tight shadow-2xs">
+                <div className="flex items-center justify-start gap-2.5 mb-1.5">
+                  <span className="bg-[#ff004c] text-white font-extrabold text-xs sm:text-sm px-2.5 py-0.5 rounded-[5px] uppercase tracking-wider font-mono leading-tight shadow-2xs">
                     {item.city}
                   </span>
                   <span
-                    className="font-mono font-bold text-xs sm:text-sm text-slate-900 tracking-tight"
+                    className="font-mono font-extrabold text-sm sm:text-base text-slate-900 tracking-tight"
                     dir="ltr"
                   >
                     {item.maskedPhone}
@@ -169,13 +169,13 @@ export const LiveOrdersTicker: React.FC<LiveOrdersTickerProps> = ({
                 </div>
 
                 {/* Line 2: Time ago | Order Code + Product Name + Variant */}
-                <div className="text-[11px] sm:text-xs text-slate-800 font-medium leading-snug truncate">
-                  <span className="text-[#ff6b00] font-bold">
+                <div className="text-xs sm:text-sm md:text-[15px] text-slate-800 font-semibold leading-snug truncate">
+                  <span className="text-[#ff6b00] font-extrabold">
                     قبل {item.minutesAgo} دقائق
                   </span>
                   <span className="mx-1.5 text-slate-400">|</span>
-                  <span className="font-mono text-slate-700 mr-1">{item.orderCode}</span>{' '}
-                  <span>{product.name}</span>
+                  <span className="font-mono text-slate-700 mr-1 font-bold">{item.orderCode}</span>{' '}
+                  <span className="font-bold text-slate-900">{product.name}</span>
                   <span className="text-slate-600 font-mono"> - {item.qtyText}</span>
                 </div>
               </div>
@@ -185,9 +185,9 @@ export const LiveOrdersTicker: React.FC<LiveOrdersTickerProps> = ({
       </div>
 
       {/* Bottom Coral Accent Footer Bar */}
-      <div className="bg-[#ff5252] text-white/95 px-3 py-1.5 text-[11px] font-semibold flex items-center justify-between">
+      <div className="bg-[#ff5252] text-white/95 px-4 py-2 text-xs sm:text-sm font-bold flex items-center justify-between">
         <span>✅ جميع الطلبات يتم شحنها والدفع عند الاستلام</span>
-        <span className="font-mono text-[10px] bg-white/20 px-2 py-0.5 rounded">
+        <span className="font-mono text-xs bg-white/20 px-2.5 py-0.5 rounded">
           مباشر الآن
         </span>
       </div>

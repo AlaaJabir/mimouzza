@@ -89,18 +89,18 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
       {/* Top Banner */}
       <TopAnnouncementBar text="🔥 عرض حصري محدود — ينتهي التخفيض قريباً!" />
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Flash Sale Header (Clean and proportional) */}
-        <div className="bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white rounded-2xl p-3.5 sm:p-4 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 text-center sm:text-right">
-            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
-              <Flame className="w-5 h-5 text-amber-300 fill-amber-300 animate-pulse" />
+      <div className="max-w-[840px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Flash Sale Header */}
+        <div className="bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3 text-center sm:text-right">
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+              <Flame className="w-6 h-6 text-amber-300 fill-amber-300 animate-pulse" />
             </div>
             <div>
-              <div className="text-[11px] font-bold tracking-wider text-amber-200 uppercase">
+              <div className="text-xs font-extrabold tracking-wider text-amber-200 uppercase">
                 تخفيض حصري محدود
               </div>
-              <h2 className="text-sm sm:text-base font-bold">
+              <h2 className="text-base sm:text-lg md:text-xl font-extrabold">
                 وفر {discountAmount > 0 ? `${discountAmount} ${product.currency || 'DH'}` : `أكثر من ${discountPct}%`} اليوم!
               </h2>
             </div>
@@ -108,19 +108,19 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
 
           {/* Real Countdown Clock (Configurable) */}
           {product.countdownEnabled && (
-            <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-white/20">
-              <Clock className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-              <span className="text-[11px] font-medium text-white/90">ينتهي العرض خلال:</span>
-              <div className="flex items-center gap-1 font-mono font-bold text-xs text-amber-300">
-                <span className="bg-black/50 px-1.5 py-0.5 rounded border border-white/10">
+            <div className="flex items-center gap-2 bg-black/30 backdrop-blur-xs px-3.5 py-2 rounded-xl border border-white/20">
+              <Clock className="w-4 h-4 text-amber-300 shrink-0" />
+              <span className="text-xs sm:text-sm font-bold text-white/95">ينتهي العرض خلال:</span>
+              <div className="flex items-center gap-1 font-mono font-bold text-sm sm:text-base text-amber-300">
+                <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
                   {String(hours).padStart(2, '0')}
                 </span>
                 <span>:</span>
-                <span className="bg-black/50 px-1.5 py-0.5 rounded border border-white/10">
+                <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
                   {String(minutes).padStart(2, '0')}
                 </span>
                 <span>:</span>
-                <span className="bg-black/50 px-1.5 py-0.5 rounded border border-white/10">
+                <span className="bg-black/50 px-2 py-0.5 rounded border border-white/10">
                   {String(seconds).padStart(2, '0')}
                 </span>
               </div>
@@ -130,22 +130,22 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
 
         {/* Real Stock Scarcity Bar (Configurable) */}
         {product.scarcityEnabled && (
-          <div className="bg-amber-100/90 border border-amber-300 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs font-semibold text-amber-950">
-            <div className="flex items-center gap-1.5">
-              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
+          <div className="bg-amber-100/90 border border-amber-300 rounded-xl p-3 sm:p-3.5 flex items-center justify-between gap-3 text-xs sm:text-sm font-bold text-amber-950">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 animate-bounce" />
               <span>
-                تنبيه: متبقي فقط <span className="text-rose-600 font-bold underline">{product.stockQuantity ?? 7} قطع</span> بهذا السعر المخفض!
+                تنبيه: متبقي فقط <span className="text-rose-600 font-extrabold underline">{product.stockQuantity ?? 7} قطع</span> بهذا السعر المخفض!
               </span>
             </div>
-            <div className="w-20 sm:w-28 h-2 bg-amber-200 rounded-full overflow-hidden shrink-0">
+            <div className="w-24 sm:w-32 h-2.5 bg-amber-200 rounded-full overflow-hidden shrink-0">
               <div className="w-3/4 h-full bg-rose-600 rounded-full animate-pulse"></div>
             </div>
           </div>
         )}
 
         {/* Product Hero Block: Image on top, title, price, button, and guarantees */}
-        <div className="bg-white rounded-2xl border border-rose-200/90 p-4 sm:p-6 shadow-xs space-y-4">
-          {/* Image on top (image tji foq) */}
+        <div className="bg-white rounded-2xl border border-rose-200/90 p-5 sm:p-7 shadow-xs space-y-5">
+          {/* Image on top */}
           <ProductGallery
             images={product.images}
             productName={product.name}
@@ -154,66 +154,66 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
             productId={product._id}
           />
 
-          {/* Title directly under image (otahtha titre) in reasonable size (size m3qol) */}
-          <div className="text-center space-y-1.5 pt-1">
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+          {/* Title directly under image */}
+          <div className="text-center space-y-2 pt-1">
+            <h1 className="text-xl sm:text-2xl md:text-[26px] font-extrabold text-slate-900 leading-snug">
               {product.name}
             </h1>
 
             {/* Social Proof */}
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-slate-600">
               <div className="flex text-amber-400">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
                 ))}
               </div>
-              <span className="font-bold text-slate-800">{product.rating || 4.9}</span>
+              <span className="font-bold text-slate-900">{product.rating || 4.9}</span>
               <span>·</span>
-              <span>({product.reviewCount || 210}+ طلب ناجح)</span>
+              <span className="font-medium">({product.reviewCount || 210}+ طلب ناجح)</span>
               <span>·</span>
-              <span className="text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded text-[11px] border border-rose-100">
+              <span className="text-rose-700 font-bold bg-rose-50 px-2.5 py-0.5 rounded-md text-xs border border-rose-200">
                 الكمية تنفد قريباً
               </span>
             </div>
           </div>
 
-          {/* Massive Discount Box in reasonable size */}
-          <div className="p-3 bg-gradient-to-br from-rose-50 to-amber-50 rounded-xl border border-rose-200 text-center space-y-1">
-            <div className="flex items-center justify-center gap-3">
+          {/* Discount Box */}
+          <div className="p-4 bg-gradient-to-br from-rose-50 to-amber-50 rounded-xl border border-rose-200 text-center space-y-1.5">
+            <div className="flex items-center justify-center gap-3.5">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl sm:text-3xl font-black text-rose-600 font-mono">
+                <span className="text-3xl sm:text-4xl font-black text-rose-600 font-mono">
                   {product.price}
                 </span>
-                <span className="text-sm font-bold text-rose-700">
+                <span className="text-base sm:text-lg font-extrabold text-rose-700">
                   {product.currency || 'DH'}
                 </span>
               </div>
 
               {product.compareAtPrice > product.price && (
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span className="line-through font-mono font-medium">
+                <div className="flex items-center gap-2.5 text-sm sm:text-base text-slate-400">
+                  <span className="line-through font-mono font-semibold">
                     {product.compareAtPrice} {product.currency || 'DH'}
                   </span>
-                  <span className="text-xs font-bold text-white bg-rose-600 px-2 py-0.5 rounded-full">
+                  <span className="text-xs sm:text-sm font-extrabold text-white bg-rose-600 px-2.5 py-0.5 rounded-full">
                     خصم {discountPct}%
                   </span>
                 </div>
               )}
             </div>
             {discountAmount > 0 && (
-              <div className="text-[11px] text-emerald-700 font-semibold">
+              <div className="text-xs sm:text-sm text-emerald-700 font-bold">
                 ✓ وفر {discountAmount} {product.currency || 'DH'} فورياً عند الطلب الآن
               </div>
             )}
           </div>
 
-          {/* Action Button (o boutton) */}
-          <div className="space-y-2">
+          {/* Action Button */}
+          <div className="space-y-2.5">
             <button
               onClick={handleHeroCtaClick}
-              className="w-full py-3.5 px-6 rounded-xl font-bold text-base bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 hover:from-rose-500 hover:to-rose-500 text-white shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-4 px-6 rounded-xl font-extrabold text-base sm:text-lg md:text-xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 hover:from-rose-500 hover:to-rose-500 text-white shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
             >
-              <Zap className="w-5 h-5 fill-amber-300 text-amber-300" />
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-amber-300 text-amber-300" />
               <span>{product.ctaText || 'اغتنم العرض الآن قبل نفاد الكمية'}</span>
             </button>
 
@@ -222,23 +222,23 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
               <button
                 type="button"
                 onClick={handleWhatsAppClick}
-                className="w-full py-2.5 px-4 rounded-xl border border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl border border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <MessageCircle className="w-4 h-4 text-emerald-600" />
+                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
                 <span>اطلب أو استفسر عبر الواتساب (WhatsApp)</span>
               </button>
             )}
           </div>
 
           {/* Quick Trust Checks */}
-          <div className="grid grid-cols-2 gap-2 text-xs text-slate-700 pt-1">
-            <div className="flex items-center justify-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">
-              <span className="text-emerald-600 font-bold">✓</span>
-              <span className="text-[11px] font-medium">توصيل مجاني 24/48 ساعة</span>
+          <div className="grid grid-cols-2 gap-2.5 text-xs sm:text-sm text-slate-800 pt-1">
+            <div className="flex items-center justify-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
+              <span className="text-emerald-600 font-extrabold">✓</span>
+              <span className="font-semibold">توصيل مجاني 24/48 ساعة</span>
             </div>
-            <div className="flex items-center justify-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">
-              <span className="text-emerald-600 font-bold">✓</span>
-              <span className="text-[11px] font-medium">الدفع نقداً بعد المعاينة</span>
+            <div className="flex items-center justify-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
+              <span className="text-emerald-600 font-extrabold">✓</span>
+              <span className="font-semibold">الدفع نقداً بعد المعاينة</span>
             </div>
           </div>
 
@@ -249,7 +249,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
 
           {/* Short Description */}
           {product.shortDescription && (
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed text-center pt-2 border-t border-slate-100">
+            <p className="text-sm sm:text-base text-slate-700 font-medium leading-relaxed text-center pt-3 border-t border-slate-100">
               {product.shortDescription}
             </p>
           )}
@@ -257,9 +257,9 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
 
         {/* Benefits Section */}
         {product.benefits && product.benefits.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             <div className="text-center">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-900">
                 لماذا يجب أن تطلب هذا المنتج اليوم؟
               </h2>
             </div>
@@ -269,11 +269,11 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
 
         {/* Description Section */}
         {product.description && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-3">
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 border-b border-slate-100 pb-2.5">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-3.5">
+            <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3">
               شرح وتفاصيل المنتج
             </h3>
-            <div className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+            <div className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-line font-medium">
               {product.description}
             </div>
           </div>

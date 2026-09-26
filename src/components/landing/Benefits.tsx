@@ -70,19 +70,19 @@ export const Benefits: React.FC<BenefitsProps> = ({
   }
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3.5 ${className}`} dir="rtl">
+    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${className}`} dir="rtl">
       {benefits.map((b) => (
         <div
           key={b.id}
-          className="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-amber-300 transition-colors"
+          className="flex items-start gap-3.5 p-4 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-amber-300 transition-colors"
         >
-          <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200/60 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center shrink-0">
             {getIcon(b.icon)}
           </div>
           <div>
-            <h4 className="text-sm font-bold text-slate-900 mb-0.5">{b.title}</h4>
+            <h4 className="text-sm sm:text-base font-extrabold text-slate-900 mb-1">{b.title}</h4>
             {b.description && (
-              <p className="text-xs text-slate-600 leading-relaxed">{b.description}</p>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">{b.description}</p>
             )}
           </div>
         </div>
