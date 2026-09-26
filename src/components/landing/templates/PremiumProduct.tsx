@@ -224,15 +224,37 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
           </div>
         )}
 
-        {/* Description Section */}
-        {product.description && (
-          <div className="bg-neutral-800/60 rounded-2xl border border-neutral-700/60 p-5 sm:p-7 space-y-3.5">
+        {/* Description Section + Description Images */}
+        {(product.description || (product.descriptionImages && product.descriptionImages.length > 0)) && (
+          <div className="bg-neutral-800/60 rounded-2xl border border-neutral-700/60 p-5 sm:p-7 space-y-5">
             <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-white border-b border-neutral-700 pb-3">
               نظرة عامة ومواصفات تفصيلية
             </h3>
-            <div className="text-sm sm:text-base text-neutral-200 leading-relaxed whitespace-pre-line font-medium">
-              {product.description}
-            </div>
+            {product.description && (
+              <div className="text-sm sm:text-base text-neutral-200 leading-relaxed whitespace-pre-line font-medium">
+                {product.description}
+              </div>
+            )}
+
+            {/* Description Images / PNGs below description text inside the description box */}
+            {product.descriptionImages && product.descriptionImages.length > 0 && (
+              <div className="space-y-4 pt-2">
+                {product.descriptionImages.map((imgUrl, idx) => (
+                  <div
+                    key={idx}
+                    className="w-full rounded-xl overflow-hidden border border-neutral-700/70 bg-neutral-900/40"
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`${product.name} - تفصيل ${idx + 1}`}
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      className="w-full h-auto object-contain mx-auto block"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

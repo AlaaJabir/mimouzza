@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Product, ProductBenefit } from '../../../convex/schema';
 import { useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
-import { ImageManager } from './ImageManager';
+import { ImageManager, DescriptionImagesManager } from './ImageManager';
 import { VariantEditor } from './VariantEditor';
 import { TemplateSelector } from './TemplateSelector';
 import { LivePreview } from './LivePreview';
@@ -19,6 +19,7 @@ import {
   Sparkles,
   Columns,
   Maximize2,
+  Copy,
 } from 'lucide-react';
 
 interface ProductEditorProps {
@@ -52,6 +53,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       compareAtPrice: 499,
       currency: 'DH',
       images: ['/src/assets/images/seed_beauty_serum_1790331758543.jpg'],
+      descriptionImages: [],
       templateId: 'classic-cod',
       offerText: '🔥 خصم حصري لفترة محدودة + شحن مجاني لكافة المدن',
       shippingText: '🚚 التوصيل مجاني وسريع لجميع مدن المغرب — الدفع عند الاستلام',
@@ -354,16 +356,24 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  الوصف الكامل والشرح (Full Description)
+              <div className="sm:col-span-2 p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <label className="block text-xs font-bold text-slate-800">
+                  الوصف الكامل والشرح + صور الوصف (Full Description & Description Images / PNG)
                 </label>
                 <textarea
                   rows={6}
                   value={formData.description}
                   onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="اكتب مواصفات المنتج، طريقة الاستعمال، والفوائد التفصيلية..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 leading-relaxed font-sans"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 leading-relaxed font-sans"
+                />
+
+                {/* Description Images (Links or PNG/JPG Import) inside Description Box */}
+                <DescriptionImagesManager
+                  images={formData.descriptionImages || []}
+                  onChange={(descriptionImages) =>
+                    setFormData((prev) => ({ ...prev, descriptionImages }))
+                  }
                 />
               </div>
             </div>

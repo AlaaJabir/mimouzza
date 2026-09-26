@@ -655,10 +655,19 @@ export class ConvexMemoryStore {
   public convexUrl: string = DEFAULT_CONVEX_CLOUD_URL;
   public connectionStatus: ConvexConnectionStatus = 'connecting';
   public lastSyncedAt: number | null = null;
+  public isHydrated = false;
   private remoteFunctionsReady = false;
 
   constructor() {
     this.init();
+  }
+
+  private normalizeSlug(slug: string): string {
+    try {
+      return decodeURIComponent(slug || '').trim().toLowerCase();
+    } catch {
+      return (slug || '').trim().toLowerCase();
+    }
   }
 
   private init() {
@@ -668,6 +677,7 @@ export class ConvexMemoryStore {
       this.templates = [...INITIAL_TEMPLATES];
       this.settings = { ...INITIAL_SETTINGS };
       this.analyticsEvents = generateSeedEvents();
+      this.isHydrated = true;
       return;
     }
 
@@ -708,18 +718,84 @@ export class ConvexMemoryStore {
     }
     this.initialized = true;
 
-    // Hydrate from IndexedDB (which holds full-resolution images & complete product/order lists)
-    this.hydrateFromIndexedDB().then(() => {
-      // Connect and sync with Convex Cloud deployment (https://valuable-emu-538.convex.cloud)
-      this.syncWithConvexCloud();
-    });
+    // Hydrate from IndexedDB, then sync with shared backend server (/api/db/sync) & Convex Cloud
+    this.hydrateFromIndexedDB()
+      .then(() => this.syncWithServer())
+      .finally(() => {
+        this.isHydrated = true;
+        notifySubscribers(false);
+        void this.syncWithConvexCloud();
+      });
 
-    // Periodic background sync with Convex Cloud
+    // Periodic background sync across devices (Server + Convex Cloud)
     setInterval(() => {
+      void this.syncWithServer();
       if (this.remoteFunctionsReady) {
-        this.syncWithConvexCloud();
+        void this.syncWithConvexCloud();
       }
-    }, 10000);
+    }, 6000);
+  }
+
+  public async syncWithServer(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      const res = await fetch('/api/db/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          products: this.products,
+          orders: this.orders,
+          settings: this.settings,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.ok) {
+        let updated = false;
+        if (Array.isArray(data.products) && data.products.length > 0) {
+          this.products = data.products;
+          updated = true;
+        }
+        if (Array.isArray(data.orders) && data.orders.length > 0) {
+          this.orders = data.orders;
+          updated = true;
+        }
+        if (data.settings) {
+          this.settings = { ...this.settings, ...data.settings };
+          updated = true;
+        }
+        if (updated) {
+          this.persist();
+          notifySubscribers(false);
+        }
+      }
+    } catch {
+      // Ignore network error if offline
+    }
+  }
+
+  public async fetchProductBySlugFromServer(slug: string): Promise<Product | null> {
+    if (typeof window === 'undefined') return null;
+    try {
+      const res = await fetch(`/api/db/product/${encodeURIComponent(slug)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.ok && data.product) {
+        const fetched = data.product as Product;
+        const idx = this.products.findIndex((p) => p._id === fetched._id);
+        if (idx !== -1) {
+          this.products[idx] = fetched;
+        } else {
+          this.products.unshift(fetched);
+        }
+        this.persist();
+        notifySubscribers(false);
+        return fetched;
+      }
+    } catch {
+      // Ignore
+    }
+    return null;
   }
 
   public async reloadFromStorage() {
@@ -979,12 +1055,29 @@ export class ConvexMemoryStore {
     return [...this.products];
   }
 
-  public getProductBySlug(slug: string): Product | null {
-    return this.products.find((p) => p.slug === slug) || null;
+  public getProductBySlug(slug: string): Product | null | undefined {
+    const target = this.normalizeSlug(slug);
+    const found =
+      this.products.find(
+        (p) => this.normalizeSlug(p.slug) === target || p._id.toLowerCase() === target
+      ) || null;
+    if (!found && !this.isHydrated) {
+      return undefined;
+    }
+    return found;
   }
 
   public getProductById(id: string): Product | null {
     return this.products.find((p) => p._id === id) || null;
+  }
+
+  private pushProductToServer(product: Product) {
+    if (typeof window === 'undefined') return;
+    void fetch('/api/db/product', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product }),
+    }).catch(() => {});
   }
 
   public createProduct(data: Omit<Product, '_id' | 'createdAt' | 'updatedAt'>): Product {
@@ -996,6 +1089,7 @@ export class ConvexMemoryStore {
     };
     this.products.unshift(newProduct);
     this.persist();
+    this.pushProductToServer(newProduct);
     notifySubscribers();
 
     void this.callConvexMutation<Product>('products:create', data).then((res) => {
@@ -1004,6 +1098,7 @@ export class ConvexMemoryStore {
         if (idx !== -1) {
           this.products[idx] = res.value;
           this.persist();
+          this.pushProductToServer(res.value);
           notifySubscribers();
         }
       }
@@ -1024,6 +1119,7 @@ export class ConvexMemoryStore {
     };
     this.products[idx] = updated;
     this.persist();
+    this.pushProductToServer(updated);
     notifySubscribers();
 
     void this.callConvexMutation('products:update', { id, updates });
@@ -1046,6 +1142,7 @@ export class ConvexMemoryStore {
     };
     this.products.unshift(copy);
     this.persist();
+    this.pushProductToServer(copy);
     notifySubscribers();
 
     void this.callConvexMutation('products:duplicate', { id });
@@ -1058,6 +1155,9 @@ export class ConvexMemoryStore {
     this.products = this.products.filter((p) => p._id !== id);
     if (this.products.length !== initialLen) {
       this.persist();
+      if (typeof window !== 'undefined') {
+        void fetch(`/api/db/product/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
+      }
       notifySubscribers();
       void this.callConvexMutation('products:remove', { id });
       return true;
@@ -1087,6 +1187,15 @@ export class ConvexMemoryStore {
     return existing || null;
   }
 
+  private pushOrderToServer(order: Order) {
+    if (typeof window === 'undefined') return;
+    void fetch('/api/db/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order }),
+    }).catch(() => {});
+  }
+
   public createOrder(data: Omit<Order, '_id' | 'orderNumber' | 'createdAt'>): Order {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newOrder: Order = {
@@ -1106,6 +1215,7 @@ export class ConvexMemoryStore {
     }
 
     this.persist();
+    this.pushOrderToServer(newOrder);
     notifySubscribers();
 
     void this.callConvexMutation<Order>('orders:create', data).then((res) => {
@@ -1114,6 +1224,7 @@ export class ConvexMemoryStore {
         if (idx !== -1) {
           this.orders[idx] = res.value;
           this.persist();
+          this.pushOrderToServer(res.value);
           notifySubscribers();
         }
       }
@@ -1127,6 +1238,7 @@ export class ConvexMemoryStore {
     if (idx === -1) throw new Error(`Order ${orderId} not found`);
     this.orders[idx] = { ...this.orders[idx], status };
     this.persist();
+    this.pushOrderToServer(this.orders[idx]);
     notifySubscribers();
 
     void this.callConvexMutation('orders:updateStatus', { orderId, status });
@@ -1139,6 +1251,9 @@ export class ConvexMemoryStore {
     this.orders = this.orders.filter((o) => o._id !== orderId);
     if (this.orders.length !== initialLen) {
       this.persist();
+      if (typeof window !== 'undefined') {
+        void fetch(`/api/db/order/${encodeURIComponent(orderId)}`, { method: 'DELETE' }).catch(() => {});
+      }
       notifySubscribers();
       void this.callConvexMutation('orders:remove', { orderId });
       return true;

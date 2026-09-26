@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '../lib/convex-client';
 import { api } from '../../convex/api';
+import { db } from '../../convex/db';
 import { LandingPage } from '../components/landing/LandingPage';
 import { initMarketingPixels } from '../lib/tracking';
 import { ShoppingBag, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
@@ -25,6 +26,31 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
   // Convex reactive query for this product
   const product = useQuery(api.products.getBySlug, { slug });
   const settings = useQuery(api.settings.get);
+  const [checkingServer, setCheckingServer] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCheckingServer(true);
+
+    if (product) {
+      setCheckingServer(false);
+      return;
+    }
+
+    // Ensure mobile/external devices fetch the latest product from the shared server DB
+    Promise.all([
+      db.fetchProductBySlugFromServer(slug),
+      db.syncWithServer(),
+    ]).finally(() => {
+      if (!cancelled) {
+        setCheckingServer(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, Boolean(product)]);
 
   // SEO & OpenGraph dynamic meta injection
   useEffect(() => {
@@ -88,8 +114,8 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
     });
   }, [product, settings]);
 
-  // Loading state
-  if (product === undefined) {
+  // Loading state (wait while hydrating from IndexedDB / Server DB)
+  if (product === undefined || (product === null && checkingServer)) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center space-y-3">
@@ -125,11 +151,11 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
     );
   }
 
-  // Unpublished check (can still be viewed with indicator)
+  // Unpublished check (can still be viewed with indicator on desktop)
   return (
     <div className="min-h-screen relative">
-      {/* Admin Floating Shortcut Bar (Subtle & Convenient) */}
-      <div className="bg-slate-950 text-slate-300 text-xs py-1.5 px-4 flex items-center justify-between border-b border-slate-800 select-none">
+      {/* Admin Floating Shortcut Bar (Desktop only so mobile buyers see a pure landing page) */}
+      <div className="hidden md:flex bg-slate-950 text-slate-300 text-xs py-1.5 px-4 items-center justify-between border-b border-slate-800 select-none">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
           <span className="font-semibold text-white">COD Landing Builder</span>

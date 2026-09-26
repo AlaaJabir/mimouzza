@@ -267,15 +267,37 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
           </div>
         )}
 
-        {/* Description Section */}
-        {product.description && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-3.5">
+        {/* Description Section + Description Images */}
+        {(product.description || (product.descriptionImages && product.descriptionImages.length > 0)) && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-5">
             <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3">
               شرح وتفاصيل المنتج
             </h3>
-            <div className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-line font-medium">
-              {product.description}
-            </div>
+            {product.description && (
+              <div className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-line font-medium">
+                {product.description}
+              </div>
+            )}
+
+            {/* Description Images / PNGs below description text inside the description box */}
+            {product.descriptionImages && product.descriptionImages.length > 0 && (
+              <div className="space-y-4 pt-2">
+                {product.descriptionImages.map((imgUrl, idx) => (
+                  <div
+                    key={idx}
+                    className="w-full rounded-xl overflow-hidden border border-slate-100 bg-slate-50/40"
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`${product.name} - تفصيل ${idx + 1}`}
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      className="w-full h-auto object-contain mx-auto block"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

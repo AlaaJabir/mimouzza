@@ -18,9 +18,10 @@ const PRESET_STUDIO_IMAGES = [
 
 /**
  * Compresses and resizes an uploaded image file so it is fast, lightweight (~80-180KB),
- * and permanently storable in Convex Cloud, IndexedDB, and localStorage without quota issues.
+ * preserves transparency for PNG/WEBP files, and is permanently storable in Convex Cloud,
+ * Server DB, IndexedDB, and localStorage.
  */
-async function compressImageFile(file: File, maxDimension = 1200, quality = 0.84): Promise<string> {
+export async function compressImageFile(file: File, maxDimension = 1200, quality = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
@@ -54,12 +55,24 @@ async function compressImageFile(file: File, maxDimension = 1200, quality = 0.84
             return;
           }
 
-          // Fill white background for transparent PNGs converted to JPEG, or preserve WebP
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, width, height);
+          const isTransparentFormat =
+            file.type === 'image/png' ||
+            file.type === 'image/webp' ||
+            file.name.toLowerCase().endsWith('.png') ||
+            file.name.toLowerCase().endsWith('.webp');
+
+          if (!isTransparentFormat) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+          } else {
+            ctx.clearRect(0, 0, width, height);
+          }
+
           ctx.drawImage(img, 0, 0, width, height);
 
-          const compressed = canvas.toDataURL('image/jpeg', quality);
+          // Use WebP for PNG/WebP to preserve alpha transparency while keeping size compact
+          const outputMime = isTransparentFormat ? 'image/webp' : 'image/jpeg';
+          const compressed = canvas.toDataURL(outputMime, quality);
           resolve(compressed);
         } catch {
           resolve(dataUrl);
@@ -345,6 +358,274 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface DescriptionImagesManagerProps {
+  images: string[];
+  onChange: (images: string[]) => void;
+}
+
+export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> = ({
+  images,
+  onChange,
+}) => {
+  const [linkBoxes, setLinkBoxes] = useState<string[]>(['']);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLinkBoxChange = (idx: number, val: string) => {
+    setLinkBoxes((prev) => prev.map((item, i) => (i === idx ? val : item)));
+  };
+
+  const handleAddLinkFromBox = (idx: number) => {
+    const url = (linkBoxes[idx] || '').trim();
+    if (!url) return;
+    onChange([...images, url]);
+    setLinkBoxes((prev) => {
+      const updated = prev.map((item, i) => (i === idx ? '' : item));
+      return updated.length === 0 ? [''] : updated;
+    });
+  };
+
+  const handleAddAnotherLinkBox = () => {
+    setLinkBoxes((prev) => [...prev, '']);
+  };
+
+  const handleRemoveLinkBox = (idx: number) => {
+    if (linkBoxes.length <= 1) {
+      setLinkBoxes(['']);
+      return;
+    }
+    setLinkBoxes((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleImportFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadNotice('');
+    try {
+      const fileArray = Array.from(files);
+      const processed = await Promise.all(
+        fileArray.map((file) => compressImageFile(file, 1400, 0.86))
+      );
+      onChange([...images, ...processed]);
+      setUploadNotice(`تم استيراد وحفظ ${processed.length} صورة (PNG / JPG) تحت الوصف بنجاح!`);
+      setTimeout(() => setUploadNotice(''), 4000);
+    } catch (err) {
+      console.error('Error importing description images:', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleUpdateExistingImageUrl = (index: number, newUrl: string) => {
+    const updated = images.map((img, i) => (i === index ? newUrl : img));
+    onChange(updated);
+  };
+
+  const handleMove = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= images.length) return;
+    const updated = [...images];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+    onChange(updated);
+  };
+
+  const handleRemove = (index: number) => {
+    onChange(images.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="mt-3 p-4 rounded-xl border border-amber-200/90 bg-amber-50/40 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-2.5">
+        <div>
+          <label className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+            <ImageIcon className="w-4 h-4 text-amber-600" />
+            <span>صور إضافية أسفل الوصف (Description Images / PNG — روابط أو استيراد)</span>
+          </label>
+          <p className="text-[11px] text-slate-600 mt-0.5">
+            تظهر هذه الصور مباشرة تحت نص الوصف في جميع صفحات الهبوط وتُحفظ تلقائياً في قاعدة البيانات (DB).
+          </p>
+        </div>
+
+        {/* Direct File Import Button */}
+        <div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/*"
+            multiple
+            onChange={handleImportFiles}
+            className="hidden"
+            id="desc-images-import-input"
+          />
+          <label
+            htmlFor="desc-images-import-input"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-2xs transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>{isUploading ? 'جاري استيراد الصور...' : 'استيراد صور / PNG من الجهاز'}</span>
+          </label>
+        </div>
+      </div>
+
+      {uploadNotice && (
+        <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{uploadNotice}</span>
+        </div>
+      )}
+
+      {/* Link Input Boxes (Des cases des liens pour les images / PNG) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+            <Link className="w-3.5 h-3.5 text-amber-600" />
+            <span>خانات روابط الصور (Cases des liens d&apos;images / PNG URL):</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleAddAnotherLinkBox}
+            className="text-[11px] font-bold text-amber-700 hover:text-amber-800 bg-white px-2.5 py-1 rounded-md border border-amber-300 hover:bg-amber-50 transition-colors cursor-pointer flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" />
+            <span>إضافة خانة رابط جديدة</span>
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {linkBoxes.map((boxVal, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={boxVal}
+                  onChange={(e) => handleLinkBoxChange(idx, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddLinkFromBox(idx);
+                    }
+                  }}
+                  placeholder={`خانة رابط صورة #${idx + 1}: الصق رابط الصورة أو PNG (https://...) ثم اضغط إضافة`}
+                  dir="ltr"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono text-left"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleAddLinkFromBox(idx)}
+                className="text-xs bg-slate-900 hover:bg-slate-800 text-white shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                إضافة للوصف
+              </Button>
+              {linkBoxes.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveLinkBox(idx)}
+                  className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white cursor-pointer"
+                  title="حذف الخانة"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Added Description Images List */}
+      {images.length > 0 && (
+        <div className="space-y-2 pt-1">
+          <div className="text-[11px] font-bold text-slate-700">
+            الصور المضافة تحت الوصف حالياً ({images.length} صور محفوظة في قاعدة البيانات):
+          </div>
+          <div className="space-y-2">
+            {images.map((imgUrl, index) => {
+              const isDataUri = imgUrl.startsWith('data:');
+              return (
+                <div
+                  key={index}
+                  className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 bg-white shadow-2xs"
+                >
+                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center">
+                    <img
+                      src={imgUrl}
+                      alt={`Description img ${index + 1}`}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-extrabold text-slate-900 bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                        صورة الوصف #{index + 1}
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-semibold">
+                        ✓ محفوظة في قاعدة البيانات
+                      </span>
+                    </div>
+
+                    {isDataUri ? (
+                      <div className="text-[11px] text-slate-500 font-mono truncate">
+                        صورة PNG / JPG مستوردة من الجهاز (Stored in DB)
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={imgUrl}
+                        onChange={(e) => handleUpdateExistingImageUrl(index, e.target.value)}
+                        dir="ltr"
+                        className="w-full px-2.5 py-1 text-xs font-mono text-left rounded border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      disabled={index === 0}
+                      onClick={() => handleMove(index, 'up')}
+                      className="p-1.5 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-30 cursor-pointer"
+                      title="تحريك لأعلى"
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={index === images.length - 1}
+                      onClick={() => handleMove(index, 'down')}
+                      className="p-1.5 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-30 cursor-pointer"
+                      title="تحريك لأسفل"
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(index)}
+                      className="p-1.5 rounded hover:bg-rose-50 text-rose-600 cursor-pointer"
+                      title="حذف الصورة"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

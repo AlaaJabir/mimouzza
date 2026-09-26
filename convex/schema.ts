@@ -34,6 +34,7 @@ export interface Product {
   compareAtPrice: number;
   currency: string;
   images: string[];
+  descriptionImages?: string[];
   templateId: 'classic-cod' | 'premium' | 'big-offer';
   offerText: string;
   shippingText: string;
@@ -183,6 +184,7 @@ export default defineSchema({
     compareAtPrice: v.number(),
     currency: v.string(),
     images: v.array(v.string()),
+    descriptionImages: v.optional(v.array(v.string())),
     templateId: v.union(v.literal('classic-cod'), v.literal('premium'), v.literal('big-offer')),
     offerText: v.string(),
     shippingText: v.string(),

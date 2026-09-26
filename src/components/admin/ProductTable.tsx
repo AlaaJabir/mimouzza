@@ -34,6 +34,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
   const [search, setSearch] = useState('');
   const [filterTemplate, setFilterTemplate] = useState<string>('all');
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+
+  const handleCopyProductLink = (slug: string) => {
+    const url = `${window.location.origin}/p/${encodeURIComponent(slug)}`;
+    navigator.clipboard?.writeText(url);
+    setCopiedSlug(slug);
+    setTimeout(() => setCopiedSlug(null), 2500);
+  };
 
   const filteredProducts = (products || []).filter((p) => {
     const matchesSearch =
@@ -158,6 +166,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                               >
                                 <ExternalLink className="w-3 h-3" />
                               </a>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyProductLink(product.slug)}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-amber-100 text-slate-700 font-sans font-semibold cursor-pointer transition-colors"
+                                title="نسخ رابط المنتج لفتحه في الهاتف"
+                              >
+                                {copiedSlug === product.slug ? '✓ تم نسخ الرابط' : 'نسخ الرابط'}
+                              </button>
                             </div>
                           </div>
                         </div>

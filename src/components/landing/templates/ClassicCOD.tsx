@@ -232,16 +232,38 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
           </div>
         )}
 
-        {/* Detailed Product Description & Story */}
-        {product.description && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-4">
+        {/* Detailed Product Description & Story + Description Images */}
+        {(product.description || (product.descriptionImages && product.descriptionImages.length > 0)) && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-5">
             <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
               <Award className="w-5 h-5 text-amber-600" />
               تفاصيل ومواصفات المنتج
             </h3>
-            <div className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-line font-medium">
-              {product.description}
-            </div>
+            {product.description && (
+              <div className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-line font-medium">
+                {product.description}
+              </div>
+            )}
+
+            {/* Description Images / PNGs below description text inside the description box */}
+            {product.descriptionImages && product.descriptionImages.length > 0 && (
+              <div className="space-y-4 pt-2">
+                {product.descriptionImages.map((imgUrl, idx) => (
+                  <div
+                    key={idx}
+                    className="w-full rounded-xl overflow-hidden border border-slate-100 bg-slate-50/40"
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`${product.name} - تفصيل ${idx + 1}`}
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      className="w-full h-auto object-contain mx-auto block"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="pt-4 text-center">
               <button

@@ -37,14 +37,24 @@ export function parseCurrentRoute(): RouteState {
     utmTerm: searchParams.get('utm_term') || '',
   };
 
-  // Check public product URL: /p/[slug]
-  const pMatch = path.match(/^\/p\/([^/]+)/);
-  if (pMatch) {
+  // Check public product URL: /p/[slug] or #/p/[slug] or ?p=[slug]
+  const hashPath = window.location.hash.startsWith('#/') ? window.location.hash.slice(1) : '';
+  const pMatch = path.match(/^\/p\/([^/?#]+)/) || hashPath.match(/^\/p\/([^/?#]+)/);
+  const queryProductSlug = searchParams.get('p') || searchParams.get('product');
+
+  if (pMatch || queryProductSlug) {
+    const rawSlug = pMatch ? pMatch[1] : queryProductSlug!;
+    let decodedSlug = rawSlug;
+    try {
+      decodedSlug = decodeURIComponent(rawSlug).trim();
+    } catch {
+      decodedSlug = rawSlug.trim();
+    }
     return {
       path,
       type: 'public-product',
       adminSection: 'dashboard',
-      slug: pMatch[1],
+      slug: decodedSlug,
       utmParams,
     };
   }
