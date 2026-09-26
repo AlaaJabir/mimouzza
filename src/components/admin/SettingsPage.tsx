@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
+import { db } from '../../../convex/db';
 import { Button } from '../ui/button';
-import { Save, RotateCcw, CheckCircle, Store, ShieldCheck, Activity, BarChart2 } from 'lucide-react';
+import { Save, RotateCcw, CheckCircle, Store, ShieldCheck, Activity, BarChart2, Database, RefreshCw } from 'lucide-react';
 
 interface SettingsPageProps {
   onOpenDiagnostics?: () => void;
@@ -10,8 +11,14 @@ interface SettingsPageProps {
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics }) => {
   const settings = useQuery(api.settings.get);
+  const products = useQuery(api.products.list);
+  const orders = useQuery(api.orders.list);
   const updateSettings = useMutation(api.settings.update);
   const resetSeed = useMutation(api.settings.resetSeed);
+
+  const [convexUrl, setConvexUrl] = useState(db.convexUrl || 'https://valuable-emu-538.convex.cloud');
+  const [syncMessage, setSyncMessage] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [storeName, setStoreName] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState('DH');
@@ -46,10 +53,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
     }
   }, [settings]);
 
+  const handleSyncConvex = async () => {
+    setIsSyncing(true);
+    setSyncMessage('');
+    try {
+      db.setConvexUrl(convexUrl);
+      const res = await db.syncWithConvexCloud();
+      setSyncMessage(res.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
+      db.setConvexUrl(convexUrl);
       await updateSettings({
         storeName,
         defaultCurrency,
@@ -91,7 +111,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
             إعدادات المتجر والتتبع الإعلاني (Store & Tracking Settings)
           </h2>
           <p className="text-xs text-slate-500">
-            تعديل الهوية، سياسات التوصيل، وبكسلات Meta و TikTok و Google Analytics
+            تعديل الهوية، قاعدة بيانات Convex، سياسات التوصيل، وبكسلات Meta و TikTok و Google Analytics
           </p>
         </div>
 
@@ -105,6 +125,74 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
             <span>فحص تشخيص التتبع (Diagnostics)</span>
           </button>
         )}
+      </div>
+
+      {/* Convex Cloud Database Connection */}
+      <div className="bg-white p-6 rounded-2xl border border-emerald-200/90 shadow-2xs space-y-4 text-right">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            متصل ومحفوظ تلقائياً
+          </span>
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <span>ربط قاعدة البيانات (Convex Cloud Database)</span>
+            <Database className="w-4 h-4 text-emerald-600" />
+          </h3>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-800 mb-1">
+              رابط قاعدة البيانات (Convex Deployment URL)
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={convexUrl}
+                onChange={(e) => setConvexUrl(e.target.value)}
+                dir="ltr"
+                placeholder="https://valuable-emu-538.convex.cloud"
+                className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              />
+              <button
+                type="button"
+                onClick={handleSyncConvex}
+                disabled={isSyncing}
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'جاري المزامنة...' : 'حفظ ومزامنة الآن'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
+              <div className="text-[11px] text-slate-500">المنتجات المحفوظة</div>
+              <div className="text-base font-black text-slate-900 font-mono mt-0.5">
+                {(products || []).length}
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
+              <div className="text-[11px] text-slate-500">الطلبيات ومعلومات الزبناء</div>
+              <div className="text-base font-black text-emerald-600 font-mono mt-0.5">
+                {(orders || []).length}
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center col-span-2 sm:col-span-1">
+              <div className="text-[11px] text-slate-500">تخزين الصور والبيانات</div>
+              <div className="text-xs font-bold text-amber-700 mt-1">
+                Convex + IndexedDB الدائم
+              </div>
+            </div>
+          </div>
+
+          {syncMessage && (
+            <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+              ✓ {syncMessage}
+            </div>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">

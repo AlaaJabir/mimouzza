@@ -79,18 +79,20 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Auto generate slug if empty
+  // Auto generate slug if empty (supports both Latin and Arabic product names)
   const handleNameChange = (name: string) => {
     setFormData((prev) => {
       const updates: Partial<typeof prev> = { name };
-      if (!isEditing && (!prev.slug || prev.slug.startsWith('product-'))) {
-        const autoSlug = name
+      if (!isEditing && (!prev.slug || prev.slug.startsWith('product-') || prev.slug.startsWith('prod-'))) {
+        const latinPart = name
           .toLowerCase()
           .replace(/[^\w\s-]/g, '')
           .replace(/[\s_-]+/g, '-')
           .replace(/^-+|-+$/g, '');
-        if (autoSlug) {
-          updates.slug = autoSlug;
+        if (latinPart && latinPart.length >= 2) {
+          updates.slug = latinPart;
+        } else if (name.trim().length > 0 && !prev.slug) {
+          updates.slug = `prod-${Math.floor(1000 + Math.random() * 9000)}`;
         }
       }
       return { ...prev, ...updates };
@@ -102,6 +104,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       .toLowerCase()
       .replace(/[^\w\s-]/g, '')
       .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
       .substring(0, 30) || 'product';
     setFormData((prev) => ({
       ...prev,
@@ -140,10 +143,15 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       setErrorMsg('الرجاء إدخال اسم المنتج / Product name required');
       return;
     }
-    if (!formData.slug.trim()) {
-      setErrorMsg('الرجاء تحديد رابط المنتج (Slug) / Product slug required');
-      return;
-    }
+
+    const finalSlug =
+      formData.slug.trim() || `prod-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const payloadToSave = {
+      ...formData,
+      slug: finalSlug,
+      ogImage: formData.ogImage || formData.images[0] || '',
+    };
 
     setIsSaving(true);
     setErrorMsg('');
@@ -153,12 +161,13 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       if (isEditing && initialProduct?._id) {
         saved = await updateProduct({
           id: initialProduct._id,
-          updates: formData,
+          updates: payloadToSave,
         });
       } else {
-        saved = await createProduct(formData);
+        saved = await createProduct(payloadToSave);
       }
 
+      setFormData((prev) => ({ ...prev, slug: finalSlug }));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       onSaved(saved);

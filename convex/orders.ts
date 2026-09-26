@@ -36,6 +36,13 @@ export const updateStatus = {
   },
 };
 
+export const remove = {
+  name: 'orders:remove',
+  mutation: (args: { orderId: string }) => {
+    return db.deleteOrder(args.orderId);
+  },
+};
+
 export const getMetrics = {
   name: 'orders:getMetrics',
   query: () => {

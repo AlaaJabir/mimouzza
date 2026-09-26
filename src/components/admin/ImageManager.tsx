@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Upload, Link, Star } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Upload, Link, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/button';
 
 interface ImageManagerProps {
@@ -16,10 +16,67 @@ const PRESET_STUDIO_IMAGES = [
   { label: 'ساعة يد كلاسيكية (Minimal Watch)', url: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=800&q=80' },
 ];
 
+/**
+ * Compresses and resizes an uploaded image file so it is fast, lightweight (~80-180KB),
+ * and permanently storable in Convex Cloud, IndexedDB, and localStorage without quota issues.
+ */
+async function compressImageFile(file: File, maxDimension = 1200, quality = 0.84): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (!dataUrl) {
+        reject(new Error('ملف الصورة فارغ'));
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+          if (width > maxDimension || height > maxDimension) {
+            if (width >= height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+
+          // Fill white background for transparent PNGs converted to JPEG, or preserve WebP
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed);
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) => {
   const [newUrl, setNewUrl] = useState('');
   const [mode, setMode] = useState<'upload' | 'url'>('upload');
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [uploadSuccessCount, setUploadSuccessCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddUrl = () => {
@@ -28,29 +85,37 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
     setNewUrl('');
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setIsProcessingFile(true);
-    const newImgs: string[] = [];
-    let processed = 0;
+    setUploadSuccessCount(0);
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          newImgs.push(event.target.result as string);
-        }
-        processed++;
-        if (processed === files.length) {
-          onChange([...images, ...newImgs]);
-          setIsProcessingFile(false);
-          if (fileInputRef.current) fileInputRef.current.value = '';
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    try {
+      const fileArray = Array.from(files);
+      const compressedImages = await Promise.all(
+        fileArray.map((file) => compressImageFile(file))
+      );
+
+      // If the only existing image was the default seed image, put the user's uploaded image first as primary
+      const isDefaultSeedOnly =
+        images.length === 1 &&
+        images[0] === '/src/assets/images/seed_beauty_serum_1790331758543.jpg';
+
+      const updatedImages = isDefaultSeedOnly
+        ? [...compressedImages]
+        : [...images, ...compressedImages];
+
+      onChange(updatedImages);
+      setUploadSuccessCount(compressedImages.length);
+      setTimeout(() => setUploadSuccessCount(0), 4000);
+    } catch (err) {
+      console.error('Image upload error:', err);
+    } finally {
+      setIsProcessingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleRemove = (index: number) => {
@@ -135,9 +200,19 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
               <Upload className="w-4 h-4" />
             </div>
             <div className="text-xs font-bold text-slate-800">
-              {isProcessingFile ? 'جاري معالجة الصور...' : 'انقر لاختيار صور من جهازك (JPG, PNG, WEBP)'}
+              {isProcessingFile
+                ? 'جاري ضغط وحفظ الصور في قاعدة البيانات...'
+                : 'انقر لاختيار صور من جهازك (JPG, PNG, WEBP)'}
             </div>
-            <p className="text-[11px] text-slate-400">يدعم اختيار عدة صور معاً وحفظها في التخزين</p>
+            <p className="text-[11px] text-slate-400">
+              يتم ضغط وتحسين الصور تلقائياً وحفظها بشكل دائم في قاعدة البيانات
+            </p>
+            {uploadSuccessCount > 0 && (
+              <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full mt-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>تم رفع وتجهيز {uploadSuccessCount} صور بنجاح!</span>
+              </div>
+            )}
           </label>
         </div>
       ) : (
@@ -233,7 +308,7 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
                   )}
                 </div>
                 <div className="text-[10px] text-slate-400 truncate font-mono">
-                  {imgUrl.startsWith('data:') ? 'صورة مرفوعة (Base64/Storage)' : imgUrl}
+                  {imgUrl.startsWith('data:') ? 'محفوظة في قاعدة البيانات (Compressed DB)' : imgUrl}
                 </div>
               </div>
 

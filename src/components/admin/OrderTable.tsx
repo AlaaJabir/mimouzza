@@ -1,37 +1,41 @@
 import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
 import { Order, OrderStatus } from '../../../convex/schema';
 import { useQuery, useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
-import { OrderStatusBadge } from '../ui/badge';
 import {
   Search,
   Phone,
   MapPin,
-  Clock,
-  Filter,
   ShoppingBag,
-  ExternalLink,
-  ChevronDown,
-  CheckCircle,
+  FileSpreadsheet,
+  Trash2,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const OrderTable: React.FC = () => {
   const orders = useQuery(api.orders.list);
+  const products = useQuery(api.products.list);
   const updateStatus = useMutation(api.orders.updateStatus);
+  const removeOrder = useMutation(api.orders.remove);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [productFilter, setProductFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [exportSuccess, setExportSuccess] = useState(false);
 
   const filteredOrders = (orders || []).filter((order) => {
     const matchesSearch =
       order.customerName.toLowerCase().includes(search.toLowerCase()) ||
       order.phone.includes(search) ||
       order.city.toLowerCase().includes(search.toLowerCase()) ||
+      order.address.toLowerCase().includes(search.toLowerCase()) ||
       order.orderNumber.toLowerCase().includes(search.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesProduct = productFilter === 'all' || order.productId === productFilter;
+    return matchesSearch && matchesStatus && matchesProduct;
   });
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
@@ -39,6 +43,11 @@ export const OrderTable: React.FC = () => {
     if (selectedOrder && selectedOrder._id === orderId) {
       setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null));
     }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    await removeOrder({ orderId });
+    setSelectedOrder(null);
   };
 
   const formatDate = (timestamp: number) => {
@@ -50,6 +59,16 @@ export const OrderTable: React.FC = () => {
     });
   };
 
+  const formatExcelDate = (timestamp: number) => {
+    const d = new Date(timestamp);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  };
+
   const statusOptions: { value: OrderStatus; label: string }[] = [
     { value: 'NEW', label: 'جديد (NEW)' },
     { value: 'CONFIRMED', label: 'مؤكد (CONFIRMED)' },
@@ -59,11 +78,78 @@ export const OrderTable: React.FC = () => {
     { value: 'CANCELLED', label: 'ملغي (CANCELLED)' },
   ];
 
+  const getStatusLabel = (status: OrderStatus) => {
+    return statusOptions.find((s) => s.value === status)?.label || status;
+  };
+
+  const handleExportExcel = () => {
+    if (filteredOrders.length === 0) return;
+
+    const rows = filteredOrders.map((order) => {
+      const variantsStr =
+        order.variants && Object.keys(order.variants).length > 0
+          ? Object.entries(order.variants)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(' | ')
+          : '';
+
+      return {
+        'رقم الطلب (Order ID)': order.orderNumber,
+        'تاريخ الطلب (Date)': formatExcelDate(order.createdAt),
+        'الاسم الكامل (Customer Name)': order.customerName,
+        'رقم الهاتف (Phone)': order.phone,
+        'المدينة (City)': order.city,
+        'العنوان الكامل (Address)': order.address,
+        'المنتج (Product)': order.productName,
+        'الخيارات (Variants)': variantsStr,
+        'الكمية (Qty)': order.quantity,
+        'المجموع (Total)': order.total,
+        'العملة (Currency)': order.currency || 'DH',
+        'الحالة (Status)': getStatusLabel(order.status),
+        'ملاحظات الزبون (Notes)': order.notes || '',
+        'مصدر الزيارة (UTM Source)': order.utmSource || 'Direct',
+        'الحملة الإعلانية (UTM Campaign)': order.utmCampaign || '',
+        'الوسيط (UTM Medium)': order.utmMedium || '',
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    // Auto-size columns for clean readability in Excel
+    worksheet['!cols'] = [
+      { wch: 15 }, // Order ID
+      { wch: 18 }, // Date
+      { wch: 24 }, // Customer Name
+      { wch: 16 }, // Phone
+      { wch: 22 }, // City
+      { wch: 36 }, // Address
+      { wch: 34 }, // Product
+      { wch: 28 }, // Variants
+      { wch: 10 }, // Qty
+      { wch: 14 }, // Total
+      { wch: 10 }, // Currency
+      { wch: 20 }, // Status
+      { wch: 28 }, // Notes
+      { wch: 16 }, // UTM Source
+      { wch: 22 }, // UTM Campaign
+      { wch: 14 }, // UTM Medium
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
+
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(workbook, `COD_Orders_${dateStamp}.xlsx`);
+
+    setExportSuccess(true);
+    setTimeout(() => setExportSuccess(false), 3000);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
-        <div className="flex items-center gap-3 flex-1">
+      {/* Search, Filters & Excel Export Bar */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
           {/* Search */}
           <div className="relative flex-1 max-w-sm">
             <Search className="w-4 h-4 absolute right-3 top-2.5 text-slate-400" />
@@ -90,10 +176,47 @@ export const OrderTable: React.FC = () => {
               </option>
             ))}
           </select>
+
+          {/* Product Filter */}
+          <select
+            value={productFilter}
+            onChange={(e) => setProductFilter(e.target.value)}
+            className="text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 max-w-[220px] truncate"
+          >
+            <option value="all">جميع المنتجات (All Products)</option>
+            {(products || []).map((prod) => (
+              <option key={prod._id} value={prod._id}>
+                {prod.name}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="text-xs text-slate-500 font-semibold">
-          عدد الطلبيات: <span className="text-slate-900 font-bold font-mono">{filteredOrders.length}</span>
+        {/* Count & Excel Export Action */}
+        <div className="flex items-center justify-between sm:justify-end gap-3">
+          <div className="text-xs text-slate-500 font-semibold">
+            عدد الطلبيات:{' '}
+            <span className="text-slate-900 font-bold font-mono">{filteredOrders.length}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={filteredOrders.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            {exportSuccess ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-white" />
+                <span>تم تحميل ملف Excel بنجاح!</span>
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>تصدير إلى Excel (.xlsx)</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -104,7 +227,7 @@ export const OrderTable: React.FC = () => {
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
               <tr>
                 <th className="py-3 px-4">رقم الطلب / العميل</th>
-                <th className="py-3 px-4">الهاتف / المدينة</th>
+                <th className="py-3 px-4">الهاتف / المدينة والعنوان</th>
                 <th className="py-3 px-4">المنتج / الخيارات</th>
                 <th className="py-3 px-4">الكمية والمجموع</th>
                 <th className="py-3 px-4">مصدر الزيارة (UTM)</th>
@@ -135,16 +258,21 @@ export const OrderTable: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* Phone & City */}
+                    {/* Phone, City & Address */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1 text-slate-800 font-mono" dir="ltr">
                         <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                         <span>{order.phone}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5">
+                      <div className="flex items-center gap-1 text-[11px] text-slate-600 mt-0.5 font-medium">
                         <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="truncate max-w-[130px]">{order.city}</span>
+                        <span className="truncate max-w-[160px]">{order.city}</span>
                       </div>
+                      {order.address && (
+                        <div className="text-[10px] text-slate-400 truncate max-w-[180px] mt-0.5">
+                          {order.address}
+                        </div>
+                      )}
                     </td>
 
                     {/* Product & Variant */}
@@ -155,7 +283,7 @@ export const OrderTable: React.FC = () => {
                       {order.variants && Object.keys(order.variants).length > 0 && (
                         <div className="text-[10px] text-slate-500 truncate max-w-[180px]">
                           {Object.entries(order.variants)
-                            .map(([k, v]) => `${v}`)
+                            .map(([, v]) => `${v}`)
                             .join(' · ')}
                         </div>
                       )}
@@ -284,7 +412,7 @@ export const OrderTable: React.FC = () => {
                 <span className="text-slate-500">الكمية:</span>
                 <span className="font-mono font-bold">{selectedOrder.quantity}</span>
               </div>
-              {selectedOrder.variants && (
+              {selectedOrder.variants && Object.keys(selectedOrder.variants).length > 0 && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">الخيارات:</span>
                   <span className="font-semibold text-slate-800">
@@ -313,22 +441,33 @@ export const OrderTable: React.FC = () => {
               </div>
             </div>
 
-            {/* Status Control */}
-            <div className="pt-2 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700">تحديث حالة الطلب:</span>
-              <select
-                value={selectedOrder.status}
-                onChange={(e) =>
-                  handleStatusChange(selectedOrder._id, e.target.value as OrderStatus)
-                }
-                className="text-xs px-3 py-2 rounded-lg border border-slate-300 font-semibold bg-white"
+            {/* Status & Delete Controls */}
+            <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700">تحديث الحالة:</span>
+                <select
+                  value={selectedOrder.status}
+                  onChange={(e) =>
+                    handleStatusChange(selectedOrder._id, e.target.value as OrderStatus)
+                  }
+                  className="text-xs px-3 py-1.5 rounded-lg border border-slate-300 font-semibold bg-white"
+                >
+                  {statusOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleDeleteOrder(selectedOrder._id)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
               >
-                {statusOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>حذف الطلب</span>
+              </button>
             </div>
           </div>
         </div>

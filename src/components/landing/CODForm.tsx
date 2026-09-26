@@ -373,13 +373,13 @@ export const CODForm: React.FC<CODFormProps> = ({
       dir="rtl"
     >
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-5 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400 text-slate-950 rounded-full text-xs font-bold mb-2 uppercase tracking-wide">
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 text-center">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400 text-slate-950 rounded-full text-[11px] font-bold mb-1.5 uppercase tracking-wide">
           <Truck className="w-3.5 h-3.5" />
           الدفع نقداً عند الاستلام (COD)
         </div>
-        <h3 className="text-lg sm:text-xl font-bold text-white">نموذج الطلب السريع</h3>
-        <p className="text-xs text-slate-300 mt-1">
+        <h3 className="text-base sm:text-lg font-bold text-white">نموذج الطلب السريع</h3>
+        <p className="text-xs text-slate-300 mt-0.5">
           املأ بياناتك أسفله وسيصلك المنتج لباب منزلك دون دفع مسبق!
         </p>
       </div>
@@ -658,7 +658,7 @@ export const CODForm: React.FC<CODFormProps> = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full py-4 px-6 rounded-xl font-black text-base sm:text-lg bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-lg hover:shadow-xl hover:from-amber-400 hover:to-amber-300 transition-all transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+          className="w-full py-3.5 px-6 rounded-xl font-bold text-sm sm:text-base bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-md hover:shadow-lg hover:from-amber-400 hover:to-amber-300 transition-all transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <div className="flex items-center gap-2">

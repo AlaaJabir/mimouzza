@@ -14,9 +14,9 @@ export const FAQ: React.FC<FAQProps> = ({ faqs, className = '' }) => {
 
   return (
     <div className={`space-y-3 ${className}`} dir="rtl">
-      <div className="text-center mb-4">
-        <h3 className="text-lg sm:text-xl font-bold text-slate-900">الأسئلة الشائعة (FAQ)</h3>
-        <p className="text-xs text-slate-500 mt-1">كل ما تحتاج معرفته قبل إتمام طلبك</p>
+      <div className="text-center mb-3">
+        <h3 className="text-base sm:text-lg font-bold">الأسئلة الشائعة (FAQ)</h3>
+        <p className="text-xs text-slate-500 mt-0.5">كل ما تحتاج معرفته قبل إتمام طلبك</p>
       </div>
 
       <div className="space-y-2">

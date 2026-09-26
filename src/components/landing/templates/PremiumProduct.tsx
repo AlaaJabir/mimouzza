@@ -201,9 +201,9 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
               {product.benefits.map((b) => (
                 <div
                   key={b.id}
-                  className="p-5 rounded-2xl bg-neutral-800/60 border border-neutral-700/60 hover:border-amber-400/40 transition-colors"
+                  className="p-4 rounded-xl bg-neutral-800/60 border border-neutral-700/60 hover:border-amber-400/40 transition-colors"
                 >
-                  <h3 className="text-base font-bold text-white mb-1.5 flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400"></span>
                     {b.title}
                   </h3>
@@ -220,11 +220,11 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
 
         {/* Description Section */}
         {product.description && (
-          <div className="bg-neutral-800/60 rounded-3xl border border-neutral-700/60 p-6 sm:p-8 space-y-4">
-            <h3 className="text-lg font-bold text-white border-b border-neutral-700 pb-3">
+          <div className="bg-neutral-800/60 rounded-2xl border border-neutral-700/60 p-5 sm:p-6 space-y-3">
+            <h3 className="text-sm sm:text-base font-bold text-white border-b border-neutral-700 pb-2.5">
               نظرة عامة ومواصفات تفصيلية
             </h3>
-            <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-line">
+            <div className="text-xs sm:text-sm text-neutral-300 leading-relaxed whitespace-pre-line">
               {product.description}
             </div>
           </div>

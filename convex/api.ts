@@ -22,6 +22,7 @@ export const api = {
     checkDuplicate: orders.checkDuplicate,
     create: orders.create,
     updateStatus: orders.updateStatus,
+    remove: orders.remove,
     getMetrics: orders.getMetrics,
   },
   templates: {

@@ -1,6 +1,10 @@
 /**
  * Convex Schema definition for COD Landing Builder
+ * Connected to https://valuable-emu-538.convex.cloud
  */
+
+import { defineSchema, defineTable } from 'convex/server';
+import { v } from 'convex/values';
 
 export interface ProductVariantGroup {
   id: string;
@@ -168,3 +172,150 @@ export interface StoreSettings {
   // Manual Ad Spend per campaign (e.g. { "elixir_spring_tiktok": 450 })
   campaignAdSpends?: Record<string, number>;
 }
+
+export default defineSchema({
+  products: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    shortDescription: v.string(),
+    description: v.string(),
+    price: v.number(),
+    compareAtPrice: v.number(),
+    currency: v.string(),
+    images: v.array(v.string()),
+    templateId: v.union(v.literal('classic-cod'), v.literal('premium'), v.literal('big-offer')),
+    offerText: v.string(),
+    shippingText: v.string(),
+    returnPolicy: v.string(),
+    benefits: v.array(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        description: v.optional(v.string()),
+        icon: v.string(),
+      })
+    ),
+    variants: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        options: v.array(v.string()),
+      })
+    ),
+    ctaText: v.string(),
+    isPublished: v.boolean(),
+    rating: v.number(),
+    reviewCount: v.number(),
+    badgeText: v.optional(v.string()),
+    faqs: v.optional(
+      v.array(
+        v.object({
+          question: v.string(),
+          answer: v.string(),
+        })
+      )
+    ),
+    scarcityEnabled: v.optional(v.boolean()),
+    stockQuantity: v.optional(v.number()),
+    countdownEnabled: v.optional(v.boolean()),
+    countdownDurationMinutes: v.optional(v.number()),
+    countdownEndsAt: v.optional(v.string()),
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+    ogTitle: v.optional(v.string()),
+    ogDescription: v.optional(v.string()),
+    ogImage: v.optional(v.string()),
+    canonicalUrl: v.optional(v.string()),
+    whatsappEnabled: v.optional(v.boolean()),
+    whatsappNumber: v.optional(v.string()),
+    useCustomPixels: v.optional(v.boolean()),
+    customMetaPixelId: v.optional(v.string()),
+    customTikTokPixelId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug'])
+    .index('by_published', ['isPublished']),
+
+  orders: defineTable({
+    orderNumber: v.string(),
+    productId: v.string(),
+    productName: v.string(),
+    productImage: v.string(),
+    customerName: v.string(),
+    phone: v.string(),
+    city: v.string(),
+    address: v.string(),
+    quantity: v.number(),
+    variants: v.any(),
+    notes: v.optional(v.string()),
+    total: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal('NEW'),
+      v.literal('CONFIRMED'),
+      v.literal('PROCESSING'),
+      v.literal('SHIPPED'),
+      v.literal('DELIVERED'),
+      v.literal('CANCELLED')
+    ),
+    sessionId: v.optional(v.string()),
+    eventId: v.optional(v.string()),
+    utmSource: v.string(),
+    utmMedium: v.string(),
+    utmCampaign: v.string(),
+    utmContent: v.string(),
+    utmTerm: v.string(),
+    createdAt: v.number(),
+  })
+    .index('by_product', ['productId'])
+    .index('by_status', ['status'])
+    .index('by_phone', ['phone']),
+
+  templates: defineTable({
+    id: v.union(v.literal('classic-cod'), v.literal('premium'), v.literal('big-offer')),
+    name: v.string(),
+    slug: v.string(),
+    description: v.string(),
+    previewImage: v.string(),
+    tag: v.string(),
+    features: v.array(v.string()),
+    active: v.boolean(),
+  }),
+
+  settings: defineTable({
+    storeName: v.string(),
+    defaultCurrency: v.string(),
+    defaultShippingText: v.string(),
+    defaultReturnPolicy: v.string(),
+    moroccoCities: v.array(v.string()),
+    contactPhone: v.string(),
+    metaPixelId: v.optional(v.string()),
+    enableMetaPixel: v.optional(v.boolean()),
+    tiktokPixelId: v.optional(v.string()),
+    enableTikTokPixel: v.optional(v.boolean()),
+    googleAnalyticsId: v.optional(v.string()),
+    enableGoogleAnalytics: v.optional(v.boolean()),
+    campaignAdSpends: v.optional(v.any()),
+  }),
+
+  analyticsEvents: defineTable({
+    eventId: v.string(),
+    eventType: v.string(),
+    productId: v.string(),
+    sessionId: v.string(),
+    timestamp: v.number(),
+    pageUrl: v.string(),
+    referrer: v.string(),
+    userAgent: v.optional(v.string()),
+    utmSource: v.string(),
+    utmMedium: v.string(),
+    utmCampaign: v.string(),
+    utmContent: v.string(),
+    utmTerm: v.string(),
+    metadata: v.optional(v.any()),
+  })
+    .index('by_product', ['productId'])
+    .index('by_timestamp', ['timestamp']),
+});
+

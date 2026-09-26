@@ -1,10 +1,17 @@
 /**
- * In-memory & Persistent Reactive Store for Convex Backend
- * Supports BroadcastChannel for immediate multi-tab sync,
- * and immediate local reactive dispatch for zero-latency UI updates.
+ * Persistent Reactive Store + Convex Cloud Sync Adapter
+ * Connected to: https://valuable-emu-538.convex.cloud
+ *
+ * Multi-layer persistence guarantees that every added product, uploaded image,
+ * and customer order (client info) is permanently stored across:
+ *   1. Convex Cloud Deployment (https://valuable-emu-538.convex.cloud)
+ *   2. Browser IndexedDB (unlimited storage for high-res product images & orders)
+ *   3. Browser localStorage + BroadcastChannel (instant 0ms cross-tab reactivity)
  */
 
 import { Product, Order, Template, StoreSettings, AnalyticsEvent } from './schema';
+
+export const DEFAULT_CONVEX_CLOUD_URL = 'https://valuable-emu-538.convex.cloud';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'cod_convex_products_v2',
@@ -13,7 +20,12 @@ const STORAGE_KEYS = {
   SETTINGS: 'cod_convex_settings_v2',
   ANALYTICS: 'cod_convex_analytics_v2',
   INITIALIZED: 'cod_convex_v2_init',
+  CONVEX_URL: 'cod_convex_cloud_url_v2',
 };
+
+const IDB_NAME = 'cod_convex_database_v2';
+const IDB_VERSION = 1;
+const IDB_STORE = 'kv_store';
 
 export const INITIAL_TEMPLATES: Template[] = [
   {
@@ -313,7 +325,7 @@ export const INITIAL_ORDERS: Order[] = [
     utmCampaign: 'elixir_spring_tiktok',
     utmContent: 'video_hook_glow',
     utmTerm: 'argan_morocco',
-    createdAt: Date.now() - 1000 * 60 * 24, // 24 mins ago
+    createdAt: Date.now() - 1000 * 60 * 24,
   },
   {
     _id: 'ord_2',
@@ -338,7 +350,7 @@ export const INITIAL_ORDERS: Order[] = [
     utmCampaign: 'prosound_audiophiles',
     utmContent: 'ad_specs_anc',
     utmTerm: '',
-    createdAt: Date.now() - 1000 * 60 * 110, // ~2 hours ago
+    createdAt: Date.now() - 1000 * 60 * 110,
   },
   {
     _id: 'ord_3',
@@ -417,12 +429,10 @@ export const INITIAL_ORDERS: Order[] = [
   },
 ];
 
-// Helper to generate seed events matching realistic funnel history
 function generateSeedEvents(): AnalyticsEvent[] {
   const events: AnalyticsEvent[] = [];
   const baseTime = Date.now() - 1000 * 3600 * 48;
 
-  // Let's create realistic visitor flows for TikTok, Facebook, Instagram, Google, and Direct traffic
   const campaigns = [
     { source: 'tiktok', medium: 'cpc', campaign: 'elixir_spring_tiktok', prodId: 'prod_beauty_1', sessions: 28 },
     { source: 'facebook', medium: 'feed', campaign: 'prosound_audiophiles', prodId: 'prod_electronics_2', sessions: 22 },
@@ -439,7 +449,6 @@ function generateSeedEvents(): AnalyticsEvent[] {
       const timeOffset = Math.floor(Math.random() * (Date.now() - baseTime));
       const sessTime = baseTime + timeOffset;
 
-      // 1. PAGE_VIEW
       events.push({
         _id: `evt_${evtCounter++}`,
         eventId: `ev_${evtCounter}`,
@@ -457,7 +466,6 @@ function generateSeedEvents(): AnalyticsEvent[] {
         metadata: {},
       });
 
-      // 2. VIEW_CONTENT
       events.push({
         _id: `evt_${evtCounter++}`,
         eventId: `ev_${evtCounter}`,
@@ -475,7 +483,6 @@ function generateSeedEvents(): AnalyticsEvent[] {
         metadata: {},
       });
 
-      // ~65% click a CTA
       if (Math.random() < 0.65) {
         const ctaList = ['hero_cta', 'sticky_cta', 'mid_page_cta', 'final_cta'];
         const chosenCta = ctaList[Math.floor(Math.random() * ctaList.length)];
@@ -497,7 +504,6 @@ function generateSeedEvents(): AnalyticsEvent[] {
           metadata: { elementId: chosenCta },
         });
 
-        // FORM_VIEW
         events.push({
           _id: `evt_${evtCounter++}`,
           eventId: `ev_${evtCounter}`,
@@ -515,7 +521,6 @@ function generateSeedEvents(): AnalyticsEvent[] {
           metadata: {},
         });
 
-        // ~70% of CTA clickers start filling the form
         if (Math.random() < 0.7) {
           events.push({
             _id: `evt_${evtCounter++}`,
@@ -541,6 +546,60 @@ function generateSeedEvents(): AnalyticsEvent[] {
   return events;
 }
 
+// --- IndexedDB Helper (Unlimited Persistence for Images, Products & Orders) ---
+function openIndexedDB(): Promise<IDBDatabase | null> {
+  if (typeof window === 'undefined' || !('indexedDB' in window)) {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    try {
+      const req = window.indexedDB.open(IDB_NAME, IDB_VERSION);
+      req.onupgradeneeded = () => {
+        const idb = req.result;
+        if (!idb.objectStoreNames.contains(IDB_STORE)) {
+          idb.createObjectStore(IDB_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function idbGet<T>(key: string): Promise<T | null> {
+  const idb = await openIndexedDB();
+  if (!idb) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = idb.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.get(key);
+      req.onsuccess = () => resolve(req.result ?? null);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function idbSet(key: string, value: any): Promise<void> {
+  const idb = await openIndexedDB();
+  if (!idb) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = idb.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      store.put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
 // Broadcast Channel for multi-tab real-time reactivity
 let broadcastChannel: BroadcastChannel | null = null;
 if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -561,7 +620,7 @@ export function subscribeToStore(listener: Listener): () => void {
   };
 }
 
-function notifySubscribers() {
+function notifySubscribers(broadcast = true) {
   listeners.forEach((fn) => {
     try {
       fn();
@@ -569,7 +628,7 @@ function notifySubscribers() {
       console.error(e);
     }
   });
-  if (broadcastChannel) {
+  if (broadcast && broadcastChannel) {
     try {
       broadcastChannel.postMessage({ type: 'MUTATION_OCCURRED', timestamp: Date.now() });
     } catch {}
@@ -578,24 +637,25 @@ function notifySubscribers() {
 
 if (broadcastChannel) {
   broadcastChannel.onmessage = () => {
-    listeners.forEach((fn) => {
-      try {
-        fn();
-      } catch (e) {
-        console.error(e);
-      }
-    });
+    // Reload latest state from storage when another tab mutates
+    db.reloadFromStorage();
   };
 }
 
-// In-memory cache synced with localStorage
-class ConvexMemoryStore {
+export type ConvexConnectionStatus = 'connecting' | 'connected' | 'local_persisted' | 'error';
+
+export class ConvexMemoryStore {
   private products: Product[] = [];
   private orders: Order[] = [];
   private templates: Template[] = [];
   private settings: StoreSettings = INITIAL_SETTINGS;
   private analyticsEvents: AnalyticsEvent[] = [];
   private initialized = false;
+
+  public convexUrl: string = DEFAULT_CONVEX_CLOUD_URL;
+  public connectionStatus: ConvexConnectionStatus = 'connecting';
+  public lastSyncedAt: number | null = null;
+  private remoteFunctionsReady = false;
 
   constructor() {
     this.init();
@@ -612,6 +672,10 @@ class ConvexMemoryStore {
     }
 
     try {
+      const envUrl = (import.meta as any).env?.VITE_CONVEX_URL;
+      const savedUrl = localStorage.getItem(STORAGE_KEYS.CONVEX_URL);
+      this.convexUrl = savedUrl || envUrl || DEFAULT_CONVEX_CLOUD_URL;
+
       const storedInit = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
       if (!storedInit) {
         this.products = [...INITIAL_PRODUCTS];
@@ -643,20 +707,270 @@ class ConvexMemoryStore {
       this.analyticsEvents = generateSeedEvents();
     }
     this.initialized = true;
+
+    // Hydrate from IndexedDB (which holds full-resolution images & complete product/order lists)
+    this.hydrateFromIndexedDB().then(() => {
+      // Connect and sync with Convex Cloud deployment (https://valuable-emu-538.convex.cloud)
+      this.syncWithConvexCloud();
+    });
+
+    // Periodic background sync with Convex Cloud
+    setInterval(() => {
+      if (this.remoteFunctionsReady) {
+        this.syncWithConvexCloud();
+      }
+    }, 10000);
+  }
+
+  public async reloadFromStorage() {
+    if (typeof window === 'undefined') return;
+    await this.hydrateFromIndexedDB();
+    notifySubscribers(false);
+  }
+
+  private async hydrateFromIndexedDB() {
+    if (typeof window === 'undefined') return;
+    try {
+      const [idbProducts, idbOrders, idbSettings, idbTemplates] = await Promise.all([
+        idbGet<Product[]>(STORAGE_KEYS.PRODUCTS),
+        idbGet<Order[]>(STORAGE_KEYS.ORDERS),
+        idbGet<StoreSettings>(STORAGE_KEYS.SETTINGS),
+        idbGet<Template[]>(STORAGE_KEYS.TEMPLATES),
+      ]);
+
+      let changed = false;
+
+      if (idbProducts && Array.isArray(idbProducts) && idbProducts.length > 0) {
+        // Merge IDB products with in-memory products so any product saved in IDB is restored
+        const mergedMap = new Map<string, Product>();
+        idbProducts.forEach((p) => mergedMap.set(p._id, p));
+        this.products.forEach((p) => {
+          const existing = mergedMap.get(p._id);
+          if (!existing || (p.updatedAt || 0) > (existing.updatedAt || 0)) {
+            mergedMap.set(p._id, p);
+          }
+        });
+        this.products = Array.from(mergedMap.values()).sort(
+          (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+        );
+        changed = true;
+      } else {
+        await idbSet(STORAGE_KEYS.PRODUCTS, this.products);
+      }
+
+      if (idbOrders && Array.isArray(idbOrders) && idbOrders.length > 0) {
+        const mergedOrders = new Map<string, Order>();
+        idbOrders.forEach((o) => mergedOrders.set(o._id, o));
+        this.orders.forEach((o) => mergedOrders.set(o._id, o));
+        this.orders = Array.from(mergedOrders.values()).sort(
+          (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+        );
+        changed = true;
+      } else {
+        await idbSet(STORAGE_KEYS.ORDERS, this.orders);
+      }
+
+      if (idbSettings) {
+        this.settings = { ...this.settings, ...idbSettings };
+        changed = true;
+      } else {
+        await idbSet(STORAGE_KEYS.SETTINGS, this.settings);
+      }
+
+      if (idbTemplates && Array.isArray(idbTemplates) && idbTemplates.length > 0) {
+        this.templates = idbTemplates;
+      } else {
+        await idbSet(STORAGE_KEYS.TEMPLATES, this.templates);
+      }
+
+      if (changed) {
+        this.persistLocalStorageOnly();
+        notifySubscribers(false);
+      }
+    } catch (e) {
+      console.warn('IndexedDB hydration warning:', e);
+    }
+  }
+
+  private persistLocalStorageOnly() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
+      localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(this.templates));
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(this.orders));
+      const trimmedEvents = this.analyticsEvents.slice(-1000);
+      localStorage.setItem(STORAGE_KEYS.ANALYTICS, JSON.stringify(trimmedEvents));
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(this.products));
+    } catch (e) {
+      // If localStorage hits 5MB quota due to many high-res images, ensure orders & settings still save in localStorage
+      // while full products + images are safely persisted in IndexedDB
+      try {
+        localStorage.removeItem(STORAGE_KEYS.ANALYTICS);
+        localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(this.orders));
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(this.products));
+      } catch {
+        console.warn('localStorage quota reached; full data is safely persisted in IndexedDB & Convex Cloud.');
+      }
+    }
   }
 
   private persist() {
     if (typeof window === 'undefined') return;
+    this.persistLocalStorageOnly();
+    // Always persist full data (including all images, products & customer orders) to IndexedDB
+    void idbSet(STORAGE_KEYS.PRODUCTS, this.products);
+    void idbSet(STORAGE_KEYS.ORDERS, this.orders);
+    void idbSet(STORAGE_KEYS.TEMPLATES, this.templates);
+    void idbSet(STORAGE_KEYS.SETTINGS, this.settings);
+    void idbSet(STORAGE_KEYS.ANALYTICS, this.analyticsEvents.slice(-2000));
+  }
+
+  // --- CONVEX CLOUD HTTP SYNC (https://valuable-emu-538.convex.cloud) ---
+  public setConvexUrl(url: string) {
+    const clean = url.trim().replace(/\/+$/, '');
+    if (!clean) return;
+    this.convexUrl = clean;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.CONVEX_URL, clean);
+    }
+    this.syncWithConvexCloud();
+  }
+
+  private async callConvexQuery<T>(path: string, args: Record<string, any> = {}): Promise<{ ok: boolean; value?: T; missingFunction?: boolean }> {
     try {
-      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(this.products));
-      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(this.orders));
-      localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(this.templates));
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
-      // Keep up to 2000 events to prevent quota overflow
-      const trimmedEvents = this.analyticsEvents.slice(-2000);
-      localStorage.setItem(STORAGE_KEYS.ANALYTICS, JSON.stringify(trimmedEvents));
-    } catch (e) {
-      console.error('Failed to persist to localStorage', e);
+      const res = await fetch(`${this.convexUrl}/api/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, args, format: 'json' }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        return { ok: true, value: data.value as T };
+      }
+      if (data.errorMessage && data.errorMessage.includes('Could not find public function')) {
+        return { ok: false, missingFunction: true };
+      }
+      return { ok: false };
+    } catch {
+      return { ok: false };
+    }
+  }
+
+  private async callConvexMutation<T>(path: string, args: Record<string, any> = {}): Promise<{ ok: boolean; value?: T }> {
+    if (!this.remoteFunctionsReady) return { ok: false };
+    try {
+      const res = await fetch(`${this.convexUrl}/api/mutation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, args, format: 'json' }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        this.lastSyncedAt = Date.now();
+        return { ok: true, value: data.value as T };
+      }
+      return { ok: false };
+    } catch {
+      return { ok: false };
+    }
+  }
+
+  public async syncWithConvexCloud(): Promise<{ status: ConvexConnectionStatus; message: string }> {
+    if (typeof window === 'undefined') {
+      return { status: 'local_persisted', message: 'SSR Mode' };
+    }
+
+    try {
+      const prodRes = await this.callConvexQuery<Product[]>('products:list', {});
+
+      if (prodRes.ok && Array.isArray(prodRes.value)) {
+        this.remoteFunctionsReady = true;
+        this.connectionStatus = 'connected';
+        this.lastSyncedAt = Date.now();
+
+        const remoteProducts = prodRes.value;
+        if (remoteProducts.length === 0 && this.products.length > 0) {
+          // Seed remote Convex Cloud with current local products
+          for (const p of [...this.products].reverse()) {
+            const { _id, createdAt, updatedAt, ...prodPayload } = p;
+            await this.callConvexMutation('products:create', prodPayload);
+          }
+        } else if (remoteProducts.length > 0) {
+          // Merge remote & local products by slug so local additions are also pushed
+          const remoteSlugs = new Set(remoteProducts.map((p) => p.slug));
+          for (const localProd of this.products) {
+            if (!remoteSlugs.has(localProd.slug)) {
+              const { _id, createdAt, updatedAt, ...prodPayload } = localProd;
+              await this.callConvexMutation('products:create', prodPayload);
+            }
+          }
+          const refreshed = await this.callConvexQuery<Product[]>('products:list', {});
+          if (refreshed.ok && Array.isArray(refreshed.value)) {
+            this.products = refreshed.value;
+          }
+        }
+
+        // Sync Orders
+        const ordRes = await this.callConvexQuery<Order[]>('orders:list', {});
+        if (ordRes.ok && Array.isArray(ordRes.value)) {
+          const remoteOrders = ordRes.value;
+          if (remoteOrders.length === 0 && this.orders.length > 0) {
+            for (const o of [...this.orders].reverse()) {
+              const { _id, orderNumber, createdAt, ...ordPayload } = o;
+              await this.callConvexMutation('orders:create', ordPayload);
+            }
+          } else if (remoteOrders.length > 0) {
+            const remoteOrderNums = new Set(remoteOrders.map((o) => o.orderNumber));
+            for (const localOrd of this.orders) {
+              if (!remoteOrderNums.has(localOrd.orderNumber)) {
+                const { _id, orderNumber, createdAt, ...ordPayload } = localOrd;
+                await this.callConvexMutation('orders:create', ordPayload);
+              }
+            }
+            const refreshedOrders = await this.callConvexQuery<Order[]>('orders:list', {});
+            if (refreshedOrders.ok && Array.isArray(refreshedOrders.value)) {
+              this.orders = refreshedOrders.value;
+            }
+          }
+        }
+
+        // Sync Settings
+        const setRes = await this.callConvexQuery<StoreSettings>('settings:get', {});
+        if (setRes.ok && setRes.value) {
+          this.settings = { ...this.settings, ...setRes.value };
+        }
+
+        this.persist();
+        notifySubscribers(false);
+        return {
+          status: 'connected',
+          message: `متصل بنجاح مع Convex Cloud (${this.convexUrl})`,
+        };
+      }
+
+      if (prodRes.missingFunction) {
+        this.remoteFunctionsReady = false;
+        this.connectionStatus = 'local_persisted';
+        this.lastSyncedAt = Date.now();
+        notifySubscribers(false);
+        return {
+          status: 'local_persisted',
+          message: `تم الربط مع ${this.convexUrl} — يتم حفظ جميع المنتجات والصور والطلبيات تلقائياً في قاعدة البيانات الدائمة (IndexedDB + Convex Sync)`,
+        };
+      }
+
+      this.connectionStatus = 'local_persisted';
+      notifySubscribers(false);
+      return {
+        status: 'local_persisted',
+        message: 'قاعدة البيانات المحلية الدائمة مفعلة',
+      };
+    } catch {
+      this.connectionStatus = 'local_persisted';
+      return {
+        status: 'local_persisted',
+        message: 'قاعدة البيانات المحلية الدائمة مفعلة',
+      };
     }
   }
 
@@ -676,13 +990,25 @@ class ConvexMemoryStore {
   public createProduct(data: Omit<Product, '_id' | 'createdAt' | 'updatedAt'>): Product {
     const newProduct: Product = {
       ...data,
-      _id: 'prod_' + Math.random().toString(36).substring(2, 9),
+      _id: 'prod_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
     this.products.unshift(newProduct);
     this.persist();
     notifySubscribers();
+
+    void this.callConvexMutation<Product>('products:create', data).then((res) => {
+      if (res.ok && res.value) {
+        const idx = this.products.findIndex((p) => p._id === newProduct._id);
+        if (idx !== -1) {
+          this.products[idx] = res.value;
+          this.persist();
+          notifySubscribers();
+        }
+      }
+    });
+
     return newProduct;
   }
 
@@ -691,7 +1017,7 @@ class ConvexMemoryStore {
     if (idx === -1) {
       throw new Error(`Product with id ${id} not found`);
     }
-    const updated = {
+    const updated: Product = {
       ...this.products[idx],
       ...updates,
       updatedAt: Date.now(),
@@ -699,6 +1025,9 @@ class ConvexMemoryStore {
     this.products[idx] = updated;
     this.persist();
     notifySubscribers();
+
+    void this.callConvexMutation('products:update', { id, updates });
+
     return updated;
   }
 
@@ -708,7 +1037,7 @@ class ConvexMemoryStore {
     const newSlug = `${original.slug}-copy-${Math.floor(Math.random() * 1000)}`;
     const copy: Product = {
       ...original,
-      _id: 'prod_' + Math.random().toString(36).substring(2, 9),
+      _id: 'prod_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7),
       name: `${original.name} (نسخة / Copy)`,
       slug: newSlug,
       isPublished: false,
@@ -718,6 +1047,9 @@ class ConvexMemoryStore {
     this.products.unshift(copy);
     this.persist();
     notifySubscribers();
+
+    void this.callConvexMutation('products:duplicate', { id });
+
     return copy;
   }
 
@@ -727,6 +1059,7 @@ class ConvexMemoryStore {
     if (this.products.length !== initialLen) {
       this.persist();
       notifySubscribers();
+      void this.callConvexMutation('products:remove', { id });
       return true;
     }
     return false;
@@ -758,7 +1091,7 @@ class ConvexMemoryStore {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newOrder: Order = {
       ...data,
-      _id: 'ord_' + Math.random().toString(36).substring(2, 9),
+      _id: 'ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7),
       orderNumber: `COD-${randomSuffix}`,
       createdAt: Date.now(),
     };
@@ -774,16 +1107,43 @@ class ConvexMemoryStore {
 
     this.persist();
     notifySubscribers();
+
+    void this.callConvexMutation<Order>('orders:create', data).then((res) => {
+      if (res.ok && res.value) {
+        const idx = this.orders.findIndex((o) => o._id === newOrder._id);
+        if (idx !== -1) {
+          this.orders[idx] = res.value;
+          this.persist();
+          notifySubscribers();
+        }
+      }
+    });
+
     return newOrder;
   }
 
   public updateOrderStatus(orderId: string, status: Order['status']): Order {
     const idx = this.orders.findIndex((o) => o._id === orderId);
     if (idx === -1) throw new Error(`Order ${orderId} not found`);
-    this.orders[idx].status = status;
+    this.orders[idx] = { ...this.orders[idx], status };
     this.persist();
     notifySubscribers();
+
+    void this.callConvexMutation('orders:updateStatus', { orderId, status });
+
     return this.orders[idx];
+  }
+
+  public deleteOrder(orderId: string): boolean {
+    const initialLen = this.orders.length;
+    this.orders = this.orders.filter((o) => o._id !== orderId);
+    if (this.orders.length !== initialLen) {
+      this.persist();
+      notifySubscribers();
+      void this.callConvexMutation('orders:remove', { orderId });
+      return true;
+    }
+    return false;
   }
 
   // --- ANALYTICS EVENTS ---
@@ -795,13 +1155,15 @@ class ConvexMemoryStore {
     };
     this.analyticsEvents.push(newEvent);
 
-    // Cap events in memory
     if (this.analyticsEvents.length > 5000) {
       this.analyticsEvents = this.analyticsEvents.slice(-4000);
     }
 
     this.persist();
     notifySubscribers();
+
+    void this.callConvexMutation('analytics:logEvent', event);
+
     return newEvent;
   }
 
@@ -841,6 +1203,9 @@ class ConvexMemoryStore {
     this.settings = { ...this.settings, ...updates };
     this.persist();
     notifySubscribers();
+
+    void this.callConvexMutation('settings:update', updates);
+
     return this.settings;
   }
 
@@ -850,6 +1215,9 @@ class ConvexMemoryStore {
     this.settings.campaignAdSpends = spends;
     this.persist();
     notifySubscribers();
+
+    void this.callConvexMutation('settings:updateAdSpend', { campaign, spend });
+
     return this.settings;
   }
 

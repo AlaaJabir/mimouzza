@@ -253,7 +253,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
         {product.benefits && product.benefits.length > 0 && (
           <div className="space-y-3">
             <div className="text-center">
-              <h2 className="text-lg sm:text-xl font-black text-slate-900">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">
                 لماذا يجب أن تطلب هذا المنتج اليوم؟
               </h2>
             </div>
@@ -263,11 +263,11 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
 
         {/* Description Section */}
         {product.description && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-3">
-            <h3 className="text-base sm:text-lg font-bold text-slate-900 border-b border-slate-100 pb-2">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-3">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 border-b border-slate-100 pb-2.5">
               شرح وتفاصيل المنتج
             </h3>
-            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+            <div className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
               {product.description}
             </div>
           </div>
