@@ -37,11 +37,13 @@ export const OrderStatusBadge: React.FC<{ status: OrderStatus; className?: strin
 }) => {
   const config: Record<OrderStatus, { label: string; variant: BadgeProps['variant'] }> = {
     NEW: { label: 'جديد / New', variant: 'warning' },
+    PENDING: { label: 'قيد الانتظار / Pending', variant: 'warning' },
     CONFIRMED: { label: 'مؤكد / Confirmed', variant: 'info' },
     PROCESSING: { label: 'قيد التجهيز / Processing', variant: 'secondary' },
     SHIPPED: { label: 'تم الشحن / Shipped', variant: 'info' },
     DELIVERED: { label: 'تم التسليم / Delivered', variant: 'success' },
     CANCELLED: { label: 'ملغي / Cancelled', variant: 'danger' },
+    FAILED: { label: 'فشل التوصيل / Failed', variant: 'danger' },
   };
 
   const current = config[status] || { label: status, variant: 'secondary' };

@@ -2,9 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Product, Order } from '../../../convex/schema';
 import { useMutation, useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
+import { computeAuthoritativeOrderTotal } from '../../../convex/db';
 import { Button } from '../ui/button';
-import { trackEvent, getSessionId } from '../../lib/tracking';
-import { CheckCircle2, ShieldCheck, Truck, PhoneCall, AlertCircle, ShoppingCart, AlertTriangle } from 'lucide-react';
+import {
+  trackEvent,
+  getVisitorId,
+  getSessionId,
+  captureAndStoreUtm,
+} from '../../lib/tracking';
+import {
+  CheckCircle2,
+  ShieldCheck,
+  Truck,
+  PhoneCall,
+  AlertCircle,
+  ShoppingCart,
+  AlertTriangle,
+} from 'lucide-react';
 
 interface CODFormProps {
   product: Product;
@@ -18,6 +32,7 @@ interface CODFormProps {
   accentColor?: 'amber' | 'emerald' | 'rose' | 'slate';
   onOrderSuccess?: (orderId: string, orderNumber: string) => void;
   className?: string;
+  isPreview?: boolean;
 }
 
 export const CODForm: React.FC<CODFormProps> = ({
@@ -26,6 +41,7 @@ export const CODForm: React.FC<CODFormProps> = ({
   accentColor = 'amber',
   onOrderSuccess,
   className = '',
+  isPreview = false,
 }) => {
   const settings = useQuery(api.settings.get);
   const createOrder = useMutation(api.orders.create);
@@ -52,7 +68,12 @@ export const CODForm: React.FC<CODFormProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submittedOrder, setSubmittedOrder] = useState<{ id: string; orderNumber: string } | null>(null);
+  const [submittedOrder, setSubmittedOrder] = useState<{
+    id: string;
+    orderNumber: string;
+    total: number;
+    currency: string;
+  } | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<Order | null>(null);
   const [forceSubmitDuplicate, setForceSubmitDuplicate] = useState(false);
 
@@ -60,12 +81,11 @@ export const CODForm: React.FC<CODFormProps> = ({
   const formViewedRef = useRef(false);
   const formContainerRef = useRef<HTMLDivElement>(null);
 
-  // 1. Track FORM_VIEW when form enters viewport
+  // 1. Track FORM_VIEW when form enters viewport (only when not in preview mode)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || isPreview) return;
 
     if (!('IntersectionObserver' in window)) {
-      // Fallback for environments without IntersectionObserver
       if (!formViewedRef.current) {
         formViewedRef.current = true;
         trackEvent({
@@ -75,6 +95,7 @@ export const CODForm: React.FC<CODFormProps> = ({
           price: product.price,
           currency: product.currency,
           metadata: { formId: 'cod_order_form' },
+          isPreview,
         });
       }
       return;
@@ -92,6 +113,7 @@ export const CODForm: React.FC<CODFormProps> = ({
               price: product.price,
               currency: product.currency,
               metadata: { formId: 'cod_order_form' },
+              isPreview,
             });
             observer.disconnect();
           }
@@ -107,10 +129,11 @@ export const CODForm: React.FC<CODFormProps> = ({
     return () => {
       observer.disconnect();
     };
-  }, [product._id, product.name, product.price, product.currency]);
+  }, [product._id, product.name, product.price, product.currency, isPreview]);
 
-  // Track FORM_START when user starts typing
+  // 2. Track FORM_START only on genuine user interaction with form fields
   const handleFirstInteraction = (field: string) => {
+    if (isPreview) return;
     if (!formStartedRef.current) {
       formStartedRef.current = true;
       trackEvent({
@@ -120,6 +143,7 @@ export const CODForm: React.FC<CODFormProps> = ({
         price: product.price,
         currency: product.currency,
         metadata: { firstField: field },
+        isPreview,
       });
     }
   };
@@ -134,7 +158,6 @@ export const CODForm: React.FC<CODFormProps> = ({
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Basic anti-spam honeypot
     if (honeypot.trim()) {
       newErrors.form = 'Submission rejected. Please try again.';
       return false;
@@ -176,28 +199,49 @@ export const CODForm: React.FC<CODFormProps> = ({
       ...prev,
       [variantName]: optionValue,
     }));
-    trackEvent({
-      eventType: 'VARIANT_SELECT',
-      productId: product._id,
-      metadata: { variantGroup: variantName, selectedValue: optionValue },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'VARIANT_SELECT',
+        productId: product._id,
+        metadata: { variantGroup: variantName, selectedValue: optionValue },
+        isPreview,
+      });
+    }
   };
 
   const handleQuantityChange = (newQty: number) => {
     const clamped = Math.max(1, newQty);
     setQuantity(clamped);
     handleFirstInteraction('quantity');
-    trackEvent({
-      eventType: 'QUANTITY_CHANGE',
-      productId: product._id,
-      metadata: { newQuantity: clamped },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'QUANTITY_CHANGE',
+        productId: product._id,
+        metadata: { newQuantity: clamped },
+        isPreview,
+      });
+    }
   };
 
-  const totalPrice = product.price * quantity;
+  const totalPrice = computeAuthoritativeOrderTotal(product, quantity, selectedVariants);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Track Final CTA Click when user clicks submit button
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'CTA_CLICK',
+        productId: product._id,
+        productName: product.name,
+        price: totalPrice,
+        currency: product.currency,
+        ctaId: 'final_cta',
+        metadata: { ctaId: 'final_cta', elementId: 'final_cta' },
+        isPreview,
+      });
+    }
+
     if (!validate()) return;
 
     // Check duplicate order protection
@@ -219,22 +263,37 @@ export const CODForm: React.FC<CODFormProps> = ({
     }
 
     setIsSubmitting(true);
+    const visitorId = getVisitorId();
     const sessionId = getSessionId();
-    const eventId = 'ev_ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+    const { lastTouch } = captureAndStoreUtm();
+    const eventId =
+      'ev_ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
+
+    const resolvedUtm = {
+      utmSource: utmParams.utmSource || lastTouch.utmSource || '',
+      utmMedium: utmParams.utmMedium || lastTouch.utmMedium || '',
+      utmCampaign: utmParams.utmCampaign || lastTouch.utmCampaign || '',
+      utmContent: utmParams.utmContent || lastTouch.utmContent || '',
+      utmTerm: utmParams.utmTerm || lastTouch.utmTerm || '',
+    };
 
     try {
       // 1. Track FORM_SUBMIT event
-      trackEvent({
-        eventType: 'FORM_SUBMIT',
-        productId: product._id,
-        productName: product.name,
-        price: totalPrice,
-        currency: product.currency,
-        customEventId: eventId,
-        metadata: { quantity, city: city.trim() },
-      });
+      if (!isPreview) {
+        trackEvent({
+          eventType: 'FORM_SUBMIT',
+          productId: product._id,
+          productName: product.name,
+          price: totalPrice,
+          currency: product.currency,
+          metadata: { quantity, city: city.trim() },
+          isPreview,
+        });
+      }
 
-      // 2. Create Order in Convex
+      // 2. Create real validated Order in Convex / Server DB
+      // (Backend validates product, calculates authoritative total, persists Order,
+      //  OrderStatusHistory, and logs authoritative ORDER_CREATED event)
       const order = await createOrder({
         productId: product._id,
         productName: product.name,
@@ -247,33 +306,21 @@ export const CODForm: React.FC<CODFormProps> = ({
         variants: selectedVariants,
         notes: notes.trim(),
         total: totalPrice,
+        amount: totalPrice,
         currency: product.currency || 'DH',
         status: 'NEW',
+        visitorId,
         sessionId,
         eventId,
-        utmSource: utmParams.utmSource || '',
-        utmMedium: utmParams.utmMedium || '',
-        utmCampaign: utmParams.utmCampaign || '',
-        utmContent: utmParams.utmContent || '',
-        utmTerm: utmParams.utmTerm || '',
+        ...resolvedUtm,
       });
 
-      // 3. Track ORDER_SUCCESS event
-      trackEvent({
-        eventType: 'ORDER_SUCCESS',
-        productId: product._id,
-        productName: product.name,
-        price: totalPrice,
-        currency: product.currency,
-        customEventId: eventId,
-        metadata: {
-          orderNumber: order.orderNumber,
-          quantity,
-          city: city.trim(),
-        },
+      setSubmittedOrder({
+        id: order._id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        currency: order.currency || product.currency || 'DH',
       });
-
-      setSubmittedOrder({ id: order._id, orderNumber: order.orderNumber });
       setDuplicateWarning(null);
 
       if (onOrderSuccess) {
@@ -314,17 +361,22 @@ export const CODForm: React.FC<CODFormProps> = ({
         </div>
         <h3 className="text-2xl font-bold text-slate-900 mb-2">تم تسجيل طلبك بنجاح! 🎉</h3>
         <p className="text-slate-600 text-sm mb-4 leading-relaxed">
-          شكراً لك، <span className="font-semibold text-slate-900">{customerName}</span>. لقد تم استلام طلبك وسيتصل بك أحد ممثلينا قريباً لتأكيد العنوان وموعد الشحن.
+          شكراً لك، <span className="font-semibold text-slate-900">{customerName}</span>. لقد تم
+          استلام طلبك وسيتصل بك أحد ممثلينا قريباً لتأكيد العنوان وموعد الشحن.
         </p>
 
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 text-right space-y-2">
           <div className="flex justify-between items-center text-xs text-slate-500 pb-2 border-b border-slate-200">
             <span>رقم الطلب (Order ID):</span>
-            <span className="font-mono font-bold text-slate-900 text-sm">{submittedOrder.orderNumber}</span>
+            <span className="font-mono font-bold text-slate-900 text-sm">
+              {submittedOrder.orderNumber}
+            </span>
           </div>
           <div className="flex justify-between items-center text-xs text-slate-600">
             <span>المنتج:</span>
-            <span className="font-medium text-slate-900 truncate max-w-[200px]">{product.name}</span>
+            <span className="font-medium text-slate-900 truncate max-w-[200px]">
+              {product.name}
+            </span>
           </div>
           <div className="flex justify-between items-center text-xs text-slate-600">
             <span>الكمية:</span>
@@ -333,7 +385,7 @@ export const CODForm: React.FC<CODFormProps> = ({
           <div className="flex justify-between items-center text-xs text-slate-600">
             <span>المبلغ الإجمالي عند الاستلام:</span>
             <span className="font-bold text-emerald-600 text-sm">
-              {totalPrice} {product.currency || 'DH'}
+              {submittedOrder.total} {submittedOrder.currency}
             </span>
           </div>
           <div className="flex justify-between items-center text-xs text-slate-600">
@@ -378,7 +430,9 @@ export const CODForm: React.FC<CODFormProps> = ({
           <Truck className="w-4 h-4" />
           الدفع نقداً عند الاستلام (COD)
         </div>
-        <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white">نموذج الطلب السريع</h3>
+        <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white">
+          نموذج الطلب السريع
+        </h3>
         <p className="text-xs sm:text-sm text-slate-300 mt-1">
           املأ بياناتك أسفله وسيصلك المنتج لباب منزلك دون دفع مسبق!
         </p>
@@ -390,9 +444,13 @@ export const CODForm: React.FC<CODFormProps> = ({
           <div className="flex items-start gap-2.5 text-amber-900">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-xs sm:text-sm">
-              <div className="font-bold text-sm sm:text-base">تنبيه: يوجد طلب مسجل مسبقاً بنفس رقم الهاتف!</div>
+              <div className="font-bold text-sm sm:text-base">
+                تنبيه: يوجد طلب مسجل مسبقاً بنفس رقم الهاتف!
+              </div>
               <p className="text-amber-800 mt-1">
-                لقد تم تسجيل طلب لنفس هذا المنتج برقم <span className="font-mono font-bold">{duplicateWarning.orderNumber}</span> خلال العشر دقائق الماضية. طلبك قيد التجهيز بالفعل وسيتصل بك فريقنا لتأكيده.
+                لقد تم تسجيل طلب لنفس هذا المنتج برقم{' '}
+                <span className="font-mono font-bold">{duplicateWarning.orderNumber}</span> خلال
+                العشر دقائق الماضية. طلبك قيد التجهيز بالفعل وسيتصل بك فريقنا لتأكيده.
               </p>
             </div>
           </div>
@@ -476,7 +534,9 @@ export const CODForm: React.FC<CODFormProps> = ({
         {/* Quantity Stepper */}
         <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
           <div>
-            <div className="text-xs sm:text-sm font-extrabold text-slate-900">الكمية المطلوبة (Quantity)</div>
+            <div className="text-xs sm:text-sm font-extrabold text-slate-900">
+              الكمية المطلوبة (Quantity)
+            </div>
             <div className="text-xs text-slate-500">اختر عدد القطع المراد طلبها</div>
           </div>
           <div className="flex items-center gap-3">
@@ -512,8 +572,8 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={customerName}
-              onFocus={() => handleFirstInteraction('customerName')}
               onChange={(e) => {
+                handleFirstInteraction('customerName');
                 setCustomerName(e.target.value);
                 if (errors.customerName) setErrors((prev) => ({ ...prev, customerName: '' }));
               }}
@@ -523,7 +583,9 @@ export const CODForm: React.FC<CODFormProps> = ({
               }`}
             />
             {errors.customerName && (
-              <p className="text-xs sm:text-sm text-rose-600 mt-1 font-medium">{errors.customerName}</p>
+              <p className="text-xs sm:text-sm text-rose-600 mt-1 font-medium">
+                {errors.customerName}
+              </p>
             )}
           </div>
 
@@ -536,8 +598,8 @@ export const CODForm: React.FC<CODFormProps> = ({
               <input
                 type="tel"
                 value={phone}
-                onFocus={() => handleFirstInteraction('phone')}
                 onChange={(e) => {
+                  handleFirstInteraction('phone');
                   setPhone(e.target.value);
                   if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
                 }}
@@ -568,8 +630,8 @@ export const CODForm: React.FC<CODFormProps> = ({
             <div className="relative">
               <select
                 value={city}
-                onFocus={() => handleFirstInteraction('city')}
                 onChange={(e) => {
+                  handleFirstInteraction('city');
                   setCity(e.target.value);
                   if (errors.city) setErrors((prev) => ({ ...prev, city: '' }));
                 }}
@@ -601,8 +663,8 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={address}
-              onFocus={() => handleFirstInteraction('address')}
               onChange={(e) => {
+                handleFirstInteraction('address');
                 setAddress(e.target.value);
                 if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
               }}
@@ -624,8 +686,10 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={notes}
-              onFocus={() => handleFirstInteraction('notes')}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                handleFirstInteraction('notes');
+                setNotes(e.target.value);
+              }}
               placeholder="مثال: يفضل الاتصال في المساء"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-700 bg-slate-50/50 placeholder:text-slate-400 focus:outline-none focus:border-slate-400"
             />
@@ -654,8 +718,9 @@ export const CODForm: React.FC<CODFormProps> = ({
           </div>
         </div>
 
-        {/* Submit Button */}
+        {/* Submit Button (final_cta) */}
         <button
+          id="final_cta"
           type="submit"
           disabled={isSubmitting}
           className="w-full py-4 px-6 rounded-xl font-extrabold text-base sm:text-lg bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-md hover:shadow-lg hover:from-amber-400 hover:to-amber-300 transition-all transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5"

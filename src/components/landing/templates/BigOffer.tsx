@@ -9,7 +9,7 @@ import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { trackEvent } from '../../../lib/tracking';
-import { Flame, Clock, ShieldAlert, ShoppingCart, Zap, Star, MessageCircle } from 'lucide-react';
+import { Flame, Clock, ShieldAlert, Zap, Star, MessageCircle, ShoppingCart } from 'lucide-react';
 
 interface BigOfferProps {
   product: Product;
@@ -20,29 +20,36 @@ interface BigOfferProps {
     utmContent?: string;
     utmTerm?: string;
   };
+  isPreview?: boolean;
 }
 
-export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
-  // Real countdown timer driven by product settings if enabled
+export const BigOffer: React.FC<BigOfferProps> = ({
+  product,
+  utmParams,
+  isPreview = false,
+}) => {
   const initialDuration = (product.countdownDurationMinutes || 120) * 60;
   const [secondsRemaining, setSecondsRemaining] = useState(initialDuration);
 
   useEffect(() => {
+    if (isPreview) return;
     trackEvent({
       eventType: 'PAGE_VIEW',
       productId: product._id,
       productName: product.name,
       price: product.price,
       currency: product.currency,
+      isPreview,
     });
     trackEvent({
-      eventType: 'VIEW_CONTENT',
+      eventType: 'PRODUCT_VIEW',
       productId: product._id,
       productName: product.name,
       price: product.price,
       currency: product.currency,
+      isPreview,
     });
-  }, [product._id]);
+  }, [product._id, isPreview]);
 
   useEffect(() => {
     if (!product.countdownEnabled) return;
@@ -56,30 +63,55 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
   const minutes = Math.floor((secondsRemaining % 3600) / 60);
   const seconds = secondsRemaining % 60;
 
-  const discountAmount = product.compareAtPrice > product.price ? product.compareAtPrice - product.price : 0;
-  const discountPct = product.compareAtPrice > product.price
-    ? Math.round((discountAmount / product.compareAtPrice) * 100)
-    : 45;
+  const discountAmount =
+    product.compareAtPrice > product.price ? product.compareAtPrice - product.price : 0;
+  const discountPct =
+    product.compareAtPrice > product.price
+      ? Math.round((discountAmount / product.compareAtPrice) * 100)
+      : 45;
 
   const handleHeroCtaClick = () => {
-    trackEvent({
-      eventType: 'CTA_CLICK',
-      productId: product._id,
-      productName: product.name,
-      price: product.price,
-      currency: product.currency,
-      metadata: { elementId: 'hero_cta' },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'CTA_CLICK',
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        currency: product.currency,
+        ctaId: 'hero_cta',
+        metadata: { ctaId: 'hero_cta', elementId: 'hero_cta' },
+        isPreview,
+      });
+    }
+    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleMidCtaClick = () => {
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'CTA_CLICK',
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        currency: product.currency,
+        ctaId: 'mid_page_cta',
+        metadata: { ctaId: 'mid_page_cta', elementId: 'mid_page_cta' },
+        isPreview,
+      });
+    }
     document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleWhatsAppClick = () => {
-    trackEvent({
-      eventType: 'WHATSAPP_CLICK',
-      productId: product._id,
-      productName: product.name,
-      metadata: { whatsappNumber: product.whatsappNumber },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'WHATSAPP_CLICK',
+        productId: product._id,
+        productName: product.name,
+        metadata: { whatsappNumber: product.whatsappNumber },
+        isPreview,
+      });
+    }
     const message = encodeURIComponent(`السلام عليكم، أريد الاستفسار بخصوص عرض: ${product.name}`);
     window.open(`https://wa.me/${product.whatsappNumber}?text=${message}`, '_blank');
   };
@@ -101,7 +133,11 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
                 تخفيض حصري محدود
               </div>
               <h2 className="text-base sm:text-lg md:text-xl font-extrabold">
-                وفر {discountAmount > 0 ? `${discountAmount} ${product.currency || 'DH'}` : `أكثر من ${discountPct}%`} اليوم!
+                وفر{' '}
+                {discountAmount > 0
+                  ? `${discountAmount} ${product.currency || 'DH'}`
+                  : `أكثر من ${discountPct}%`}{' '}
+                اليوم!
               </h2>
             </div>
           </div>
@@ -134,7 +170,11 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 animate-bounce" />
               <span>
-                تنبيه: متبقي فقط <span className="text-rose-600 font-extrabold underline">{product.stockQuantity ?? 7} قطع</span> بهذا السعر المخفض!
+                تنبيه: متبقي فقط{' '}
+                <span className="text-rose-600 font-extrabold underline">
+                  {product.stockQuantity ?? 7} قطع
+                </span>{' '}
+                بهذا السعر المخفض!
               </span>
             </div>
             <div className="w-24 sm:w-32 h-2.5 bg-amber-200 rounded-full overflow-hidden shrink-0">
@@ -152,6 +192,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
             badgeText={product.badgeText || 'خصم خاص'}
             discountPercentage={discountPct}
             productId={product._id}
+            isPreview={isPreview}
           />
 
           {/* Title directly under image */}
@@ -207,9 +248,10 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
             )}
           </div>
 
-          {/* Action Button */}
+          {/* Action Button (hero_cta) */}
           <div className="space-y-2.5">
             <button
+              id="hero_cta"
               onClick={handleHeroCtaClick}
               className="w-full py-4 px-6 rounded-xl font-extrabold text-base sm:text-lg md:text-xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 hover:from-rose-500 hover:to-rose-500 text-white shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
             >
@@ -242,7 +284,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
             </div>
           </div>
 
-          {/* Live Fake Orders Ticker (between Price/CTA box and Description) */}
+          {/* Live Orders Ticker */}
           <div className="pt-1">
             <LiveOrdersTicker product={product} />
           </div>
@@ -268,7 +310,8 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
         )}
 
         {/* Description Section + Description Images */}
-        {(product.description || (product.descriptionImages && product.descriptionImages.length > 0)) && (
+        {(product.description ||
+          (product.descriptionImages && product.descriptionImages.length > 0)) && (
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-5">
             <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3">
               شرح وتفاصيل المنتج
@@ -298,6 +341,18 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
                 ))}
               </div>
             )}
+
+            <div className="pt-4 text-center">
+              <button
+                id="mid_page_cta"
+                type="button"
+                onClick={handleMidCtaClick}
+                className="py-3.5 px-8 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm sm:text-base inline-flex items-center gap-2 cursor-pointer"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span>اطلب الآن قبل نفاد الكمية</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -306,7 +361,12 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
 
         {/* High Converting COD Form */}
         <div className="pt-2">
-          <CODForm product={product} utmParams={utmParams} accentColor="rose" />
+          <CODForm
+            product={product}
+            utmParams={utmParams}
+            accentColor="rose"
+            isPreview={isPreview}
+          />
         </div>
 
         {/* FAQ */}
@@ -320,6 +380,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
         ctaText={product.ctaText}
         productId={product._id}
         productName={product.name}
+        isPreview={isPreview}
       />
     </div>
   );

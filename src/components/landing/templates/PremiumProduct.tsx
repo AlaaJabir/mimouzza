@@ -2,14 +2,20 @@ import React, { useEffect } from 'react';
 import { Product } from '../../../../convex/schema';
 import { TopAnnouncementBar } from '../OfferBanner';
 import { ProductGallery } from '../ProductGallery';
-import { Benefits } from '../Benefits';
 import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { trackEvent } from '../../../lib/tracking';
-import { Star, ShieldCheck, Sparkles, ShoppingBag, ArrowDown, MessageCircle } from 'lucide-react';
+import {
+  Star,
+  ShieldCheck,
+  Sparkles,
+  ShoppingBag,
+  ArrowDown,
+  MessageCircle,
+} from 'lucide-react';
 
 interface PremiumProductProps {
   product: Product;
@@ -20,50 +26,81 @@ interface PremiumProductProps {
     utmContent?: string;
     utmTerm?: string;
   };
+  isPreview?: boolean;
 }
 
-export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmParams }) => {
+export const PremiumProduct: React.FC<PremiumProductProps> = ({
+  product,
+  utmParams,
+  isPreview = false,
+}) => {
   const discountPct =
     product.compareAtPrice > product.price
       ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
       : undefined;
 
   useEffect(() => {
+    if (isPreview) return;
     trackEvent({
       eventType: 'PAGE_VIEW',
       productId: product._id,
       productName: product.name,
       price: product.price,
       currency: product.currency,
+      isPreview,
     });
     trackEvent({
-      eventType: 'VIEW_CONTENT',
+      eventType: 'PRODUCT_VIEW',
       productId: product._id,
       productName: product.name,
       price: product.price,
       currency: product.currency,
+      isPreview,
     });
-  }, [product._id]);
+  }, [product._id, isPreview]);
 
   const handleHeroCtaClick = () => {
-    trackEvent({
-      eventType: 'CTA_CLICK',
-      productId: product._id,
-      productName: product.name,
-      price: product.price,
-      currency: product.currency,
-      metadata: { elementId: 'hero_cta' },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'CTA_CLICK',
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        currency: product.currency,
+        ctaId: 'hero_cta',
+        metadata: { ctaId: 'hero_cta', elementId: 'hero_cta' },
+        isPreview,
+      });
+    }
+    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleMidCtaClick = () => {
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'CTA_CLICK',
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        currency: product.currency,
+        ctaId: 'mid_page_cta',
+        metadata: { ctaId: 'mid_page_cta', elementId: 'mid_page_cta' },
+        isPreview,
+      });
+    }
     document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleWhatsAppClick = () => {
-    trackEvent({
-      eventType: 'WHATSAPP_CLICK',
-      productId: product._id,
-      productName: product.name,
-      metadata: { whatsappNumber: product.whatsappNumber },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'WHATSAPP_CLICK',
+        productId: product._id,
+        productName: product.name,
+        metadata: { whatsappNumber: product.whatsappNumber },
+        isPreview,
+      });
+    }
     const message = encodeURIComponent(`السلام عليكم، أريد الاستفسار بخصوص منتج: ${product.name}`);
     window.open(`https://wa.me/${product.whatsappNumber}?text=${message}`, '_blank');
   };
@@ -71,7 +108,9 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100 pb-20 md:pb-12" dir="rtl">
       {/* Top Bar */}
-      <TopAnnouncementBar text={product.shippingText || 'التوصيل مجاني لكافة مدن المغرب — الدفع عند الاستلام'} />
+      <TopAnnouncementBar
+        text={product.shippingText || 'التوصيل مجاني لكافة مدن المغرب — الدفع عند الاستلام'}
+      />
 
       <div className="max-w-[840px] mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Hero Card: Image on top, title, price, button, and guarantees */}
@@ -91,6 +130,7 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
             productName={product.name}
             discountPercentage={discountPct}
             productId={product._id}
+            isPreview={isPreview}
           />
 
           {/* Title directly under image */}
@@ -148,9 +188,10 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
             </div>
           )}
 
-          {/* CTA Order Button */}
+          {/* CTA Order Button (hero_cta) */}
           <div className="space-y-2.5">
             <button
+              id="hero_cta"
               onClick={handleHeroCtaClick}
               className="w-full py-4 px-6 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-extrabold text-base sm:text-lg md:text-xl shadow-lg shadow-amber-400/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
             >
@@ -183,7 +224,7 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
             </div>
           </div>
 
-          {/* Live Fake Orders Ticker (between Price/CTA box and Description) */}
+          {/* Live Orders Ticker */}
           <div className="pt-1">
             <LiveOrdersTicker product={product} />
           </div>
@@ -200,8 +241,12 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
         {product.benefits && product.benefits.length > 0 && (
           <div className="space-y-3.5">
             <div className="text-center">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white">المميزات الاستثنائية</h2>
-              <p className="text-xs sm:text-sm text-neutral-400 mt-1">معايير دقيقة صُنعت لأجود تجربة</p>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white">
+                المميزات الاستثنائية
+              </h2>
+              <p className="text-xs sm:text-sm text-neutral-400 mt-1">
+                معايير دقيقة صُنعت لأجود تجربة
+              </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {product.benefits.map((b) => (
@@ -225,7 +270,8 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
         )}
 
         {/* Description Section + Description Images */}
-        {(product.description || (product.descriptionImages && product.descriptionImages.length > 0)) && (
+        {(product.description ||
+          (product.descriptionImages && product.descriptionImages.length > 0)) && (
           <div className="bg-neutral-800/60 rounded-2xl border border-neutral-700/60 p-5 sm:p-7 space-y-5">
             <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-white border-b border-neutral-700 pb-3">
               نظرة عامة ومواصفات تفصيلية
@@ -255,6 +301,18 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
                 ))}
               </div>
             )}
+
+            <div className="pt-4 text-center">
+              <button
+                id="mid_page_cta"
+                type="button"
+                onClick={handleMidCtaClick}
+                className="py-3.5 px-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-extrabold text-sm sm:text-base inline-flex items-center gap-2 cursor-pointer"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                <span>اطلب الآن قبل نفاد الكمية</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -267,7 +325,12 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
 
         {/* COD Form */}
         <div className="pt-4">
-          <CODForm product={product} utmParams={utmParams} accentColor="amber" />
+          <CODForm
+            product={product}
+            utmParams={utmParams}
+            accentColor="amber"
+            isPreview={isPreview}
+          />
         </div>
 
         {/* FAQ */}
@@ -281,6 +344,7 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
         ctaText={product.ctaText}
         productId={product._id}
         productName={product.name}
+        isPreview={isPreview}
       />
     </div>
   );

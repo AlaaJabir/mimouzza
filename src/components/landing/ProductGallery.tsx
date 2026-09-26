@@ -7,6 +7,7 @@ interface ProductGalleryProps {
   badgeText?: string;
   discountPercentage?: number;
   productId?: string;
+  isPreview?: boolean;
 }
 
 export const ProductGallery: React.FC<ProductGalleryProps> = ({
@@ -15,23 +16,26 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
   badgeText,
   discountPercentage,
   productId,
+  isPreview = false,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const displayImages = images && images.length > 0
-    ? images
-    : ['/src/assets/images/seed_beauty_serum_1790331758543.jpg'];
+  const displayImages =
+    images && images.length > 0
+      ? images
+      : ['/src/assets/images/seed_beauty_serum_1790331758543.jpg'];
 
   const currentImage = displayImages[selectedIndex] || displayImages[0];
 
   const handleSelectImage = (idx: number) => {
     setSelectedIndex(idx);
-    if (productId) {
+    if (productId && !isPreview) {
       trackEvent({
         eventType: 'PRODUCT_IMAGE_VIEW',
         productId,
         productName,
         metadata: { imageIndex: idx, imageUrl: displayImages[idx] },
+        isPreview,
       });
     }
   };

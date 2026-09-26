@@ -78,11 +78,37 @@ export interface Product {
 
 export type OrderStatus =
   | 'NEW'
+  | 'PENDING'
   | 'CONFIRMED'
   | 'PROCESSING'
   | 'SHIPPED'
   | 'DELIVERED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'FAILED';
+
+export interface Visitor {
+  _id: string;
+  visitorId: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  userAgent?: string;
+}
+
+export interface AnalyticsSession {
+  _id: string;
+  sessionId: string;
+  visitorId: string;
+  productId: string;
+  landingPage: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  utmTerm: string;
+  utmContent: string;
+  referrer: string;
+  startedAt: number;
+  lastSeenAt: number;
+}
 
 export interface Order {
   _id: string;
@@ -98,8 +124,10 @@ export interface Order {
   variants: Record<string, string>;
   notes?: string;
   total: number;
+  amount?: number;
   currency: string;
   status: OrderStatus;
+  visitorId?: string;
   sessionId?: string;
   eventId?: string;
   utmSource: string;
@@ -108,10 +136,22 @@ export interface Order {
   utmContent: string;
   utmTerm: string;
   createdAt: number;
+  updatedAt?: number;
+}
+
+export interface OrderStatusHistory {
+  _id: string;
+  orderId: string;
+  orderNumber?: string;
+  productId?: string;
+  previousStatus: OrderStatus | null;
+  newStatus: OrderStatus;
+  timestamp: number;
 }
 
 export type AnalyticsEventType =
   | 'PAGE_VIEW'
+  | 'PRODUCT_VIEW'
   | 'VIEW_CONTENT'
   | 'CTA_CLICK'
   | 'FORM_VIEW'
@@ -119,17 +159,27 @@ export type AnalyticsEventType =
   | 'VARIANT_SELECT'
   | 'QUANTITY_CHANGE'
   | 'FORM_SUBMIT'
+  | 'ORDER_CREATED'
   | 'ORDER_SUCCESS'
+  | 'ORDER_CONFIRMED'
+  | 'ORDER_CANCELLED'
+  | 'ORDER_DELIVERED'
+  | 'ORDER_FAILED'
   | 'WHATSAPP_CLICK'
   | 'PRODUCT_IMAGE_VIEW';
 
 export interface AnalyticsEvent {
   _id: string;
   eventId: string;
+  clientEventId?: string;
   eventType: AnalyticsEventType;
-  productId: string;
+  visitorId: string;
   sessionId: string;
-  timestamp: number;
+  productId: string;
+  ctaId?: string;
+  timestamp: number; // Authoritative server/DB timestamp
+  createdAt: number; // Authoritative server/DB timestamp
+  clientTimestamp?: number; // Supplementary browser clock timestamp
   pageUrl: string;
   referrer: string;
   userAgent?: string;
@@ -170,7 +220,7 @@ export interface StoreSettings {
   googleAnalyticsId?: string;
   enableGoogleAnalytics?: boolean;
 
-  // Manual Ad Spend per campaign (e.g. { "elixir_spring_tiktok": 450 })
+  // Manual Ad Spend per campaign
   campaignAdSpends?: Record<string, number>;
 }
 
@@ -239,6 +289,31 @@ export default defineSchema({
     .index('by_slug', ['slug'])
     .index('by_published', ['isPublished']),
 
+  visitors: defineTable({
+    visitorId: v.string(),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+    userAgent: v.optional(v.string()),
+  }).index('by_visitorId', ['visitorId']),
+
+  sessions: defineTable({
+    sessionId: v.string(),
+    visitorId: v.string(),
+    productId: v.string(),
+    landingPage: v.string(),
+    utmSource: v.string(),
+    utmMedium: v.string(),
+    utmCampaign: v.string(),
+    utmTerm: v.string(),
+    utmContent: v.string(),
+    referrer: v.string(),
+    startedAt: v.number(),
+    lastSeenAt: v.number(),
+  })
+    .index('by_sessionId', ['sessionId'])
+    .index('by_visitorId', ['visitorId'])
+    .index('by_product', ['productId']),
+
   orders: defineTable({
     orderNumber: v.string(),
     productId: v.string(),
@@ -252,15 +327,19 @@ export default defineSchema({
     variants: v.any(),
     notes: v.optional(v.string()),
     total: v.number(),
+    amount: v.optional(v.number()),
     currency: v.string(),
     status: v.union(
       v.literal('NEW'),
+      v.literal('PENDING'),
       v.literal('CONFIRMED'),
       v.literal('PROCESSING'),
       v.literal('SHIPPED'),
       v.literal('DELIVERED'),
-      v.literal('CANCELLED')
+      v.literal('CANCELLED'),
+      v.literal('FAILED')
     ),
+    visitorId: v.optional(v.string()),
     sessionId: v.optional(v.string()),
     eventId: v.optional(v.string()),
     utmSource: v.string(),
@@ -269,10 +348,41 @@ export default defineSchema({
     utmContent: v.string(),
     utmTerm: v.string(),
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
   })
     .index('by_product', ['productId'])
     .index('by_status', ['status'])
     .index('by_phone', ['phone']),
+
+  orderStatusHistory: defineTable({
+    orderId: v.string(),
+    orderNumber: v.optional(v.string()),
+    productId: v.optional(v.string()),
+    previousStatus: v.union(
+      v.null(),
+      v.literal('NEW'),
+      v.literal('PENDING'),
+      v.literal('CONFIRMED'),
+      v.literal('PROCESSING'),
+      v.literal('SHIPPED'),
+      v.literal('DELIVERED'),
+      v.literal('CANCELLED'),
+      v.literal('FAILED')
+    ),
+    newStatus: v.union(
+      v.literal('NEW'),
+      v.literal('PENDING'),
+      v.literal('CONFIRMED'),
+      v.literal('PROCESSING'),
+      v.literal('SHIPPED'),
+      v.literal('DELIVERED'),
+      v.literal('CANCELLED'),
+      v.literal('FAILED')
+    ),
+    timestamp: v.number(),
+  })
+    .index('by_order', ['orderId'])
+    .index('by_timestamp', ['timestamp']),
 
   templates: defineTable({
     id: v.union(v.literal('classic-cod'), v.literal('premium'), v.literal('big-offer')),
@@ -303,10 +413,15 @@ export default defineSchema({
 
   analyticsEvents: defineTable({
     eventId: v.string(),
+    clientEventId: v.optional(v.string()),
     eventType: v.string(),
-    productId: v.string(),
+    visitorId: v.string(),
     sessionId: v.string(),
+    productId: v.string(),
+    ctaId: v.optional(v.string()),
     timestamp: v.number(),
+    createdAt: v.number(),
+    clientTimestamp: v.optional(v.number()),
     pageUrl: v.string(),
     referrer: v.string(),
     userAgent: v.optional(v.string()),
@@ -318,6 +433,7 @@ export default defineSchema({
     metadata: v.optional(v.any()),
   })
     .index('by_product', ['productId'])
-    .index('by_timestamp', ['timestamp']),
+    .index('by_timestamp', ['timestamp'])
+    .index('by_visitor', ['visitorId'])
+    .index('by_session', ['sessionId']),
 });
-

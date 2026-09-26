@@ -8,6 +8,7 @@ interface StickyOrderButtonProps {
   ctaText?: string;
   productId?: string;
   productName?: string;
+  isPreview?: boolean;
 }
 
 export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
@@ -16,6 +17,7 @@ export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
   ctaText = 'اطلب الآن بالدفع عند الاستلام',
   productId,
   productName,
+  isPreview = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -40,24 +42,22 @@ export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
   }, []);
 
   const scrollToForm = () => {
-    if (productId) {
+    if (productId && !isPreview) {
       trackEvent({
         eventType: 'CTA_CLICK',
         productId,
         productName,
         price,
         currency,
-        metadata: { elementId: 'sticky_cta' },
+        ctaId: 'sticky_cta',
+        metadata: { ctaId: 'sticky_cta', elementId: 'sticky_cta' },
+        isPreview,
       });
     }
 
     const formEl = document.getElementById('order-form-container');
     if (formEl) {
       formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setTimeout(() => {
-        const input = formEl.querySelector('input') as HTMLInputElement | null;
-        input?.focus();
-      }, 500);
     }
   };
 
@@ -84,7 +84,9 @@ export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
           className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-sm shadow-md hover:from-amber-400 hover:to-amber-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <ShoppingCart className="w-4 h-4 text-slate-950" />
-          <span>اطلب الآن — {price} {currency}</span>
+          <span>
+            {ctaText ? ctaText : 'اطلب الآن'} — {price} {currency}
+          </span>
         </button>
       </div>
     </div>

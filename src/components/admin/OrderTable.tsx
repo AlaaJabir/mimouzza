@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { Order, OrderStatus } from '../../../convex/schema';
 import { useQuery, useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
+import { BUSINESS_TIMEZONE } from '../../../convex/analytics';
 import {
   Search,
   Phone,
@@ -11,11 +12,13 @@ import {
   FileSpreadsheet,
   Trash2,
   CheckCircle2,
+  History,
 } from 'lucide-react';
 
 export const OrderTable: React.FC = () => {
   const orders = useQuery(api.orders.list);
   const products = useQuery(api.products.list);
+  const statusHistory = useQuery(api.orders.getStatusHistory);
   const updateStatus = useMutation(api.orders.updateStatus);
   const removeOrder = useMutation(api.orders.remove);
 
@@ -52,6 +55,7 @@ export const OrderTable: React.FC = () => {
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('ar-MA', {
+      timeZone: BUSINESS_TIMEZONE,
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -70,17 +74,22 @@ export const OrderTable: React.FC = () => {
   };
 
   const statusOptions: { value: OrderStatus; label: string }[] = [
-    { value: 'NEW', label: 'جديد (NEW)' },
+    { value: 'NEW', label: 'جديد (PENDING / NEW)' },
     { value: 'CONFIRMED', label: 'مؤكد (CONFIRMED)' },
     { value: 'PROCESSING', label: 'قيد التجهيز (PROCESSING)' },
     { value: 'SHIPPED', label: 'تم الشحن (SHIPPED)' },
     { value: 'DELIVERED', label: 'تم التسليم (DELIVERED)' },
     { value: 'CANCELLED', label: 'ملغي (CANCELLED)' },
+    { value: 'FAILED', label: 'فشل التوصيل (FAILED)' },
   ];
 
   const getStatusLabel = (status: OrderStatus) => {
     return statusOptions.find((s) => s.value === status)?.label || status;
   };
+
+  const selectedOrderHistory = selectedOrder
+    ? (statusHistory || []).filter((h) => h.orderId === selectedOrder._id)
+    : [];
 
   const handleExportExcel = () => {
     if (filteredOrders.length === 0) return;
@@ -107,6 +116,8 @@ export const OrderTable: React.FC = () => {
         'العملة (Currency)': order.currency || 'DH',
         'الحالة (Status)': getStatusLabel(order.status),
         'ملاحظات الزبون (Notes)': order.notes || '',
+        'معرّف الزائر (Visitor ID)': order.visitorId || '',
+        'معرّف الجلسة (Session ID)': order.sessionId || '',
         'مصدر الزيارة (UTM Source)': order.utmSource || 'Direct',
         'الحملة الإعلانية (UTM Campaign)': order.utmCampaign || '',
         'الوسيط (UTM Medium)': order.utmMedium || '',
@@ -115,24 +126,25 @@ export const OrderTable: React.FC = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
 
-    // Auto-size columns for clean readability in Excel
     worksheet['!cols'] = [
-      { wch: 15 }, // Order ID
-      { wch: 18 }, // Date
-      { wch: 24 }, // Customer Name
-      { wch: 16 }, // Phone
-      { wch: 22 }, // City
-      { wch: 36 }, // Address
-      { wch: 34 }, // Product
-      { wch: 28 }, // Variants
-      { wch: 10 }, // Qty
-      { wch: 14 }, // Total
-      { wch: 10 }, // Currency
-      { wch: 20 }, // Status
-      { wch: 28 }, // Notes
-      { wch: 16 }, // UTM Source
-      { wch: 22 }, // UTM Campaign
-      { wch: 14 }, // UTM Medium
+      { wch: 15 },
+      { wch: 18 },
+      { wch: 24 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 36 },
+      { wch: 34 },
+      { wch: 28 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 28 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 14 },
     ];
 
     const workbook = XLSX.utils.book_new();
@@ -195,7 +207,7 @@ export const OrderTable: React.FC = () => {
         {/* Count & Excel Export Action */}
         <div className="flex items-center justify-between sm:justify-end gap-3">
           <div className="text-xs text-slate-500 font-semibold">
-            عدد الطلبيات:{' '}
+            عدد الطلبيات الحقيقية:{' '}
             <span className="text-slate-900 font-bold font-mono">{filteredOrders.length}</span>
           </div>
 
@@ -240,7 +252,7 @@ export const OrderTable: React.FC = () => {
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
                     <ShoppingBag className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                    <div>لا توجد طلبيات مطابقة للبحث</div>
+                    <div className="font-semibold text-slate-500">No data yet — لا توجد طلبيات مسجلة بعد</div>
                   </td>
                 </tr>
               ) : (
@@ -347,7 +359,7 @@ export const OrderTable: React.FC = () => {
           onClick={() => setSelectedOrder(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-right border border-slate-200"
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-right border border-slate-200 max-h-[90vh] overflow-y-auto"
             dir="rtl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -430,15 +442,55 @@ export const OrderTable: React.FC = () => {
               </div>
             </div>
 
-            {/* Marketing UTM Details */}
-            <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200/60 text-[11px] space-y-1">
-              <div className="font-bold text-blue-900 mb-1">بيانات التتبع الإعلاني (Marketing Attribution):</div>
-              <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono">
-                <div>Source: <span className="font-bold text-slate-900">{selectedOrder.utmSource || 'none'}</span></div>
-                <div>Medium: <span className="font-bold text-slate-900">{selectedOrder.utmMedium || 'none'}</span></div>
-                <div>Campaign: <span className="font-bold text-slate-900">{selectedOrder.utmCampaign || 'none'}</span></div>
-                <div>Content: <span className="font-bold text-slate-900">{selectedOrder.utmContent || 'none'}</span></div>
+            {/* Marketing & Session Attribution Details */}
+            <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200/60 text-[11px] space-y-1.5">
+              <div className="font-bold text-blue-900 mb-1">بيانات التتبع والجلسة (Attribution & Identity):</div>
+              <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono" dir="ltr">
+                <div className="truncate">
+                  Visitor: <span className="font-bold text-slate-900">{selectedOrder.visitorId || '—'}</span>
+                </div>
+                <div className="truncate">
+                  Session: <span className="font-bold text-slate-900">{selectedOrder.sessionId || '—'}</span>
+                </div>
+                <div>
+                  Source: <span className="font-bold text-slate-900">{selectedOrder.utmSource || 'direct'}</span>
+                </div>
+                <div>
+                  Medium: <span className="font-bold text-slate-900">{selectedOrder.utmMedium || 'none'}</span>
+                </div>
+                <div className="col-span-2 truncate">
+                  Campaign: <span className="font-bold text-slate-900">{selectedOrder.utmCampaign || 'none'}</span>
+                </div>
               </div>
+            </div>
+
+            {/* Order Status History Audit Log */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] space-y-2">
+              <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-slate-500" />
+                <span>سجل تغييرات الحالة (Order Status History)</span>
+              </div>
+              {selectedOrderHistory.length === 0 ? (
+                <div className="text-slate-400">لا توجد تغييرات حالة سابقة مسجلة</div>
+              ) : (
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {selectedOrderHistory.map((item) => (
+                    <div
+                      key={item._id}
+                      className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded border border-slate-200/80 font-mono"
+                    >
+                      <div className="flex items-center gap-1.5" dir="ltr">
+                        <span className="text-slate-500">{item.previousStatus || 'CREATED'}</span>
+                        <span className="text-slate-400">→</span>
+                        <span className="font-bold text-emerald-700">{item.newStatus}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400" dir="ltr">
+                        {formatDate(item.timestamp)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Status & Delete Controls */}

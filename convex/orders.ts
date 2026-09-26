@@ -15,6 +15,13 @@ export const getByProductId = {
   },
 };
 
+export const getStatusHistory = {
+  name: 'orders:getStatusHistory',
+  query: (args?: { orderId?: string }) => {
+    return db.getOrderStatusHistory(args?.orderId);
+  },
+};
+
 export const checkDuplicate = {
   name: 'orders:checkDuplicate',
   query: (args: { productId: string; phone: string; timeWindowMinutes?: number }) => {
@@ -24,7 +31,7 @@ export const checkDuplicate = {
 
 export const create = {
   name: 'orders:create',
-  mutation: (args: Omit<Order, '_id' | 'orderNumber' | 'createdAt'>) => {
+  mutation: (args: Omit<Order, '_id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => {
     return db.createOrder(args);
   },
 };
@@ -50,16 +57,25 @@ export const getMetrics = {
     const products = db.getProducts();
 
     const totalOrders = orders.length;
-    const newOrders = orders.filter((o) => o.status === 'NEW').length;
+    const newOrders = orders.filter((o) => o.status === 'NEW' || o.status === 'PENDING').length;
     const confirmedOrders = orders.filter((o) =>
       ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(o.status)
     ).length;
     const deliveredOrders = orders.filter((o) => o.status === 'DELIVERED').length;
     const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED').length;
+    const failedOrders = orders.filter((o) => o.status === 'FAILED').length;
 
     const totalRevenue = orders
-      .filter((o) => o.status !== 'CANCELLED')
-      .reduce((sum, o) => sum + o.total, 0);
+      .filter((o) => o.status !== 'CANCELLED' && o.status !== 'FAILED')
+      .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+    const confirmedRevenue = orders
+      .filter((o) => ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(o.status))
+      .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+    const deliveredRevenue = orders
+      .filter((o) => o.status === 'DELIVERED')
+      .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
     const totalProducts = products.length;
     const publishedProducts = products.filter((p) => p.isPublished).length;
@@ -70,7 +86,10 @@ export const getMetrics = {
       confirmedOrders,
       deliveredOrders,
       cancelledOrders,
+      failedOrders,
       totalRevenue,
+      confirmedRevenue,
+      deliveredRevenue,
       totalProducts,
       publishedProducts,
     };

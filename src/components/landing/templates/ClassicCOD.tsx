@@ -9,7 +9,14 @@ import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { trackEvent } from '../../../lib/tracking';
-import { Star, ShieldCheck, Truck, ShoppingCart, Award, Check, MessageCircle, AlertCircle } from 'lucide-react';
+import {
+  Star,
+  ShoppingCart,
+  Award,
+  Check,
+  MessageCircle,
+  AlertCircle,
+} from 'lucide-react';
 
 interface ClassicCODProps {
   product: Product;
@@ -20,63 +27,82 @@ interface ClassicCODProps {
     utmContent?: string;
     utmTerm?: string;
   };
+  isPreview?: boolean;
 }
 
-export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) => {
+export const ClassicCOD: React.FC<ClassicCODProps> = ({
+  product,
+  utmParams,
+  isPreview = false,
+}) => {
   const discountPct =
     product.compareAtPrice > product.price
       ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
       : undefined;
 
-  // Track initial PAGE_VIEW and VIEW_CONTENT on mount
+  // Track initial PAGE_VIEW and PRODUCT_VIEW on mount (only on real public visits, never in preview)
   useEffect(() => {
+    if (isPreview) return;
     trackEvent({
       eventType: 'PAGE_VIEW',
       productId: product._id,
       productName: product.name,
       price: product.price,
       currency: product.currency,
+      isPreview,
     });
     trackEvent({
-      eventType: 'VIEW_CONTENT',
+      eventType: 'PRODUCT_VIEW',
       productId: product._id,
       productName: product.name,
       price: product.price,
       currency: product.currency,
+      isPreview,
     });
-  }, [product._id]);
+  }, [product._id, isPreview]);
 
   const handleHeroCtaClick = () => {
-    trackEvent({
-      eventType: 'CTA_CLICK',
-      productId: product._id,
-      productName: product.name,
-      price: product.price,
-      currency: product.currency,
-      metadata: { elementId: 'hero_cta' },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'CTA_CLICK',
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        currency: product.currency,
+        ctaId: 'hero_cta',
+        metadata: { ctaId: 'hero_cta', elementId: 'hero_cta' },
+        isPreview,
+      });
+    }
     document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleMidCtaClick = () => {
-    trackEvent({
-      eventType: 'CTA_CLICK',
-      productId: product._id,
-      productName: product.name,
-      price: product.price,
-      currency: product.currency,
-      metadata: { elementId: 'mid_page_cta' },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'CTA_CLICK',
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        currency: product.currency,
+        ctaId: 'mid_page_cta',
+        metadata: { ctaId: 'mid_page_cta', elementId: 'mid_page_cta' },
+        isPreview,
+      });
+    }
     document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleWhatsAppClick = () => {
-    trackEvent({
-      eventType: 'WHATSAPP_CLICK',
-      productId: product._id,
-      productName: product.name,
-      metadata: { whatsappNumber: product.whatsappNumber },
-    });
+    if (!isPreview) {
+      trackEvent({
+        eventType: 'WHATSAPP_CLICK',
+        productId: product._id,
+        productName: product.name,
+        metadata: { whatsappNumber: product.whatsappNumber },
+        isPreview,
+      });
+    }
     const message = encodeURIComponent(`السلام عليكم، أريد الاستفسار بخصوص منتج: ${product.name}`);
     window.open(`https://wa.me/${product.whatsappNumber}?text=${message}`, '_blank');
   };
@@ -84,19 +110,24 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 md:pb-12" dir="rtl">
       {/* 1. Top shipping/trust announcement */}
-      <TopAnnouncementBar text={product.shippingText || '🚚 التوصيل مجاني لجميع مدن المغرب — الدفع نقداً عند الاستلام'} />
+      <TopAnnouncementBar
+        text={
+          product.shippingText ||
+          '🚚 التوصيل مجاني لجميع مدن المغرب — الدفع نقداً عند الاستلام'
+        }
+      />
 
       {/* Main Container (~2cm wider on each side on desktop) */}
       <div className="max-w-[840px] mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* 2 & 3. Hero Section: Image on top, title, price, button, and guarantees */}
         <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-5">
-          {/* Image on top (image tji foq) */}
           <ProductGallery
             images={product.images}
             productName={product.name}
             badgeText={product.badgeText}
             discountPercentage={discountPct}
             productId={product._id}
+            isPreview={isPreview}
           />
 
           {/* Product Title directly under image */}
@@ -168,9 +199,10 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
             </div>
           )}
 
-          {/* CTA Order Button */}
+          {/* CTA Order Button (hero_cta) */}
           <div className="space-y-2.5">
             <button
+              id="hero_cta"
               onClick={handleHeroCtaClick}
               className="w-full py-4 px-6 rounded-xl font-extrabold text-base sm:text-lg md:text-xl bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5"
             >
@@ -203,7 +235,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
             </div>
           </div>
 
-          {/* Live Fake Orders Ticker (between Price/CTA box and Description) */}
+          {/* Live Orders Ticker (between Price/CTA box and Description) */}
           <div className="pt-1">
             <LiveOrdersTicker product={product} />
           </div>
@@ -226,14 +258,17 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
               <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-900">
                 لماذا يفضل زبناؤنا هذا المنتج؟
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">ضمانات وجودة استثنائية مصممة لراحتك</p>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                ضمانات وجودة استثنائية مصممة لراحتك
+              </p>
             </div>
             <Benefits benefits={product.benefits} variant="cards" />
           </div>
         )}
 
         {/* Detailed Product Description & Story + Description Images */}
-        {(product.description || (product.descriptionImages && product.descriptionImages.length > 0)) && (
+        {(product.description ||
+          (product.descriptionImages && product.descriptionImages.length > 0)) && (
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-5">
             <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
               <Award className="w-5 h-5 text-amber-600" />
@@ -267,6 +302,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
 
             <div className="pt-4 text-center">
               <button
+                id="mid_page_cta"
                 type="button"
                 onClick={handleMidCtaClick}
                 className="py-3.5 px-8 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-extrabold text-sm sm:text-base inline-flex items-center gap-2 cursor-pointer"
@@ -279,14 +315,11 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
         )}
 
         {/* Trust Badges */}
-        <TrustBadges
-          shippingText={product.shippingText}
-          returnPolicy={product.returnPolicy}
-        />
+        <TrustBadges shippingText={product.shippingText} returnPolicy={product.returnPolicy} />
 
         {/* COD Order Form */}
         <div className="pt-2">
-          <CODForm product={product} utmParams={utmParams} />
+          <CODForm product={product} utmParams={utmParams} isPreview={isPreview} />
         </div>
 
         {/* FAQ Section */}
@@ -300,6 +333,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
         ctaText={product.ctaText}
         productId={product._id}
         productName={product.name}
+        isPreview={isPreview}
       />
     </div>
   );

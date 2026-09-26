@@ -1,7 +1,12 @@
 /**
  * Production Tracking & Attribution Engine
- * Handles anonymous Session tracking, First/Last touch attribution,
- * Convex analytics logging, dynamic Meta Pixel, TikTok Pixel, and GA injection.
+ * Handles:
+ *   - Stable anonymous Visitor identification (visitorId = v_xxxxxxxxx via Cookie + localStorage)
+ *   - Session management with 30-minute inactivity expiration (sessionId = s_xxxxxxxxx)
+ *   - First-touch & Last-touch UTM attribution
+ *   - Strict deduplication against React re-renders / StrictMode double-mounts
+ *   - Authoritative persistence to Convex / Server DB
+ *   - Dynamic Meta Pixel, TikTok Pixel, and GA4 dispatch
  */
 
 import { AnalyticsEventType } from '../../convex/schema';
@@ -17,8 +22,13 @@ declare global {
   }
 }
 
-// Session & Attribution Storage Keys
-const SESSION_KEY = 'cod_analytics_session_id';
+// Storage Keys & Session Timeout Rule (30 minutes of inactivity)
+const VISITOR_STORAGE_KEY = 'cod_analytics_visitor_id';
+const VISITOR_COOKIE_NAME = 'cod_visitor_id';
+const SESSION_STATE_KEY = 'cod_analytics_session_state';
+const SESSION_ID_KEY = 'cod_analytics_session_id';
+const SESSION_INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
 const FIRST_TOUCH_KEY = 'cod_first_touch_utm';
 const LAST_TOUCH_KEY = 'cod_last_touch_utm';
 const LOCAL_DETECTED_EVENTS_KEY = 'cod_local_diagnostics_events';
@@ -31,21 +41,111 @@ export interface UtmAttribution {
   utmTerm: string;
 }
 
+interface StoredSessionState {
+  sessionId: string;
+  visitorId: string;
+  startedAt: number;
+  lastActivityAt: number;
+}
+
+// In-memory deduplication sets for the current page load lifecycle
+const pageLoadTrackedKeys = new Set<string>();
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function setCookie(name: string, value: string, maxAgeSeconds = 31536000) {
+  if (typeof document === 'undefined') return;
+  try {
+    document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAgeSeconds}; path=/; SameSite=Lax`;
+  } catch {}
+}
+
 /**
- * Returns or creates a persistent anonymous session ID
+ * Returns or creates a stable anonymous visitorId (v_xxxxxxxxx).
+ * Persists across page reloads and returning visits via first-party cookie + localStorage.
+ */
+export function getVisitorId(): string {
+  if (typeof window === 'undefined') return 'v_server_unknown';
+
+  let visitorId: string | null = null;
+  try {
+    visitorId = localStorage.getItem(VISITOR_STORAGE_KEY) || getCookie(VISITOR_COOKIE_NAME);
+  } catch {
+    visitorId = getCookie(VISITOR_COOKIE_NAME);
+  }
+
+  if (!visitorId || !visitorId.startsWith('v_')) {
+    visitorId =
+      'v_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 10);
+  }
+
+  // Ensure both localStorage and first-party cookie stay synchronized
+  try {
+    localStorage.setItem(VISITOR_STORAGE_KEY, visitorId);
+  } catch {}
+  setCookie(VISITOR_COOKIE_NAME, visitorId, 365 * 24 * 60 * 60);
+
+  return visitorId;
+}
+
+/**
+ * Returns or creates a real sessionId (s_xxxxxxxxx) with a strict 30-minute inactivity expiration rule.
+ * One visitor (v_123) can have multiple sessions (s_001, later s_002).
  */
 export function getSessionId(): string {
-  if (typeof window === 'undefined') return 'sess_server_unknown';
+  if (typeof window === 'undefined') return 's_server_unknown';
 
-  let sessionId = sessionStorage.getItem(SESSION_KEY);
-  if (!sessionId) {
-    // Generate an anonymous ID: sess_ + timestamp + random string
-    sessionId = 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
-    try {
-      sessionStorage.setItem(SESSION_KEY, sessionId);
-    } catch {}
-  }
-  return sessionId;
+  const visitorId = getVisitorId();
+  const now = Date.now();
+
+  try {
+    const rawState =
+      localStorage.getItem(SESSION_STATE_KEY) || sessionStorage.getItem(SESSION_STATE_KEY);
+    if (rawState) {
+      const parsed: StoredSessionState = JSON.parse(rawState);
+      const isExpired = now - (parsed.lastActivityAt || 0) > SESSION_INACTIVITY_TIMEOUT_MS;
+      if (
+        parsed.sessionId &&
+        parsed.sessionId.startsWith('s_') &&
+        parsed.visitorId === visitorId &&
+        !isExpired
+      ) {
+        // Refresh lastActivityAt
+        const updated: StoredSessionState = {
+          ...parsed,
+          lastActivityAt: now,
+        };
+        const serialized = JSON.stringify(updated);
+        localStorage.setItem(SESSION_STATE_KEY, serialized);
+        sessionStorage.setItem(SESSION_STATE_KEY, serialized);
+        sessionStorage.setItem(SESSION_ID_KEY, updated.sessionId);
+        return updated.sessionId;
+      }
+    }
+  } catch {}
+
+  // Create a new session
+  const newSessionId =
+    's_' + now.toString(36) + '_' + Math.random().toString(36).substring(2, 9);
+  const newState: StoredSessionState = {
+    sessionId: newSessionId,
+    visitorId,
+    startedAt: now,
+    lastActivityAt: now,
+  };
+
+  try {
+    const serialized = JSON.stringify(newState);
+    localStorage.setItem(SESSION_STATE_KEY, serialized);
+    sessionStorage.setItem(SESSION_STATE_KEY, serialized);
+    sessionStorage.setItem(SESSION_ID_KEY, newSessionId);
+  } catch {}
+
+  return newSessionId;
 }
 
 /**
@@ -64,11 +164,11 @@ export function captureAndStoreUtm(): { firstTouch: UtmAttribution; lastTouch: U
 
   const params = new URLSearchParams(window.location.search);
   const currentUtm: UtmAttribution = {
-    utmSource: params.get('utm_source') || '',
-    utmMedium: params.get('utm_medium') || '',
-    utmCampaign: params.get('utm_campaign') || '',
-    utmContent: params.get('utm_content') || '',
-    utmTerm: params.get('utm_term') || '',
+    utmSource: (params.get('utm_source') || '').trim(),
+    utmMedium: (params.get('utm_medium') || '').trim(),
+    utmCampaign: (params.get('utm_campaign') || '').trim(),
+    utmContent: (params.get('utm_content') || '').trim(),
+    utmTerm: (params.get('utm_term') || '').trim(),
   };
 
   const hasCurrentUtm = Object.values(currentUtm).some((val) => Boolean(val));
@@ -90,10 +190,13 @@ export function captureAndStoreUtm(): { firstTouch: UtmAttribution; lastTouch: U
   try {
     if (hasCurrentUtm) {
       localStorage.setItem(LAST_TOUCH_KEY, JSON.stringify(currentUtm));
+      sessionStorage.setItem(LAST_TOUCH_KEY, JSON.stringify(currentUtm));
       lastTouch = currentUtm;
     } else {
-      const storedLast = localStorage.getItem(LAST_TOUCH_KEY);
-      if (storedLast) lastTouch = JSON.parse(storedLast);
+      const storedSessionLast = sessionStorage.getItem(LAST_TOUCH_KEY);
+      const storedLocalLast = localStorage.getItem(LAST_TOUCH_KEY);
+      if (storedSessionLast) lastTouch = JSON.parse(storedSessionLast);
+      else if (storedLocalLast) lastTouch = JSON.parse(storedLocalLast);
       else if (firstTouch.utmSource) lastTouch = firstTouch;
     }
   } catch {}
@@ -102,7 +205,7 @@ export function captureAndStoreUtm(): { firstTouch: UtmAttribution; lastTouch: U
 }
 
 /**
- * Diagnostics local event recorder
+ * Diagnostics local event recorder (stored only in browser sessionStorage for pixel diagnostics)
  */
 export interface DiagnosticEventRecord {
   id: string;
@@ -123,7 +226,6 @@ export function recordDiagnosticEvent(event: Omit<DiagnosticEventRecord, 'id' | 
       id: 'diag_' + Math.random().toString(36).substring(2, 9),
       timestamp: Date.now(),
     });
-    // keep latest 50
     sessionStorage.setItem(LOCAL_DETECTED_EVENTS_KEY, JSON.stringify(list.slice(0, 50)));
     window.dispatchEvent(new Event('cod_diagnostics_updated'));
   } catch {}
@@ -250,36 +352,115 @@ export function initMarketingPixels(options: {
       console.warn('TikTok pixel script initialization failed:', e);
     }
   }
+
+  // 3. Google Analytics 4
+  if (options.enableGA && options.gaId && !gaInjected) {
+    try {
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(options.gaId)}`;
+      document.head.appendChild(script);
+
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () {
+        window.dataLayer!.push(arguments);
+      };
+      window.gtag('js', new Date());
+      window.gtag('config', options.gaId);
+      gaInjected = true;
+      recordDiagnosticEvent({
+        eventType: 'Pixel_Init',
+        target: 'Google',
+        metadata: { gaId: options.gaId },
+      });
+    } catch (e) {
+      console.warn('Google Analytics initialization failed:', e);
+    }
+  }
 }
 
 /**
- * Universal Event Tracker:
- * Records to Convex DB and fires Meta/TikTok/GA events with server-side ready eventId deduplication.
+ * Universal Real Event Tracker:
+ * Persists real user events to Convex / Server DB with strict deduplication
+ * and dispatches to configured marketing pixels.
  */
 export function trackEvent(params: {
   eventType: AnalyticsEventType;
   productId: string;
+  ctaId?: string;
   metadata?: Record<string, any>;
   customEventId?: string;
   productName?: string;
   price?: number;
   currency?: string;
+  isPreview?: boolean;
+  isDiagnosticTest?: boolean;
 }): string {
   if (typeof window === 'undefined') return '';
 
+  // Never record preview interactions into production analytics
+  if (params.isPreview || params.metadata?.isPreview) {
+    return '';
+  }
+
+  const visitorId = getVisitorId();
   const sessionId = getSessionId();
   const { lastTouch } = captureAndStoreUtm();
-  const eventId = params.customEventId || 'ev_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
+  const ctaId = params.ctaId || params.metadata?.ctaId || params.metadata?.elementId;
+  const pagePath = window.location.pathname + window.location.search;
 
-  // 1. Log to Convex database
+  // Diagnostic-only test events: record in browser diagnostics panel ONLY, never in production analytics DB
+  if (params.isDiagnosticTest || params.metadata?.isTest) {
+    const diagId = 'diag_test_' + Date.now().toString(36);
+    recordDiagnosticEvent({
+      eventType: params.eventType,
+      target: 'Internal',
+      metadata: { productId: params.productId, ctaId, isDiagnosticTest: true },
+    });
+    return diagId;
+  }
+
+  // Prevent duplicate PAGE_VIEW, PRODUCT_VIEW, VIEW_CONTENT, FORM_VIEW, FORM_START from React re-renders
+  if (
+    params.eventType === 'PAGE_VIEW' ||
+    params.eventType === 'PRODUCT_VIEW' ||
+    params.eventType === 'VIEW_CONTENT' ||
+    params.eventType === 'FORM_VIEW' ||
+    params.eventType === 'FORM_START'
+  ) {
+    const normalizedType =
+      params.eventType === 'VIEW_CONTENT' ? 'PRODUCT_VIEW' : params.eventType;
+    const dedupKey = `${sessionId}:${params.productId}:${normalizedType}:${window.location.pathname}`;
+    if (pageLoadTrackedKeys.has(dedupKey)) {
+      return `ev_dedup_${sessionId}_${params.productId}_${normalizedType}`;
+    }
+    pageLoadTrackedKeys.add(dedupKey);
+  }
+
+  const clientTimestamp = Date.now();
+  const eventId =
+    params.customEventId ||
+    (params.eventType === 'PAGE_VIEW' ||
+    params.eventType === 'PRODUCT_VIEW' ||
+    params.eventType === 'VIEW_CONTENT' ||
+    params.eventType === 'FORM_VIEW' ||
+    params.eventType === 'FORM_START'
+      ? `ev_${sessionId}_${params.productId}_${params.eventType}`
+      : `ev_${clientTimestamp.toString(36)}_${Math.random().toString(36).substring(2, 8)}`);
+
+  // 1. Persist to authoritative Convex / Server database
   try {
     db.logAnalyticsEvent({
       eventId,
+      clientEventId: eventId,
       eventType: params.eventType,
-      productId: params.productId,
+      visitorId,
       sessionId,
-      timestamp: Date.now(),
-      pageUrl: window.location.pathname + window.location.search,
+      productId: params.productId,
+      ctaId,
+      timestamp: clientTimestamp,
+      clientTimestamp,
+      pageUrl: pagePath,
       referrer: document.referrer || '',
       userAgent: navigator.userAgent || '',
       utmSource: lastTouch.utmSource || '',
@@ -287,16 +468,19 @@ export function trackEvent(params: {
       utmCampaign: lastTouch.utmCampaign || '',
       utmContent: lastTouch.utmContent || '',
       utmTerm: lastTouch.utmTerm || '',
-      metadata: params.metadata || {},
+      metadata: {
+        ...(params.metadata || {}),
+        ...(ctaId ? { ctaId, elementId: ctaId } : {}),
+      },
     });
 
     recordDiagnosticEvent({
       eventType: params.eventType,
       target: 'Internal',
-      metadata: { productId: params.productId, ...params.metadata },
+      metadata: { visitorId, sessionId, productId: params.productId, ctaId, ...params.metadata },
     });
   } catch (err) {
-    console.error('Error logging analytics event to Convex:', err);
+    console.error('Error logging analytics event to database:', err);
   }
 
   // 2. Dispatch to Meta Pixel (fbq)
@@ -308,6 +492,7 @@ export function trackEvent(params: {
           window.fbq('track', 'PageView', {}, fbEventId);
           recordDiagnosticEvent({ eventType: 'PageView', target: 'Meta' });
           break;
+        case 'PRODUCT_VIEW':
         case 'VIEW_CONTENT':
           window.fbq(
             'track',
@@ -324,14 +509,14 @@ export function trackEvent(params: {
           recordDiagnosticEvent({ eventType: 'ViewContent', target: 'Meta' });
           break;
         case 'CTA_CLICK':
-          window.fbq('trackCustom', 'CTA_Click', { elementId: params.metadata?.elementId }, fbEventId);
-          recordDiagnosticEvent({ eventType: 'CTA_Click', target: 'Meta' });
+          window.fbq('trackCustom', 'CTA_Click', { ctaId }, fbEventId);
+          recordDiagnosticEvent({ eventType: 'CTA_Click', target: 'Meta', metadata: { ctaId } });
           break;
         case 'FORM_START':
           window.fbq('track', 'InitiateCheckout', {}, fbEventId);
           recordDiagnosticEvent({ eventType: 'InitiateCheckout', target: 'Meta' });
           break;
-        case 'FORM_SUBMIT':
+        case 'ORDER_CREATED':
         case 'ORDER_SUCCESS':
           window.fbq(
             'track',
@@ -370,6 +555,7 @@ export function trackEvent(params: {
           window.ttq.page();
           recordDiagnosticEvent({ eventType: 'PageView', target: 'TikTok' });
           break;
+        case 'PRODUCT_VIEW':
         case 'VIEW_CONTENT':
           window.ttq.track(
             'ViewContent',
@@ -385,7 +571,7 @@ export function trackEvent(params: {
           recordDiagnosticEvent({ eventType: 'ViewContent', target: 'TikTok' });
           break;
         case 'CTA_CLICK':
-          window.ttq.track('ClickButton', { button_name: params.metadata?.elementId }, ttEventId);
+          window.ttq.track('ClickButton', { button_name: ctaId }, ttEventId);
           recordDiagnosticEvent({ eventType: 'ClickButton', target: 'TikTok' });
           break;
         case 'FORM_START':
@@ -396,6 +582,7 @@ export function trackEvent(params: {
           window.ttq.track('SubmitForm', {}, ttEventId);
           recordDiagnosticEvent({ eventType: 'SubmitForm', target: 'TikTok' });
           break;
+        case 'ORDER_CREATED':
         case 'ORDER_SUCCESS':
           window.ttq.track(
             'CompletePayment',

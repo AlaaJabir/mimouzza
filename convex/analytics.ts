@@ -1,42 +1,136 @@
 import { db } from './db';
-import { AnalyticsEvent, AnalyticsEventType, Order } from './schema';
+import { AnalyticsEvent, Order, OrderStatusHistory } from './schema';
+
+export const BUSINESS_TIMEZONE = 'Africa/Casablanca';
 
 export interface DateFilterArgs {
   range?: 'today' | 'yesterday' | '7days' | '30days' | 'month' | 'all';
   productId?: string;
 }
 
-export function computeDateBoundaries(range?: string): { since: number; until: number } {
-  const now = new Date();
-  const until = Date.now();
+interface CasablancaDateParts {
+  year: number;
+  month: number; // 1..12
+  day: number; // 1..31
+  hour: number; // 0..23
+  minute: number;
+  second: number;
+}
+
+const casablancaFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: BUSINESS_TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+export function getCasablancaParts(ms: number): CasablancaDateParts {
+  const parts = casablancaFormatter.formatToParts(new Date(ms));
+  const map: Record<string, number> = {};
+  for (const p of parts) {
+    if (p.type !== 'literal') {
+      map[p.type] = parseInt(p.value, 10);
+    }
+  }
+  return {
+    year: map.year || 1970,
+    month: map.month || 1,
+    day: map.day || 1,
+    hour: map.hour === 24 ? 0 : map.hour || 0,
+    minute: map.minute || 0,
+    second: map.second || 0,
+  };
+}
+
+/**
+ * Computes the exact UTC epoch millisecond for 00:00:00.000 in Africa/Casablanca
+ * on the given (year, month [1..12], day).
+ * Handles month/year rollovers (e.g. day <= 0) and Morocco DST transitions accurately.
+ */
+export function getCasablancaStartOfDay(year: number, month: number, day: number): number {
+  const targetUtcMidnight = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+
+  // First pass offset calculation
+  const p1 = getCasablancaParts(targetUtcMidnight);
+  const asUtc1 = Date.UTC(p1.year, p1.month - 1, p1.day, p1.hour, p1.minute, p1.second, 0);
+  const offset1 = asUtc1 - targetUtcMidnight;
+  const candidate = targetUtcMidnight - offset1;
+
+  // Second pass verification (handles DST transition boundary)
+  const p2 = getCasablancaParts(candidate);
+  const asUtc2 = Date.UTC(p2.year, p2.month - 1, p2.day, p2.hour, p2.minute, p2.second, 0);
+  const diff2 = asUtc2 - targetUtcMidnight;
+
+  return candidate - diff2;
+}
+
+export function formatCasablancaDateKey(ms: number): string {
+  const p = getCasablancaParts(ms);
+  const yyyy = String(p.year);
+  const mm = String(p.month).padStart(2, '0');
+  const dd = String(p.day).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Computes authoritative [since, until] date boundaries in Africa/Casablanca timezone.
+ */
+export function computeDateBoundaries(
+  range?: string,
+  nowMs: number = Date.now()
+): { since: number; until: number; timezone: string } {
+  const nowParts = getCasablancaParts(nowMs);
+  const { year, month, day } = nowParts;
 
   if (range === 'today') {
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    return { since: startOfToday, until };
+    const startOfToday = getCasablancaStartOfDay(year, month, day);
+    return { since: startOfToday, until: nowMs, timezone: BUSINESS_TIMEZONE };
   }
+
   if (range === 'yesterday') {
-    const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
-    const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - 1;
-    return { since: startOfYesterday, until: endOfYesterday };
+    const startOfYesterday = getCasablancaStartOfDay(year, month, day - 1);
+    const startOfToday = getCasablancaStartOfDay(year, month, day);
+    return {
+      since: startOfYesterday,
+      until: startOfToday - 1, // 23:59:59.999 of yesterday in Africa/Casablanca
+      timezone: BUSINESS_TIMEZONE,
+    };
   }
+
   if (range === '7days') {
-    return { since: until - 7 * 86400000, until };
+    // 7 calendar days including today in Africa/Casablanca (today + previous 6 full days)
+    const startOf7Days = getCasablancaStartOfDay(year, month, day - 6);
+    return { since: startOf7Days, until: nowMs, timezone: BUSINESS_TIMEZONE };
   }
+
   if (range === '30days') {
-    return { since: until - 30 * 86400000, until };
+    // 30 calendar days including today in Africa/Casablanca (today + previous 29 full days)
+    const startOf30Days = getCasablancaStartOfDay(year, month, day - 29);
+    return { since: startOf30Days, until: nowMs, timezone: BUSINESS_TIMEZONE };
   }
+
   if (range === 'month') {
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    return { since: startOfMonth, until };
+    // 1st of current month 00:00:00.000 in Africa/Casablanca through current time
+    const startOfMonth = getCasablancaStartOfDay(year, month, 1);
+    return { since: startOfMonth, until: nowMs, timezone: BUSINESS_TIMEZONE };
   }
 
   // 'all'
-  return { since: 0, until };
+  return { since: 0, until: nowMs, timezone: BUSINESS_TIMEZONE };
+}
+
+function round1(val: number): number {
+  if (!Number.isFinite(val) || isNaN(val)) return 0;
+  return Math.round(val * 10) / 10;
 }
 
 export const logEvent = {
   name: 'analytics:logEvent',
-  mutation: (args: Omit<AnalyticsEvent, '_id'>) => {
+  mutation: (args: Omit<AnalyticsEvent, '_id' | 'createdAt'> & { createdAt?: number }) => {
     return db.logAnalyticsEvent(args);
   },
 };
@@ -44,7 +138,7 @@ export const logEvent = {
 export const getFunnelMetrics = {
   name: 'analytics:getFunnelMetrics',
   query: (args?: DateFilterArgs) => {
-    const { since, until } = computeDateBoundaries(args?.range);
+    const { since, until, timezone } = computeDateBoundaries(args?.range);
     const events = db.getAnalyticsEvents({
       productId: args?.productId,
       since,
@@ -57,13 +151,33 @@ export const getFunnelMetrics = {
       return matchProduct && matchTime;
     });
 
+    // Separate Unique Visitors (visitorId) from Sessions (sessionId)
+    const visitorSet = new Set<string>();
     const sessionSet = new Set<string>();
+
     events.forEach((e) => {
+      if (e.visitorId) visitorSet.add(e.visitorId);
+      else if (e.sessionId) visitorSet.add(e.sessionId);
+
       if (e.sessionId) sessionSet.add(e.sessionId);
     });
 
-    const visitors = sessionSet.size;
-    const productViews = events.filter((e) => e.eventType === 'VIEW_CONTENT' || e.eventType === 'PAGE_VIEW').length;
+    orders.forEach((o) => {
+      if (o.visitorId) visitorSet.add(o.visitorId);
+      else if (o.sessionId) visitorSet.add(o.sessionId);
+
+      if (o.sessionId) sessionSet.add(o.sessionId);
+    });
+
+    const visitors = visitorSet.size;
+    const sessions = sessionSet.size;
+
+    const pageViews = events.filter((e) => e.eventType === 'PAGE_VIEW').length;
+    const rawProductViews = events.filter(
+      (e) => e.eventType === 'PRODUCT_VIEW' || e.eventType === 'VIEW_CONTENT'
+    ).length;
+    const productViews = rawProductViews > 0 ? rawProductViews : pageViews;
+
     const ctaClicks = events.filter((e) => e.eventType === 'CTA_CLICK').length;
     const formViews = events.filter((e) => e.eventType === 'FORM_VIEW').length;
     const formStarts = events.filter((e) => e.eventType === 'FORM_START').length;
@@ -71,26 +185,47 @@ export const getFunnelMetrics = {
     const whatsappClicks = events.filter((e) => e.eventType === 'WHATSAPP_CLICK').length;
 
     const totalOrders = orders.length;
+    const newOrders = orders.filter((o) => o.status === 'NEW' || o.status === 'PENDING').length;
     const confirmedOrders = orders.filter((o) =>
       ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(o.status)
     ).length;
     const deliveredOrders = orders.filter((o) => o.status === 'DELIVERED').length;
     const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED').length;
+    const failedOrders = orders.filter((o) => o.status === 'FAILED').length;
 
+    // Revenue calculations strictly from persisted orders
     const totalRevenue = orders
-      .filter((o) => o.status !== 'CANCELLED')
-      .reduce((sum, o) => sum + o.total, 0);
+      .filter((o) => o.status !== 'CANCELLED' && o.status !== 'FAILED')
+      .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
-    // Calculated Conversion Rates
-    const ctaCtr = productViews > 0 ? (ctaClicks / productViews) * 100 : 0;
-    const formStartRate = ctaClicks > 0 ? (formStarts / ctaClicks) * 100 : 0;
+    const confirmedRevenue = orders
+      .filter((o) => ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(o.status))
+      .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+    const deliveredRevenue = orders
+      .filter((o) => o.status === 'DELIVERED')
+      .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+    // Calculated Conversion Rates (safe against division by zero)
+    const viewBase = productViews > 0 ? productViews : pageViews;
+    const ctaCtr = viewBase > 0 ? (ctaClicks / viewBase) * 100 : 0;
+    const formStartRate =
+      ctaClicks > 0
+        ? (formStarts / ctaClicks) * 100
+        : visitors > 0
+          ? (formStarts / visitors) * 100
+          : 0;
+    const formToOrderRate = formStarts > 0 ? (totalOrders / formStarts) * 100 : 0;
     const orderConversionRate = visitors > 0 ? (totalOrders / visitors) * 100 : 0;
+    const sessionConversionRate = sessions > 0 ? (totalOrders / sessions) * 100 : 0;
     const confirmationRate = totalOrders > 0 ? (confirmedOrders / totalOrders) * 100 : 0;
     const deliveryRate = confirmedOrders > 0 ? (deliveredOrders / confirmedOrders) * 100 : 0;
     const cancellationRate = totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0;
 
     return {
       visitors,
+      sessions,
+      pageViews,
       productViews,
       ctaClicks,
       formViews,
@@ -98,16 +233,25 @@ export const getFunnelMetrics = {
       formSubmissions,
       whatsappClicks,
       totalOrders,
+      newOrders,
       confirmedOrders,
       deliveredOrders,
       cancelledOrders,
+      failedOrders,
       totalRevenue,
-      ctaCtr: Math.round(ctaCtr * 10) / 10,
-      formStartRate: Math.round(formStartRate * 10) / 10,
-      orderConversionRate: Math.round(orderConversionRate * 10) / 10,
-      confirmationRate: Math.round(confirmationRate * 10) / 10,
-      deliveryRate: Math.round(deliveryRate * 10) / 10,
-      cancellationRate: Math.round(cancellationRate * 10) / 10,
+      confirmedRevenue,
+      deliveredRevenue,
+      ctaCtr: round1(ctaCtr),
+      formStartRate: round1(formStartRate),
+      formToOrderRate: round1(formToOrderRate),
+      orderConversionRate: round1(orderConversionRate),
+      sessionConversionRate: round1(sessionConversionRate),
+      confirmationRate: round1(confirmationRate),
+      deliveryRate: round1(deliveryRate),
+      cancellationRate: round1(cancellationRate),
+      since,
+      until,
+      timezone,
     };
   },
 };
@@ -127,11 +271,11 @@ export const getCtaPerformance = {
       hero_cta: { label: 'Hero CTA (زر العرض الرئيسي)', clicks: 0 },
       sticky_cta: { label: 'Sticky Mobile CTA (الزر السفلي العائم)', clicks: 0 },
       mid_page_cta: { label: 'Mid-Page CTA (زر وسط الصفحة)', clicks: 0 },
-      final_cta: { label: 'Final CTA (زر الطلب النهائي)', clicks: 0 },
+      final_cta: { label: 'Final CTA (زر تأكيد الطلب)', clicks: 0 },
     };
 
     events.forEach((e) => {
-      const elId = e.metadata?.elementId || 'other_cta';
+      const elId = e.ctaId || e.metadata?.ctaId || e.metadata?.elementId || 'other_cta';
       if (!ctaCounts[elId]) {
         ctaCounts[elId] = { label: elId, clicks: 0 };
       }
@@ -144,7 +288,7 @@ export const getCtaPerformance = {
       id,
       label: item.label,
       clicks: item.clicks,
-      sharePercentage: totalClicks > 0 ? Math.round((item.clicks / totalClicks) * 100) : 0,
+      sharePercentage: totalClicks > 0 ? round1((item.clicks / totalClicks) * 100) : 0,
     }));
   },
 };
@@ -169,13 +313,17 @@ export const getTrafficSourcePerformance = {
       string,
       {
         source: string;
+        visitors: Set<string>;
         sessions: Set<string>;
+        pageViews: number;
         ctaClicks: number;
         formsStarted: number;
         ordersCount: number;
         confirmedCount: number;
         deliveredCount: number;
+        cancelledCount: number;
         revenue: number;
+        deliveredRevenue: number;
       }
     > = {};
 
@@ -184,66 +332,83 @@ export const getTrafficSourcePerformance = {
       return src.trim().toLowerCase();
     };
 
-    events.forEach((e) => {
-      const src = getSourceKey(e.utmSource);
+    const ensureSource = (src: string) => {
       if (!sources[src]) {
         sources[src] = {
           source: src,
+          visitors: new Set(),
           sessions: new Set(),
+          pageViews: 0,
           ctaClicks: 0,
           formsStarted: 0,
           ordersCount: 0,
           confirmedCount: 0,
           deliveredCount: 0,
+          cancelledCount: 0,
           revenue: 0,
+          deliveredRevenue: 0,
         };
       }
-      if (e.sessionId) sources[src].sessions.add(e.sessionId);
-      if (e.eventType === 'CTA_CLICK') sources[src].ctaClicks++;
-      if (e.eventType === 'FORM_START') sources[src].formsStarted++;
+      return sources[src];
+    };
+
+    events.forEach((e) => {
+      const src = getSourceKey(e.utmSource);
+      const bucket = ensureSource(src);
+      if (e.visitorId) bucket.visitors.add(e.visitorId);
+      else if (e.sessionId) bucket.visitors.add(e.sessionId);
+
+      if (e.sessionId) bucket.sessions.add(e.sessionId);
+      if (e.eventType === 'PAGE_VIEW') bucket.pageViews++;
+      if (e.eventType === 'CTA_CLICK') bucket.ctaClicks++;
+      if (e.eventType === 'FORM_START') bucket.formsStarted++;
     });
 
     orders.forEach((o) => {
       const src = getSourceKey(o.utmSource);
-      if (!sources[src]) {
-        sources[src] = {
-          source: src,
-          sessions: new Set(),
-          ctaClicks: 0,
-          formsStarted: 0,
-          ordersCount: 0,
-          confirmedCount: 0,
-          deliveredCount: 0,
-          revenue: 0,
-        };
-      }
-      sources[src].ordersCount++;
+      const bucket = ensureSource(src);
+      if (o.visitorId) bucket.visitors.add(o.visitorId);
+      else if (o.sessionId) bucket.visitors.add(o.sessionId);
+      if (o.sessionId) bucket.sessions.add(o.sessionId);
+
+      bucket.ordersCount++;
       if (['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(o.status)) {
-        sources[src].confirmedCount++;
+        bucket.confirmedCount++;
       }
       if (o.status === 'DELIVERED') {
-        sources[src].deliveredCount++;
+        bucket.deliveredCount++;
+        bucket.deliveredRevenue += Number(o.total) || 0;
       }
-      if (o.status !== 'CANCELLED') {
-        sources[src].revenue += o.total;
+      if (o.status === 'CANCELLED') {
+        bucket.cancelledCount++;
+      }
+      if (o.status !== 'CANCELLED' && o.status !== 'FAILED') {
+        bucket.revenue += Number(o.total) || 0;
       }
     });
 
-    return Object.values(sources).map((s) => {
-      const visitors = s.sessions.size;
-      const convRate = visitors > 0 ? (s.ordersCount / visitors) * 100 : 0;
-      return {
-        source: s.source,
-        visitors,
-        ctaClicks: s.ctaClicks,
-        formsStarted: s.formsStarted,
-        orders: s.ordersCount,
-        confirmed: s.confirmedCount,
-        delivered: s.deliveredCount,
-        revenue: s.revenue,
-        conversionRate: Math.round(convRate * 10) / 10,
-      };
-    }).sort((a, b) => b.revenue - a.revenue || b.orders - a.orders);
+    return Object.values(sources)
+      .map((s) => {
+        const uniqueVisitors = s.visitors.size;
+        const sessionsCount = s.sessions.size;
+        const convRate = uniqueVisitors > 0 ? (s.ordersCount / uniqueVisitors) * 100 : 0;
+        return {
+          source: s.source,
+          visitors: uniqueVisitors,
+          sessions: sessionsCount,
+          pageViews: s.pageViews,
+          ctaClicks: s.ctaClicks,
+          formsStarted: s.formsStarted,
+          orders: s.ordersCount,
+          confirmed: s.confirmedCount,
+          delivered: s.deliveredCount,
+          cancelled: s.cancelledCount,
+          revenue: s.revenue,
+          deliveredRevenue: s.deliveredRevenue,
+          conversionRate: round1(convRate),
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue || b.orders - a.orders || b.visitors - a.visitors);
   },
 };
 
@@ -271,6 +436,8 @@ export const getCampaignPerformance = {
       {
         campaign: string;
         source: string;
+        medium: string;
+        visitors: Set<string>;
         sessions: Set<string>;
         ctaClicks: number;
         formsStarted: number;
@@ -283,12 +450,13 @@ export const getCampaignPerformance = {
 
     const getCampKey = (c?: string) => (!c || !c.trim() ? '(none / direct)' : c.trim());
 
-    events.forEach((e) => {
-      const camp = getCampKey(e.utmCampaign);
+    const ensureCampaign = (camp: string, source?: string, medium?: string) => {
       if (!campaigns[camp]) {
         campaigns[camp] = {
           campaign: camp,
-          source: e.utmSource || 'direct',
+          source: source?.trim() || 'direct',
+          medium: medium?.trim() || '',
+          visitors: new Set(),
           sessions: new Set(),
           ctaClicks: 0,
           formsStarted: 0,
@@ -298,63 +466,69 @@ export const getCampaignPerformance = {
           revenue: 0,
         };
       }
-      if (e.sessionId) campaigns[camp].sessions.add(e.sessionId);
-      if (e.eventType === 'CTA_CLICK') campaigns[camp].ctaClicks++;
-      if (e.eventType === 'FORM_START') campaigns[camp].formsStarted++;
+      return campaigns[camp];
+    };
+
+    events.forEach((e) => {
+      const camp = getCampKey(e.utmCampaign);
+      const bucket = ensureCampaign(camp, e.utmSource, e.utmMedium);
+      if (e.visitorId) bucket.visitors.add(e.visitorId);
+      else if (e.sessionId) bucket.visitors.add(e.sessionId);
+      if (e.sessionId) bucket.sessions.add(e.sessionId);
+
+      if (e.eventType === 'CTA_CLICK') bucket.ctaClicks++;
+      if (e.eventType === 'FORM_START') bucket.formsStarted++;
     });
 
     orders.forEach((o) => {
       const camp = getCampKey(o.utmCampaign);
-      if (!campaigns[camp]) {
-        campaigns[camp] = {
-          campaign: camp,
-          source: o.utmSource || 'direct',
-          sessions: new Set(),
-          ctaClicks: 0,
-          formsStarted: 0,
-          ordersCount: 0,
-          confirmedCount: 0,
-          deliveredCount: 0,
-          revenue: 0,
-        };
-      }
-      campaigns[camp].ordersCount++;
+      const bucket = ensureCampaign(camp, o.utmSource, o.utmMedium);
+      if (o.visitorId) bucket.visitors.add(o.visitorId);
+      else if (o.sessionId) bucket.visitors.add(o.sessionId);
+      if (o.sessionId) bucket.sessions.add(o.sessionId);
+
+      bucket.ordersCount++;
       if (['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(o.status)) {
-        campaigns[camp].confirmedCount++;
+        bucket.confirmedCount++;
       }
       if (o.status === 'DELIVERED') {
-        campaigns[camp].deliveredCount++;
+        bucket.deliveredCount++;
       }
-      if (o.status !== 'CANCELLED') {
-        campaigns[camp].revenue += o.total;
+      if (o.status !== 'CANCELLED' && o.status !== 'FAILED') {
+        bucket.revenue += Number(o.total) || 0;
       }
     });
 
-    return Object.values(campaigns).map((c) => {
-      const visitors = c.sessions.size;
-      const spend = adSpends[c.campaign] || 0;
-      const roas = spend > 0 ? c.revenue / spend : 0;
-      const costPerOrder = c.ordersCount > 0 && spend > 0 ? spend / c.ordersCount : 0;
-      const costPerConfirmed = c.confirmedCount > 0 && spend > 0 ? spend / c.confirmedCount : 0;
-      const costPerDelivered = c.deliveredCount > 0 && spend > 0 ? spend / c.deliveredCount : 0;
+    return Object.values(campaigns)
+      .map((c) => {
+        const visitors = c.visitors.size;
+        const sessions = c.sessions.size;
+        const spend = Number(adSpends[c.campaign]) || 0;
+        const roas = spend > 0 ? c.revenue / spend : 0;
+        const costPerOrder = c.ordersCount > 0 && spend > 0 ? spend / c.ordersCount : 0;
+        const costPerConfirmed = c.confirmedCount > 0 && spend > 0 ? spend / c.confirmedCount : 0;
+        const costPerDelivered = c.deliveredCount > 0 && spend > 0 ? spend / c.deliveredCount : 0;
 
-      return {
-        campaign: c.campaign,
-        source: c.source,
-        visitors,
-        ctaClicks: c.ctaClicks,
-        formsStarted: c.formsStarted,
-        orders: c.ordersCount,
-        confirmed: c.confirmedCount,
-        delivered: c.deliveredCount,
-        revenue: c.revenue,
-        adSpend: spend,
-        roas: Math.round(roas * 100) / 100,
-        costPerOrder: Math.round(costPerOrder),
-        costPerConfirmed: Math.round(costPerConfirmed),
-        costPerDelivered: Math.round(costPerDelivered),
-      };
-    }).sort((a, b) => b.revenue - a.revenue || b.orders - a.orders);
+        return {
+          campaign: c.campaign,
+          source: c.source,
+          medium: c.medium,
+          visitors,
+          sessions,
+          ctaClicks: c.ctaClicks,
+          formsStarted: c.formsStarted,
+          orders: c.ordersCount,
+          confirmed: c.confirmedCount,
+          delivered: c.deliveredCount,
+          revenue: c.revenue,
+          adSpend: spend,
+          roas: Math.round(roas * 100) / 100,
+          costPerOrder: Math.round(costPerOrder),
+          costPerConfirmed: Math.round(costPerConfirmed),
+          costPerDelivered: Math.round(costPerDelivered),
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue || b.orders - a.orders || b.visitors - a.visitors);
   },
 };
 
@@ -370,13 +544,26 @@ export const getProductAnalyticsTable = {
       const prodEvents = events.filter((e) => e.productId === prod._id);
       const prodOrders = orders.filter((o) => o.productId === prod._id);
 
+      const visitorSet = new Set<string>();
       const sessionSet = new Set<string>();
       prodEvents.forEach((e) => {
+        if (e.visitorId) visitorSet.add(e.visitorId);
+        else if (e.sessionId) visitorSet.add(e.sessionId);
         if (e.sessionId) sessionSet.add(e.sessionId);
       });
+      prodOrders.forEach((o) => {
+        if (o.visitorId) visitorSet.add(o.visitorId);
+        else if (o.sessionId) visitorSet.add(o.sessionId);
+        if (o.sessionId) sessionSet.add(o.sessionId);
+      });
 
-      const visitors = sessionSet.size;
-      const productViews = prodEvents.filter((e) => e.eventType === 'VIEW_CONTENT' || e.eventType === 'PAGE_VIEW').length;
+      const visitors = visitorSet.size;
+      const sessions = sessionSet.size;
+      const pageViews = prodEvents.filter((e) => e.eventType === 'PAGE_VIEW').length;
+      const rawProductViews = prodEvents.filter(
+        (e) => e.eventType === 'PRODUCT_VIEW' || e.eventType === 'VIEW_CONTENT'
+      ).length;
+      const productViews = rawProductViews > 0 ? rawProductViews : pageViews;
       const ctaClicks = prodEvents.filter((e) => e.eventType === 'CTA_CLICK').length;
       const formStarts = prodEvents.filter((e) => e.eventType === 'FORM_START').length;
 
@@ -386,7 +573,9 @@ export const getProductAnalyticsTable = {
       ).length;
       const delivered = prodOrders.filter((o) => o.status === 'DELIVERED').length;
       const cancelled = prodOrders.filter((o) => o.status === 'CANCELLED').length;
-      const revenue = prodOrders.filter((o) => o.status !== 'CANCELLED').reduce((s, o) => s + o.total, 0);
+      const revenue = prodOrders
+        .filter((o) => o.status !== 'CANCELLED' && o.status !== 'FAILED')
+        .reduce((s, o) => s + (Number(o.total) || 0), 0);
 
       const conversionRate = visitors > 0 ? (totalOrders / visitors) * 100 : 0;
       const deliveryRate = confirmed > 0 ? (delivered / confirmed) * 100 : 0;
@@ -399,6 +588,8 @@ export const getProductAnalyticsTable = {
         price: prod.price,
         currency: prod.currency || 'DH',
         visitors,
+        sessions,
+        pageViews,
         productViews,
         ctaClicks,
         formStarts,
@@ -407,10 +598,104 @@ export const getProductAnalyticsTable = {
         delivered,
         cancelled,
         revenue,
-        conversionRate: Math.round(conversionRate * 10) / 10,
-        deliveryRate: Math.round(deliveryRate * 10) / 10,
+        conversionRate: round1(conversionRate),
+        deliveryRate: round1(deliveryRate),
       };
     });
+  },
+};
+
+export const getDailyTimeSeries = {
+  name: 'analytics:getDailyTimeSeries',
+  query: (args?: DateFilterArgs) => {
+    const { since, until } = computeDateBoundaries(args?.range);
+    const events = db.getAnalyticsEvents({
+      productId: args?.productId,
+      since,
+      until,
+    });
+    const orders = db.getOrders().filter((o) => {
+      const matchProduct = !args?.productId || o.productId === args.productId;
+      const matchTime = o.createdAt >= since && o.createdAt <= until;
+      return matchProduct && matchTime;
+    });
+
+    const daysMap: Record<
+      string,
+      {
+        date: string;
+        visitors: Set<string>;
+        sessions: Set<string>;
+        pageViews: number;
+        ctaClicks: number;
+        formStarts: number;
+        orders: number;
+        revenue: number;
+      }
+    > = {};
+
+    const ensureDay = (dateKey: string) => {
+      if (!daysMap[dateKey]) {
+        daysMap[dateKey] = {
+          date: dateKey,
+          visitors: new Set(),
+          sessions: new Set(),
+          pageViews: 0,
+          ctaClicks: 0,
+          formStarts: 0,
+          orders: 0,
+          revenue: 0,
+        };
+      }
+      return daysMap[dateKey];
+    };
+
+    events.forEach((e) => {
+      const key = formatCasablancaDateKey(e.timestamp);
+      const bucket = ensureDay(key);
+      if (e.visitorId) bucket.visitors.add(e.visitorId);
+      else if (e.sessionId) bucket.visitors.add(e.sessionId);
+      if (e.sessionId) bucket.sessions.add(e.sessionId);
+
+      if (e.eventType === 'PAGE_VIEW') bucket.pageViews++;
+      if (e.eventType === 'CTA_CLICK') bucket.ctaClicks++;
+      if (e.eventType === 'FORM_START') bucket.formStarts++;
+    });
+
+    orders.forEach((o) => {
+      const key = formatCasablancaDateKey(o.createdAt);
+      const bucket = ensureDay(key);
+      if (o.visitorId) bucket.visitors.add(o.visitorId);
+      else if (o.sessionId) bucket.visitors.add(o.sessionId);
+      if (o.sessionId) bucket.sessions.add(o.sessionId);
+
+      bucket.orders++;
+      if (o.status !== 'CANCELLED' && o.status !== 'FAILED') {
+        bucket.revenue += Number(o.total) || 0;
+      }
+    });
+
+    return Object.values(daysMap)
+      .map((d) => ({
+        date: d.date,
+        visitors: d.visitors.size,
+        sessions: d.sessions.size,
+        pageViews: d.pageViews,
+        ctaClicks: d.ctaClicks,
+        formStarts: d.formStarts,
+        orders: d.orders,
+        revenue: d.revenue,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  },
+};
+
+export const getOrderStatusHistory = {
+  name: 'analytics:getOrderStatusHistory',
+  query: (args?: { orderId?: string; limit?: number }): OrderStatusHistory[] => {
+    const list = db.getOrderStatusHistory(args?.orderId);
+    const limit = args?.limit || 50;
+    return list.slice(0, limit);
   },
 };
 

@@ -19,6 +19,7 @@ export const api = {
   orders: {
     list: orders.list,
     getByProductId: orders.getByProductId,
+    getStatusHistory: orders.getStatusHistory,
     checkDuplicate: orders.checkDuplicate,
     create: orders.create,
     updateStatus: orders.updateStatus,
@@ -42,6 +43,8 @@ export const api = {
     getTrafficSourcePerformance: analytics.getTrafficSourcePerformance,
     getCampaignPerformance: analytics.getCampaignPerformance,
     getProductAnalyticsTable: analytics.getProductAnalyticsTable,
+    getDailyTimeSeries: analytics.getDailyTimeSeries,
+    getOrderStatusHistory: analytics.getOrderStatusHistory,
     getRecentEvents: analytics.getRecentEvents,
   },
 };
