@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { trackEvent } from '../../lib/tracking';
+import { Image as ImageIcon } from 'lucide-react';
 
 interface ProductGalleryProps {
   images: string[];
@@ -20,16 +21,12 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const displayImages =
-    images && images.length > 0
-      ? images
-      : ['/src/assets/images/seed_beauty_serum_1790331758543.jpg'];
-
-  const currentImage = displayImages[selectedIndex] || displayImages[0];
+  const displayImages = Array.isArray(images) ? images.filter(Boolean) : [];
+  const currentImage = displayImages[selectedIndex] || displayImages[0] || '';
 
   const handleSelectImage = (idx: number) => {
     setSelectedIndex(idx);
-    if (productId && !isPreview) {
+    if (productId && !isPreview && displayImages[idx]) {
       trackEvent({
         eventType: 'PRODUCT_IMAGE_VIEW',
         productId,
@@ -43,13 +40,20 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
   return (
     <div className="w-full max-w-xl mx-auto space-y-3.5">
       {/* Main Image Frame */}
-      <div className="relative aspect-square w-full max-h-[440px] sm:max-h-[500px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm group mx-auto">
-        <img
-          src={currentImage}
-          alt={productName}
-          referrerPolicy="no-referrer"
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+      <div className="relative aspect-square w-full max-h-[440px] sm:max-h-[500px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm group mx-auto flex items-center justify-center">
+        {currentImage ? (
+          <img
+            src={currentImage}
+            alt={productName}
+            referrerPolicy="no-referrer"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+            <ImageIcon className="w-12 h-12 mb-2 text-slate-300" />
+            <span className="text-xs font-semibold">{productName || 'صورة المنتج'}</span>
+          </div>
+        )}
 
         {/* Discount Badge */}
         {discountPercentage && discountPercentage > 0 && (

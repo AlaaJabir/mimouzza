@@ -18,16 +18,17 @@ import { Plus, ExternalLink, ArrowRight, X, Package, ShoppingBag, BarChart3, Tre
 
 interface AdminLayoutProps {
   initialSection?: AdminSection;
+  initialTab?: string;
   initialProductId?: string;
   initialIsNew?: boolean;
   onNavigateUrl?: (path: string) => void;
+  onOpenPublicProduct?: (slug: string) => void;
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   initialSection = 'dashboard',
   initialProductId,
   initialIsNew = false,
-  onNavigateUrl,
 }) => {
   const [currentSection, setCurrentSection] = useState<AdminSection>(initialSection);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -180,46 +181,65 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </div>
 
                   <div className="space-y-3">
-                    {(products || []).slice(0, 3).map((prod) => (
-                      <div
-                        key={prod._id}
-                        className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEditProduct(prod)}
-                            className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700"
-                          >
-                            تعديل
-                          </button>
-                          <a
-                            href={`/p/${prod.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 rounded text-amber-600 hover:bg-amber-50"
-                            title="فتح صفحة الهبوط"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
-
-                        <div className="flex items-center gap-3 text-right">
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
-                              {prod.name}
-                            </div>
-                            <div className="text-[11px] font-mono text-slate-400">
-                              {prod.price} {prod.currency || 'DH'} · {prod.templateId}
-                            </div>
-                          </div>
-                          <img
-                            src={prod.images[0] || ''}
-                            alt={prod.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-slate-200"
-                          />
-                        </div>
+                    {(products || []).length === 0 ? (
+                      <div className="py-8 text-center text-xs text-slate-400 space-y-2">
+                        <div>No products yet — لا توجد منتجات مسجلة بعد</div>
+                        <button
+                          onClick={() => handleCreateNewProduct()}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>إنشاء منتج جديد</span>
+                        </button>
                       </div>
-                    ))}
+                    ) : (
+                      (products || []).slice(0, 3).map((prod) => (
+                        <div
+                          key={prod._id}
+                          className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleEditProduct(prod)}
+                              className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 cursor-pointer"
+                            >
+                              تعديل
+                            </button>
+                            <a
+                              href={`/p/${encodeURIComponent(prod.slug)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 rounded text-amber-600 hover:bg-amber-50"
+                              title="فتح صفحة الهبوط"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-right">
+                            <div>
+                              <div className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
+                                {prod.name}
+                              </div>
+                              <div className="text-[11px] font-mono text-slate-400">
+                                {prod.price} {prod.currency || 'DH'} · /p/{prod.slug}
+                              </div>
+                            </div>
+                            {prod.images && prod.images[0] ? (
+                              <img
+                                src={prod.images[0]}
+                                alt={prod.name}
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-200"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                <Package className="w-4 h-4" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -228,7 +248,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <button
                       onClick={() => handleNavigateSection('orders')}
-                      className="text-xs text-amber-600 hover:text-amber-700 font-semibold"
+                      className="text-xs text-amber-600 hover:text-amber-700 font-semibold cursor-pointer"
                     >
                       عرض جميع الطلبيات ←
                     </button>
@@ -239,30 +259,36 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </div>
 
                   <div className="space-y-3">
-                    {(orders || []).slice(0, 4).map((ord) => (
-                      <div
-                        key={ord._id}
-                        className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors text-right"
-                      >
-                        <div className="text-left">
-                          <span className="font-mono font-bold text-xs text-slate-900">
-                            {ord.total} {ord.currency || 'DH'}
-                          </span>
-                          <span className="block text-[10px] text-slate-400 font-mono">
-                            {ord.orderNumber}
-                          </span>
-                        </div>
-
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">
-                            {ord.customerName}
-                          </div>
-                          <div className="text-[11px] text-slate-500">
-                            {ord.city} · {ord.productName.substring(0, 25)}...
-                          </div>
-                        </div>
+                    {(orders || []).length === 0 ? (
+                      <div className="py-8 text-center text-xs text-slate-400">
+                        No data yet — لا توجد طلبيات مسجلة بعد
                       </div>
-                    ))}
+                    ) : (
+                      (orders || []).slice(0, 4).map((ord) => (
+                        <div
+                          key={ord._id}
+                          className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors text-right"
+                        >
+                          <div className="text-left">
+                            <span className="font-mono font-bold text-xs text-slate-900">
+                              {ord.total} {ord.currency || 'DH'}
+                            </span>
+                            <span className="block text-[10px] text-slate-400 font-mono">
+                              {ord.orderNumber}
+                            </span>
+                          </div>
+
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              {ord.customerName}
+                            </div>
+                            <div className="text-[11px] text-slate-500">
+                              {ord.city} · {ord.productName.substring(0, 25)}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>

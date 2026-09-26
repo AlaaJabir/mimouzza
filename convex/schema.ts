@@ -24,6 +24,8 @@ export interface ProductFAQ {
   answer: string;
 }
 
+export type ProductStatus = 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
+
 export interface Product {
   _id: string;
   name: string;
@@ -32,6 +34,7 @@ export interface Product {
   description: string;
   price: number;
   compareAtPrice: number;
+  comparePrice?: number;
   currency: string;
   images: string[];
   descriptionImages?: string[];
@@ -43,6 +46,7 @@ export interface Product {
   variants: ProductVariantGroup[];
   ctaText: string;
   isPublished: boolean;
+  status?: ProductStatus;
   rating: number;
   reviewCount: number;
   badgeText?: string;
@@ -232,6 +236,7 @@ export default defineSchema({
     description: v.string(),
     price: v.number(),
     compareAtPrice: v.number(),
+    comparePrice: v.optional(v.number()),
     currency: v.string(),
     images: v.array(v.string()),
     descriptionImages: v.optional(v.array(v.string())),
@@ -256,6 +261,7 @@ export default defineSchema({
     ),
     ctaText: v.string(),
     isPublished: v.boolean(),
+    status: v.optional(v.union(v.literal('ACTIVE'), v.literal('DRAFT'), v.literal('ARCHIVED'))),
     rating: v.number(),
     reviewCount: v.number(),
     badgeText: v.optional(v.string()),

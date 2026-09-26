@@ -6,12 +6,17 @@ import {
   INITIAL_PRODUCTS,
   INITIAL_SETTINGS,
   INITIAL_TEMPLATES,
+  isLegacySeedProduct,
   isLegacyFakeOrder,
   isLegacyFakeEvent,
+  getProductStatus,
+  normalizeProductSlug,
+  generateUniqueSlug,
   computeAuthoritativeOrderTotal,
 } from './convex/db';
 import type {
   Product,
+  ProductStatus,
   Order,
   OrderStatus,
   OrderStatusHistory,
@@ -40,7 +45,6 @@ interface ServerDatabaseState {
 function cleanCampaignAdSpends(spends?: Record<string, number>): Record<string, number> {
   if (!spends || typeof spends !== 'object') return {};
   const cleaned = { ...spends };
-  // Remove legacy hardcoded seed campaign ad spends if untouched
   if (
     cleaned.elixir_spring_tiktok === 600 &&
     cleaned.prosound_audiophiles === 450 &&
@@ -59,6 +63,18 @@ function loadServerDatabase(): ServerDatabaseState {
       const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.products)) {
+        const cleanedProducts = (parsed.products as Product[])
+          .filter((p) => !isLegacySeedProduct(p))
+          .map((p) => {
+            const status = getProductStatus(p);
+            return {
+              ...p,
+              status,
+              isPublished: status === 'ACTIVE',
+              comparePrice: p.comparePrice ?? p.compareAtPrice,
+            };
+          });
+
         const cleanedOrders = Array.isArray(parsed.orders)
           ? (parsed.orders as Order[]).filter((o) => !isLegacyFakeOrder(o))
           : [];
@@ -74,7 +90,7 @@ function loadServerDatabase(): ServerDatabaseState {
           : { ...INITIAL_SETTINGS };
 
         const state: ServerDatabaseState = {
-          products: parsed.products,
+          products: cleanedProducts,
           orders: cleanedOrders,
           orderStatusHistory: Array.isArray(parsed.orderStatusHistory)
             ? parsed.orderStatusHistory
@@ -119,14 +135,6 @@ function saveServerDatabase(state: ServerDatabaseState) {
 }
 
 const serverDb = loadServerDatabase();
-
-function normalizeSlug(slug: string): string {
-  try {
-    return decodeURIComponent(slug).trim().toLowerCase();
-  } catch {
-    return slug.trim().toLowerCase();
-  }
-}
 
 function upsertVisitorOnServer(v: Partial<Visitor>, serverNow: number): Visitor | null {
   if (!v || !v.visitorId) return null;
@@ -192,8 +200,9 @@ async function startServer() {
   // High payload limit to support base64 compressed images in products & descriptionImages
   app.use(express.json({ limit: '50mb' }));
 
-  // 1. Get full shared state
+  // 1. Get full authoritative state (never cached by browser)
   app.get('/api/db/state', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({
       ok: true,
       products: serverDb.products,
@@ -209,181 +218,27 @@ async function startServer() {
     });
   });
 
-  // 2. Get single product by slug or ID
+  // 2. Get single product by slug or ID (authoritative lookup for public product URL /p/:slug)
   app.get('/api/db/product/:slug', (req, res) => {
-    const target = normalizeSlug(req.params.slug || '');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    const rawParam = req.params.slug || '';
+    const targetNorm = normalizeProductSlug(rawParam);
+    const targetRaw = rawParam.trim().toLowerCase();
+
     const found =
       serverDb.products.find(
-        (p) => normalizeSlug(p.slug) === target || p._id.toLowerCase() === target
+        (p) =>
+          normalizeProductSlug(p.slug) === targetNorm ||
+          p.slug.trim().toLowerCase() === targetRaw ||
+          p._id.toLowerCase() === targetRaw
       ) || null;
+
     res.json({ ok: true, product: found });
   });
 
-  // 3. Bidirectional sync endpoint
-  app.post('/api/db/sync', (req, res) => {
-    const {
-      products,
-      orders,
-      orderStatusHistory,
-      visitors,
-      sessions,
-      analyticsEvents,
-      settings,
-    } = req.body || {};
-    let changed = false;
-
-    if (Array.isArray(products) && products.length > 0) {
-      const byId = new Map<string, Product>();
-      const bySlug = new Map<string, Product>();
-
-      for (const p of serverDb.products) {
-        byId.set(p._id, p);
-        bySlug.set(normalizeSlug(p.slug), p);
-      }
-
-      for (const clientProd of products as Product[]) {
-        if (!clientProd || !clientProd._id || !clientProd.slug) continue;
-        const normSlug = normalizeSlug(clientProd.slug);
-        const existing = byId.get(clientProd._id) || bySlug.get(normSlug);
-        if (!existing) {
-          byId.set(clientProd._id, clientProd);
-          bySlug.set(normSlug, clientProd);
-          changed = true;
-        } else if ((clientProd.updatedAt || 0) > (existing.updatedAt || 0)) {
-          byId.delete(existing._id);
-          byId.set(clientProd._id, clientProd);
-          bySlug.set(normSlug, clientProd);
-          changed = true;
-        }
-      }
-
-      serverDb.products = Array.from(byId.values()).sort(
-        (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
-      );
-    }
-
-    if (Array.isArray(orders) && orders.length > 0) {
-      const orderMap = new Map<string, Order>();
-      for (const o of serverDb.orders) {
-        if (!isLegacyFakeOrder(o)) orderMap.set(o._id, o);
-      }
-      for (const clientOrd of orders as Order[]) {
-        if (!clientOrd || !clientOrd._id || isLegacyFakeOrder(clientOrd)) continue;
-        const existing = orderMap.get(clientOrd._id);
-        if (
-          !existing ||
-          existing.status !== clientOrd.status ||
-          (clientOrd.updatedAt || 0) > (existing.updatedAt || 0)
-        ) {
-          orderMap.set(clientOrd._id, clientOrd);
-          changed = true;
-        }
-      }
-      serverDb.orders = Array.from(orderMap.values()).sort(
-        (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
-      );
-    }
-
-    if (Array.isArray(orderStatusHistory) && orderStatusHistory.length > 0) {
-      const histMap = new Map<string, OrderStatusHistory>();
-      for (const h of serverDb.orderStatusHistory) {
-        histMap.set(h._id, h);
-      }
-      for (const clientHist of orderStatusHistory as OrderStatusHistory[]) {
-        if (!clientHist || !clientHist._id) continue;
-        if (!histMap.has(clientHist._id)) {
-          histMap.set(clientHist._id, clientHist);
-          changed = true;
-        }
-      }
-      serverDb.orderStatusHistory = Array.from(histMap.values()).sort(
-        (a, b) => a.timestamp - b.timestamp
-      );
-    }
-
-    if (Array.isArray(visitors) && visitors.length > 0) {
-      const visMap = new Map<string, Visitor>();
-      for (const v of serverDb.visitors) {
-        visMap.set(v.visitorId, v);
-      }
-      for (const clientVis of visitors as Visitor[]) {
-        if (!clientVis || !clientVis.visitorId) continue;
-        const ex = visMap.get(clientVis.visitorId);
-        if (!ex) {
-          visMap.set(clientVis.visitorId, clientVis);
-          changed = true;
-        } else if (clientVis.lastSeenAt > ex.lastSeenAt) {
-          ex.lastSeenAt = clientVis.lastSeenAt;
-          changed = true;
-        }
-      }
-      serverDb.visitors = Array.from(visMap.values());
-    }
-
-    if (Array.isArray(sessions) && sessions.length > 0) {
-      const sessMap = new Map<string, AnalyticsSession>();
-      for (const s of serverDb.sessions) {
-        sessMap.set(s.sessionId, s);
-      }
-      for (const clientSess of sessions as AnalyticsSession[]) {
-        if (
-          !clientSess ||
-          !clientSess.sessionId ||
-          clientSess.sessionId.startsWith('sess_gen_') ||
-          clientSess.sessionId.startsWith('sess_seed_')
-        ) {
-          continue;
-        }
-        const ex = sessMap.get(clientSess.sessionId);
-        if (!ex) {
-          sessMap.set(clientSess.sessionId, clientSess);
-          changed = true;
-        } else if (clientSess.lastSeenAt > ex.lastSeenAt) {
-          ex.lastSeenAt = clientSess.lastSeenAt;
-          changed = true;
-        }
-      }
-      serverDb.sessions = Array.from(sessMap.values());
-    }
-
-    if (Array.isArray(analyticsEvents) && analyticsEvents.length > 0) {
-      const evtMap = new Map<string, AnalyticsEvent>();
-      for (const e of serverDb.analyticsEvents) {
-        if (!isLegacyFakeEvent(e)) {
-          evtMap.set(e.clientEventId || e.eventId || e._id, e);
-        }
-      }
-      for (const clientEvt of analyticsEvents as AnalyticsEvent[]) {
-        if (!clientEvt || isLegacyFakeEvent(clientEvt)) continue;
-        const key = clientEvt.clientEventId || clientEvt.eventId || clientEvt._id;
-        if (!key) continue;
-        if (!evtMap.has(key)) {
-          evtMap.set(key, clientEvt);
-          changed = true;
-        }
-      }
-      serverDb.analyticsEvents = Array.from(evtMap.values()).sort(
-        (a, b) => a.timestamp - b.timestamp
-      );
-    }
-
-    if (settings && typeof settings === 'object') {
-      const cleanedSpends = cleanCampaignAdSpends(settings.campaignAdSpends);
-      serverDb.settings = {
-        ...serverDb.settings,
-        ...settings,
-        campaignAdSpends: {
-          ...(serverDb.settings.campaignAdSpends || {}),
-          ...cleanedSpends,
-        },
-      };
-      changed = true;
-    }
-
-    if (changed) {
-      saveServerDatabase(serverDb);
-    }
-
+  // 3. Read-only state sync endpoint (returns authoritative server state)
+  app.post('/api/db/sync', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({
       ok: true,
       products: serverDb.products,
@@ -451,6 +306,31 @@ async function startServer() {
       return;
     }
 
+    // Deduplicate rapid duplicate PAGE_VIEW / PRODUCT_VIEW within 2.5s for same session + product
+    if (
+      (event.eventType === 'PAGE_VIEW' || event.eventType === 'PRODUCT_VIEW') &&
+      event.sessionId &&
+      event.productId
+    ) {
+      const recentView = serverDb.analyticsEvents.find(
+        (e) =>
+          e.eventType === event.eventType &&
+          e.sessionId === event.sessionId &&
+          e.productId === event.productId &&
+          Math.abs(serverNow - e.timestamp) < 2500
+      );
+      if (recentView) {
+        res.json({
+          ok: true,
+          event: recentView,
+          visitor: savedVisitor,
+          session: savedSession,
+          serverTime: serverNow,
+        });
+        return;
+      }
+    }
+
     // Deduplicate FORM_START per sessionId + productId on server
     if (event.eventType === 'FORM_START' && event.sessionId && event.productId) {
       const existingFormStart = serverDb.analyticsEvents.find(
@@ -473,7 +353,9 @@ async function startServer() {
 
     const authoritativeEvent: AnalyticsEvent = {
       ...event,
-      _id: event._id || 'evt_' + serverNow.toString(36) + '_' + Math.random().toString(36).substring(2, 8),
+      _id:
+        event._id ||
+        'evt_' + serverNow.toString(36) + '_' + Math.random().toString(36).substring(2, 8),
       eventId: clientEventId || 'ev_' + serverNow.toString(36),
       clientEventId: clientEventId || 'ev_' + serverNow.toString(36),
       visitorId: event.visitorId || 'v_anonymous',
@@ -496,32 +378,95 @@ async function startServer() {
     });
   });
 
-  // 5. Upsert a single product (create or update)
+  // 5. Authoritative Product Create / Update Endpoint
   app.post('/api/db/product', (req, res) => {
-    const product = req.body?.product as Product | undefined;
-    if (!product || !product._id) {
-      res.status(400).json({ ok: false, error: 'Invalid product payload' });
+    const serverNow = Date.now();
+    const incoming = req.body?.product as Product | undefined;
+    if (!incoming || !incoming.name?.trim()) {
+      res.status(400).json({ ok: false, error: 'اسم المنتج مطلوب (Product name is required)' });
       return;
     }
 
-    const idx = serverDb.products.findIndex(
-      (p) => p._id === product._id || normalizeSlug(p.slug) === normalizeSlug(product.slug)
+    const existingIdx = serverDb.products.findIndex((p) => p._id === incoming._id);
+    const existingProduct = existingIdx !== -1 ? serverDb.products[existingIdx] : null;
+
+    const productId =
+      existingProduct?._id ||
+      incoming._id ||
+      `prod_${serverNow.toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
+
+    const uniqueSlug = generateUniqueSlug(
+      incoming.slug || incoming.name,
+      serverDb.products,
+      productId
     );
-    if (idx !== -1) {
-      serverDb.products[idx] = product;
+
+    const resolvedStatus: ProductStatus =
+      incoming.status || (incoming.isPublished === false ? 'DRAFT' : 'ACTIVE');
+    const resolvedPublished = resolvedStatus === 'ACTIVE';
+
+    const authoritativeProduct: Product = {
+      ...incoming,
+      _id: productId,
+      name: incoming.name.trim(),
+      slug: uniqueSlug,
+      price: Math.max(0, Number(incoming.price) || 0),
+      compareAtPrice: Math.max(0, Number(incoming.compareAtPrice ?? incoming.comparePrice) || 0),
+      comparePrice: Math.max(0, Number(incoming.comparePrice ?? incoming.compareAtPrice) || 0),
+      images: Array.isArray(incoming.images) ? incoming.images.filter(Boolean) : [],
+      descriptionImages: Array.isArray(incoming.descriptionImages)
+        ? incoming.descriptionImages.filter(Boolean)
+        : [],
+      status: resolvedStatus,
+      isPublished: resolvedPublished,
+      createdAt: existingProduct?.createdAt || serverNow,
+      updatedAt: serverNow,
+    };
+
+    if (existingIdx !== -1) {
+      serverDb.products[existingIdx] = authoritativeProduct;
     } else {
-      serverDb.products.unshift(product);
+      serverDb.products.unshift(authoritativeProduct);
     }
+
     saveServerDatabase(serverDb);
-    res.json({ ok: true, product });
+    res.json({ ok: true, product: authoritativeProduct, serverTime: serverNow });
   });
 
-  // 6. Delete a product
+  // 6. Product Delete / Archive Endpoint (protects products that have existing orders)
   app.delete('/api/db/product/:id', (req, res) => {
     const id = req.params.id;
+    const forceArchive = req.query.archive === 'true';
+    const idx = serverDb.products.findIndex((p) => p._id === id);
+
+    if (idx === -1) {
+      res.json({ ok: true, deleted: false, archived: false });
+      return;
+    }
+
+    const hasDependentOrders = serverDb.orders.some((o) => o.productId === id);
+
+    if (hasDependentOrders || forceArchive) {
+      // Soft-delete (archive) so existing orders and historical analytics never break
+      serverDb.products[idx] = {
+        ...serverDb.products[idx],
+        status: 'ARCHIVED',
+        isPublished: false,
+        updatedAt: Date.now(),
+      };
+      saveServerDatabase(serverDb);
+      res.json({
+        ok: true,
+        deleted: false,
+        archived: true,
+        product: serverDb.products[idx],
+      });
+      return;
+    }
+
     serverDb.products = serverDb.products.filter((p) => p._id !== id);
     saveServerDatabase(serverDb);
-    res.json({ ok: true });
+    res.json({ ok: true, deleted: true, archived: false });
   });
 
   // 7. Authoritative Order Creation & Validation Endpoint
@@ -541,21 +486,60 @@ async function startServer() {
       return;
     }
 
+    // Validate required customer fields
+    if (
+      !incomingOrder.customerName?.trim() ||
+      !incomingOrder.phone?.trim() ||
+      !incomingOrder.city?.trim() ||
+      !incomingOrder.address?.trim()
+    ) {
+      res.status(400).json({
+        ok: false,
+        error: 'الرجاء ملء جميع بيانات الزبون المطلوبة (Name, Phone, City, Address required)',
+      });
+      return;
+    }
+
+    // Validate product exists and is ACTIVE
     const product = serverDb.products.find((p) => p._id === incomingOrder.productId);
+    if (!product) {
+      res.status(400).json({
+        ok: false,
+        error: 'المنتج غير موجود في قاعدة البيانات (Product does not exist)',
+      });
+      return;
+    }
+
+    if (getProductStatus(product) !== 'ACTIVE') {
+      res.status(400).json({
+        ok: false,
+        error: 'هذا المنتج غير متاح للطلب حالياً (Product is not active)',
+      });
+      return;
+    }
+
     const safeQuantity = Math.max(1, Math.floor(Number(incomingOrder.quantity) || 1));
 
     // Authoritative price calculation from product in server DB
-    const authoritativeTotal = product
-      ? computeAuthoritativeOrderTotal(product, safeQuantity, incomingOrder.variants)
-      : Math.max(0, Number(incomingOrder.total) || 0);
+    const authoritativeTotal = computeAuthoritativeOrderTotal(
+      product,
+      safeQuantity,
+      incomingOrder.variants
+    );
     const authoritativeCurrency =
-      product?.currency ||
+      product.currency ||
       incomingOrder.currency ||
       serverDb.settings.defaultCurrency ||
       'DH';
 
     const authoritativeOrder: Order = {
       ...incomingOrder,
+      productName: product.name,
+      productImage: product.images[0] || '',
+      customerName: incomingOrder.customerName.trim(),
+      phone: incomingOrder.phone.trim(),
+      city: incomingOrder.city.trim(),
+      address: incomingOrder.address.trim(),
       quantity: safeQuantity,
       total: authoritativeTotal,
       amount: authoritativeTotal,
@@ -569,6 +553,12 @@ async function startServer() {
       serverDb.orders[idx] = authoritativeOrder;
     } else {
       serverDb.orders.unshift(authoritativeOrder);
+    }
+
+    // Decrement product stock if scarcity is enabled
+    if (product.scarcityEnabled && product.stockQuantity && product.stockQuantity > 0) {
+      product.stockQuantity = Math.max(0, product.stockQuantity - safeQuantity);
+      product.updatedAt = serverNow;
     }
 
     // Record status history
@@ -586,7 +576,10 @@ async function startServer() {
     }
 
     // Record ORDER_CREATED event with authoritative server timestamp & validated amount
-    const orderEvtId = incomingEvent?.clientEventId || incomingOrder.eventId || `ev_ord_${authoritativeOrder._id}`;
+    const orderEvtId =
+      incomingEvent?.clientEventId ||
+      incomingOrder.eventId ||
+      `ev_ord_${authoritativeOrder._id}`;
     if (
       !serverDb.analyticsEvents.some(
         (e) => e.clientEventId === orderEvtId || e.eventId === orderEvtId
@@ -602,7 +595,7 @@ async function startServer() {
         productId: authoritativeOrder.productId,
         timestamp: serverNow,
         createdAt: serverNow,
-        pageUrl: product ? `/p/${product.slug}` : `/p/${authoritativeOrder.productId}`,
+        pageUrl: `/p/${product.slug}`,
         referrer: '',
         utmSource: authoritativeOrder.utmSource || '',
         utmMedium: authoritativeOrder.utmMedium || '',
@@ -682,7 +675,9 @@ async function startServer() {
         )
       ) {
         serverDb.analyticsEvents.push({
-          _id: lifecycleEvent?._id || `evt_${serverNow.toString(36)}_${Math.random().toString(36).substring(2, 7)}`,
+          _id:
+            lifecycleEvent?._id ||
+            `evt_${serverNow.toString(36)}_${Math.random().toString(36).substring(2, 7)}`,
           eventId: evtKey,
           clientEventId: evtKey,
           eventType: evtType,
@@ -736,7 +731,7 @@ async function startServer() {
   app.post('/api/db/clear-analytics', (req, res) => {
     const resetProducts = Boolean(req.body?.resetProducts);
     if (resetProducts) {
-      serverDb.products = [...INITIAL_PRODUCTS];
+      serverDb.products = [];
     }
     serverDb.orders = [];
     serverDb.orderStatusHistory = [];

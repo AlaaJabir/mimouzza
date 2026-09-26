@@ -95,7 +95,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
   const handleResetData = async () => {
     if (
       window.confirm(
-        'هل أنت متأكد من رغبتك في إعادة تعيين كافة البيانات إلى الحالة التجريبية الافتراضية؟'
+        'هل أنت متأكد من رغبتك في مسح سجل الطلبيات والأحداث التحليلية؟ (المنتجات المحفوظة لن يتم حذفها)'
       )
     ) {
       await resetSeed({});
@@ -182,7 +182,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center col-span-2 sm:col-span-1">
               <div className="text-[11px] text-slate-500">تخزين الصور والبيانات</div>
               <div className="text-xs font-bold text-amber-700 mt-1">
-                Convex + IndexedDB الدائم
+                قاعدة بيانات Convex الدائمة
               </div>
             </div>
           </div>

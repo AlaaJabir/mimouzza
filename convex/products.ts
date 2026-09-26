@@ -1,5 +1,5 @@
-import { db } from './db';
-import { Product } from './schema';
+import { db, getProductStatus } from './db';
+import { Product, ProductStatus } from './schema';
 
 export const list = {
   name: 'products:list',
@@ -11,7 +11,7 @@ export const list = {
 export const listPublished = {
   name: 'products:listPublished',
   query: () => {
-    return db.getProducts().filter((p) => p.isPublished);
+    return db.getProducts().filter((p) => getProductStatus(p) === 'ACTIVE');
   },
 };
 
@@ -60,6 +60,19 @@ export const remove = {
 export const togglePublish = {
   name: 'products:togglePublish',
   mutation: (args: { id: string; isPublished: boolean }) => {
-    return db.updateProduct(args.id, { isPublished: args.isPublished });
+    return db.updateProduct(args.id, {
+      isPublished: args.isPublished,
+      status: args.isPublished ? 'ACTIVE' : 'DRAFT',
+    });
+  },
+};
+
+export const updateStatus = {
+  name: 'products:updateStatus',
+  mutation: (args: { id: string; status: ProductStatus }) => {
+    return db.updateProduct(args.id, {
+      status: args.status,
+      isPublished: args.status === 'ACTIVE',
+    });
   },
 };

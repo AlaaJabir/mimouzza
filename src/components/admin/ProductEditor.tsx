@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Product, ProductBenefit } from '../../../convex/schema';
+import React, { useState } from 'react';
+import { Product, ProductBenefit, ProductStatus } from '../../../convex/schema';
 import { useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
+import { getProductStatus, normalizeProductSlug } from '../../../convex/db';
 import { ImageManager, DescriptionImagesManager } from './ImageManager';
 import { VariantEditor } from './VariantEditor';
 import { TemplateSelector } from './TemplateSelector';
@@ -42,7 +43,12 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   const [formData, setFormData] = useState<Omit<Product, '_id' | 'createdAt' | 'updatedAt'>>(() => {
     if (initialProduct) {
       const { _id, createdAt, updatedAt, ...rest } = initialProduct;
-      return rest;
+      const status = getProductStatus(initialProduct);
+      return {
+        ...rest,
+        status,
+        isPublished: status === 'ACTIVE',
+      };
     }
     return {
       name: '',
@@ -52,7 +58,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       price: 299,
       compareAtPrice: 499,
       currency: 'DH',
-      images: ['/src/assets/images/seed_beauty_serum_1790331758543.jpg'],
+      images: [],
       descriptionImages: [],
       templateId: 'classic-cod',
       offerText: '🔥 خصم حصري لفترة محدودة + شحن مجاني لكافة المدن',
@@ -66,6 +72,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       variants: [],
       ctaText: 'اطلب الآن بالدفع عند الاستلام',
       isPublished: true,
+      status: 'ACTIVE',
       rating: 4.9,
       reviewCount: 150,
       badgeText: 'العرض الأكثر مبيعاً',
@@ -146,12 +153,19 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       return;
     }
 
-    const finalSlug =
-      formData.slug.trim() || `prod-${Math.floor(1000 + Math.random() * 9000)}`;
+    const desiredSlug =
+      normalizeProductSlug(formData.slug || formData.name) ||
+      `prod-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const resolvedStatus: ProductStatus =
+      formData.status || (formData.isPublished ? 'ACTIVE' : 'DRAFT');
 
     const payloadToSave = {
       ...formData,
-      slug: finalSlug,
+      slug: desiredSlug,
+      status: resolvedStatus,
+      isPublished: resolvedStatus === 'ACTIVE',
+      comparePrice: formData.compareAtPrice,
       ogImage: formData.ogImage || formData.images[0] || '',
     };
 
@@ -169,7 +183,12 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
         saved = await createProduct(payloadToSave);
       }
 
-      setFormData((prev) => ({ ...prev, slug: finalSlug }));
+      setFormData((prev) => ({
+        ...prev,
+        slug: saved.slug || desiredSlug,
+        status: getProductStatus(saved),
+        isPublished: getProductStatus(saved) === 'ACTIVE',
+      }));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       onSaved(saved);
@@ -488,24 +507,24 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1">
-                  حالة النشر (Published Status)
+                  حالة المنتج (Product Status)
                 </label>
-                <div className="flex items-center gap-3 pt-1">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.isPublished}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, isPublished: e.target.checked }))
-                      }
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                  </label>
-                  <span className="text-xs font-semibold text-slate-700">
-                    {formData.isPublished ? 'منشور للعامة (Published)' : 'مسودة غير منشورة (Draft)'}
-                  </span>
-                </div>
+                <select
+                  value={formData.status || (formData.isPublished ? 'ACTIVE' : 'DRAFT')}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value as ProductStatus;
+                    setFormData((prev) => ({
+                      ...prev,
+                      status: nextStatus,
+                      isPublished: nextStatus === 'ACTIVE',
+                    }));
+                  }}
+                  className="w-full px-3 py-2 text-xs font-bold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                >
+                  <option value="ACTIVE">🟢 نشط ومنشور للعامة (ACTIVE)</option>
+                  <option value="DRAFT">⚪ مسودة غير منشورة (DRAFT)</option>
+                  <option value="ARCHIVED">🔴 مؤرشف / متوقف (ARCHIVED)</option>
+                </select>
               </div>
 
               <div>

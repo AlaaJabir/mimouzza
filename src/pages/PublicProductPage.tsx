@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery } from '../lib/convex-client';
 import { api } from '../../convex/api';
-import { db } from '../../convex/db';
+import { db, getProductStatus } from '../../convex/db';
 import { LandingPage } from '../components/landing/LandingPage';
 import { initMarketingPixels } from '../lib/tracking';
-import { ShoppingBag, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
+import { ArrowRight, ShieldAlert, EyeOff, Eye } from 'lucide-react';
 
 interface PublicProductPageProps {
   slug: string;
@@ -21,45 +21,50 @@ interface PublicProductPageProps {
 export const PublicProductPage: React.FC<PublicProductPageProps> = ({
   slug,
   utmParams,
-  onBackToAdmin,
 }) => {
   // Convex reactive query for this product
-  const product = useQuery(api.products.getBySlug, { slug });
+  const productFromStore = useQuery(api.products.getBySlug, { slug });
   const settings = useQuery(api.settings.get);
+  const [serverFetchedProduct, setServerFetchedProduct] = useState<typeof productFromStore>(undefined);
   const [checkingServer, setCheckingServer] = useState(true);
+  const [adminPreviewOverride, setAdminPreviewOverride] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setCheckingServer(true);
+    setAdminPreviewOverride(false);
 
-    if (product) {
-      setCheckingServer(false);
-      return;
-    }
-
-    // Ensure mobile/external devices fetch the latest product from the shared server DB
+    // Always verify against authoritative backend server so cross-browser / mobile links
+    // resolve accurately without relying on browser local state.
     Promise.all([
       db.fetchProductBySlugFromServer(slug),
-      db.syncWithServer(),
-    ]).finally(() => {
-      if (!cancelled) {
-        setCheckingServer(false);
-      }
-    });
+      db.waitForHydration(),
+    ])
+      .then(([fetched]) => {
+        if (!cancelled) {
+          setServerFetchedProduct(fetched);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCheckingServer(false);
+        }
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [slug, Boolean(product)]);
+  }, [slug]);
+
+  const product = productFromStore ?? serverFetchedProduct ?? null;
+  const productStatus = product ? getProductStatus(product) : null;
 
   // SEO & OpenGraph dynamic meta injection
   useEffect(() => {
     if (!product) return;
 
-    // Document Title
     document.title = product.seoTitle || `${product.name} | الدفع عند الاستلام`;
 
-    // Helper to update or create meta tags
     const setMetaTag = (attrName: string, attrVal: string, content: string) => {
       let el = document.querySelector(`meta[${attrName}="${attrVal}"]`);
       if (!el) {
@@ -74,15 +79,19 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
       setMetaTag('name', 'description', product.seoDescription || product.shortDescription);
     }
     setMetaTag('property', 'og:title', product.ogTitle || product.name);
-    setMetaTag('property', 'og:description', product.ogDescription || product.shortDescription || '');
+    setMetaTag(
+      'property',
+      'og:description',
+      product.ogDescription || product.shortDescription || ''
+    );
     if (product.ogImage || (product.images && product.images[0])) {
       setMetaTag('property', 'og:image', product.ogImage || product.images[0]);
     }
   }, [product]);
 
-  // Pixel Initialization (Global with per-product override)
+  // Pixel Initialization (Global with per-product override, only for active products)
   useEffect(() => {
-    if (!product || !settings) return;
+    if (!product || !settings || productStatus !== 'ACTIVE') return;
 
     const metaPixelId =
       product.useCustomPixels && product.customMetaPixelId
@@ -94,15 +103,13 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
         ? product.customTikTokPixelId
         : settings.tiktokPixelId;
 
-    const enableMeta =
-      product.useCustomPixels
-        ? Boolean(product.customMetaPixelId)
-        : Boolean(settings.enableMetaPixel && settings.metaPixelId);
+    const enableMeta = product.useCustomPixels
+      ? Boolean(product.customMetaPixelId)
+      : Boolean(settings.enableMetaPixel && settings.metaPixelId);
 
-    const enableTikTok =
-      product.useCustomPixels
-        ? Boolean(product.customTikTokPixelId)
-        : Boolean(settings.enableTikTokPixel && settings.tiktokPixelId);
+    const enableTikTok = product.useCustomPixels
+      ? Boolean(product.customTikTokPixelId)
+      : Boolean(settings.enableTikTokPixel && settings.tiktokPixelId);
 
     initMarketingPixels({
       metaPixelId,
@@ -112,10 +119,10 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
       gaId: settings.googleAnalyticsId,
       enableGA: settings.enableGoogleAnalytics,
     });
-  }, [product, settings]);
+  }, [product, settings, productStatus]);
 
-  // Loading state (wait while hydrating from IndexedDB / Server DB)
-  if (product === undefined || (product === null && checkingServer)) {
+  // 1. Loading state (wait while querying authoritative server database)
+  if (checkingServer && !product) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center space-y-3">
@@ -126,8 +133,8 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
     );
   }
 
-  // Not found
-  if (product === null) {
+  // 2. Product does NOT exist in database
+  if (!product) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir="rtl">
         <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-lg space-y-4">
@@ -151,7 +158,49 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
     );
   }
 
-  // Unpublished check (can still be viewed with indicator on desktop)
+  // 3. Product EXISTS in database, but status is DRAFT or ARCHIVED (not publicly active)
+  if (productStatus !== 'ACTIVE' && !adminPreviewOverride) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir="rtl">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-lg space-y-4">
+          <div className="w-16 h-16 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto">
+            <EyeOff className="w-8 h-8" />
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+            <span>
+              {productStatus === 'ARCHIVED'
+                ? 'حالة المنتج: مؤرشف (ARCHIVED)'
+                : 'حالة المنتج: مسودة غير منشورة (DRAFT)'}
+            </span>
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">المنتج غير متاح حالياً</h2>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            هذا المنتج ({product.name}) محفوظ في قاعدة البيانات ولكنه غير منشور للعامة حالياً. لتلقي الطلبات من الزوار، يرجى تفعيل حالة المنتج إلى &quot;نشط (ACTIVE)&quot; من لوحة الإدارة.
+          </p>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setAdminPreviewOverride(true)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-bold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              <Eye className="w-4 h-4 text-amber-600" />
+              <span>معاينة الصفحة كمسؤول</span>
+            </button>
+            <a
+              href="/admin"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors"
+            >
+              <span>لوحة الإدارة (Admin Dashboard)</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isPreviewMode = productStatus !== 'ACTIVE' && adminPreviewOverride;
+
+  // 4. Active Product (or explicit Admin Preview of inactive product)
   return (
     <div className="min-h-screen relative">
       {/* Admin Floating Shortcut Bar (Desktop only so mobile buyers see a pure landing page) */}
@@ -162,9 +211,9 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
           <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
             (/p/{product.slug})
           </span>
-          {!product.isPublished && (
+          {productStatus !== 'ACTIVE' && (
             <span className="bg-rose-900/80 text-rose-200 border border-rose-700 text-[10px] font-bold px-2 py-0.5 rounded">
-              مسودة غير منشورة
+              {productStatus === 'ARCHIVED' ? 'مؤرشف (Archived)' : 'مسودة غير منشورة (Draft)'}
             </span>
           )}
         </div>
@@ -179,7 +228,7 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
       </div>
 
       {/* Render Template */}
-      <LandingPage product={product} utmParams={utmParams} />
+      <LandingPage product={product} utmParams={utmParams} isPreview={isPreviewMode} />
     </div>
   );
 };
