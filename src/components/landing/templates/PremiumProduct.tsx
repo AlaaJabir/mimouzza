@@ -7,6 +7,7 @@ import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
+import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { trackEvent } from '../../../lib/tracking';
 import { Star, ShieldCheck, Sparkles, ShoppingBag, ArrowDown, MessageCircle } from 'lucide-react';
 
@@ -180,6 +181,11 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({ product, utmPara
               <ArrowDown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="text-[11px] font-medium">توصيل سريع 24/48 ساعة</span>
             </div>
+          </div>
+
+          {/* Live Fake Orders Ticker (between Price/CTA box and Description) */}
+          <div className="pt-1">
+            <LiveOrdersTicker product={product} />
           </div>
 
           {/* Short Description */}

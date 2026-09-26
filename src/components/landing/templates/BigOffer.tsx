@@ -7,6 +7,7 @@ import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
+import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { trackEvent } from '../../../lib/tracking';
 import { Flame, Clock, ShieldAlert, ShoppingCart, Zap, Star, MessageCircle } from 'lucide-react';
 
@@ -239,6 +240,11 @@ export const BigOffer: React.FC<BigOfferProps> = ({ product, utmParams }) => {
               <span className="text-emerald-600 font-bold">✓</span>
               <span className="text-[11px] font-medium">الدفع نقداً بعد المعاينة</span>
             </div>
+          </div>
+
+          {/* Live Fake Orders Ticker (between Price/CTA box and Description) */}
+          <div className="pt-1">
+            <LiveOrdersTicker product={product} />
           </div>
 
           {/* Short Description */}

@@ -7,6 +7,7 @@ import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
+import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { trackEvent } from '../../../lib/tracking';
 import { Star, ShieldCheck, Truck, ShoppingCart, Award, Check, MessageCircle, AlertCircle } from 'lucide-react';
 
@@ -200,6 +201,11 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({ product, utmParams }) =>
               <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span className="text-[11px] font-medium">الدفع نقداً بعد المعاينة</span>
             </div>
+          </div>
+
+          {/* Live Fake Orders Ticker (between Price/CTA box and Description) */}
+          <div className="pt-1">
+            <LiveOrdersTicker product={product} />
           </div>
 
           {/* Short Description */}
