@@ -37,8 +37,8 @@
       "مدينة أخرى بالمغرب"
     ],
     "contactPhone": "+212 661-234567",
-    "metaPixelId": "",
-    "enableMetaPixel": false,
+    "metaPixelId": "135752956164308",
+    "enableMetaPixel": true,
     "tiktokPixelId": "",
     "enableTikTokPixel": false,
     "googleAnalyticsId": "",
@@ -98,5 +98,5 @@
       "active": true
     }
   ],
-  "updatedAt": 1790441909597
+  "updatedAt": 1790503546940
 }

@@ -89,37 +89,30 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
     }
   }, [product]);
 
-  // Pixel Initialization (Global with per-product override, only for active products)
+  // Pixel Initialization (Global with per-product override on all landing pages)
   useEffect(() => {
-    if (!product || !settings || productStatus !== 'ACTIVE') return;
+    if (!product) return;
 
-    const metaPixelId =
-      product.useCustomPixels && product.customMetaPixelId
-        ? product.customMetaPixelId
-        : settings.metaPixelId;
+    const customMeta = product.customMetaPixelId?.trim();
+    const globalMeta = settings?.metaPixelId?.trim() || '135752956164308';
+    const metaPixelId = customMeta || globalMeta;
 
-    const tiktokPixelId =
-      product.useCustomPixels && product.customTikTokPixelId
-        ? product.customTikTokPixelId
-        : settings.tiktokPixelId;
+    const customTikTok = product.customTikTokPixelId?.trim();
+    const globalTikTok = settings?.tiktokPixelId?.trim();
+    const tiktokPixelId = customTikTok || globalTikTok;
 
-    const enableMeta = product.useCustomPixels
-      ? Boolean(product.customMetaPixelId)
-      : Boolean(settings.enableMetaPixel && settings.metaPixelId);
-
-    const enableTikTok = product.useCustomPixels
-      ? Boolean(product.customTikTokPixelId)
-      : Boolean(settings.enableTikTokPixel && settings.tiktokPixelId);
+    const enableMeta = Boolean(metaPixelId);
+    const enableTikTok = Boolean(tiktokPixelId);
 
     initMarketingPixels({
       metaPixelId,
       enableMeta,
       tiktokPixelId,
       enableTikTok,
-      gaId: settings.googleAnalyticsId,
-      enableGA: settings.enableGoogleAnalytics,
+      gaId: settings?.googleAnalyticsId,
+      enableGA: Boolean(settings?.enableGoogleAnalytics && settings?.googleAnalyticsId),
     });
-  }, [product, settings, productStatus]);
+  }, [product, settings]);
 
   // 1. Loading state (wait while querying authoritative server database)
   if (checkingServer && !product) {

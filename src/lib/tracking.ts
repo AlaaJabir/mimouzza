@@ -243,9 +243,75 @@ export function getDiagnosticEvents(): DiagnosticEventRecord[] {
 /**
  * Dynamic Pixel Injections
  */
-let metaPixelInjected = false;
+export const DEFAULT_META_PIXEL_ID = '135752956164308';
+
+const initializedMetaPixelIds = new Set<string>([DEFAULT_META_PIXEL_ID]);
+const trackedMetaPageViews = new Set<string>();
 let tiktokPixelInjected = false;
 let gaInjected = false;
+
+export function ensureMetaPixelBaseScript() {
+  if (typeof window === 'undefined') return;
+  if (!window.fbq) {
+    /* eslint-disable */
+    (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+      if (f.fbq) return;
+      n = f.fbq = function () {
+        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+      };
+      if (!f._fbq) f._fbq = n;
+      n.push = n;
+      n.loaded = !0;
+      n.version = '2.0';
+      n.queue = [];
+      t = b.createElement(e);
+      t.async = !0;
+      t.src = v;
+      s = b.getElementsByTagName(e)[0];
+      if (s && s.parentNode) {
+        s.parentNode.insertBefore(t, s);
+      } else if (b.head) {
+        b.head.appendChild(t);
+      }
+    })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+    /* eslint-enable */
+  }
+}
+
+export function activateMetaPixelId(pixelId?: string, trackPageViewNow = false) {
+  if (typeof window === 'undefined') return;
+  const cleanId = (pixelId || DEFAULT_META_PIXEL_ID).trim();
+  if (!cleanId) return;
+
+  try {
+    ensureMetaPixelBaseScript();
+
+    if (!initializedMetaPixelIds.has(cleanId)) {
+      window.fbq('init', cleanId);
+      initializedMetaPixelIds.add(cleanId);
+      recordDiagnosticEvent({
+        eventType: 'Pixel_Init',
+        target: 'Meta',
+        metadata: { pixelId: cleanId },
+      });
+    }
+
+    if (trackPageViewNow) {
+      const pathKey = `${cleanId}:${window.location.pathname}${window.location.search}`;
+      if (!trackedMetaPageViews.has(pathKey)) {
+        trackedMetaPageViews.add(pathKey);
+        window.fbq('track', 'PageView');
+        recordDiagnosticEvent({
+          eventType: 'PageView',
+          target: 'Meta',
+          metadata: { pixelId: cleanId, path: window.location.pathname },
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Meta pixel activation failed:', e);
+  }
+}
 
 export function initMarketingPixels(options: {
   metaPixelId?: string;
@@ -257,38 +323,12 @@ export function initMarketingPixels(options: {
 }) {
   if (typeof window === 'undefined') return;
 
-  // 1. Meta Pixel
-  if (options.enableMeta && options.metaPixelId && !metaPixelInjected) {
-    try {
-      /* eslint-disable */
-      (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
-        if (f.fbq) return;
-        n = f.fbq = function () {
-          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-        };
-        if (!f._fbq) f._fbq = n;
-        n.push = n;
-        n.loaded = !0;
-        n.version = '2.0';
-        n.queue = [];
-        t = b.createElement(e);
-        t.async = !0;
-        t.src = v;
-        s = b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t, s);
-      })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-      /* eslint-enable */
+  // 1. Meta Pixel — always initialize DEFAULT_META_PIXEL_ID plus any custom/settings Pixel ID entered by user
+  const targetMetaId = (options.metaPixelId || DEFAULT_META_PIXEL_ID).trim();
+  const shouldEnableMeta = options.enableMeta !== false && Boolean(targetMetaId);
 
-      window.fbq('init', options.metaPixelId);
-      metaPixelInjected = true;
-      recordDiagnosticEvent({
-        eventType: 'Pixel_Init',
-        target: 'Meta',
-        metadata: { pixelId: options.metaPixelId },
-      });
-    } catch (e) {
-      console.warn('Meta pixel script initialization failed:', e);
-    }
+  if (shouldEnableMeta && targetMetaId) {
+    activateMetaPixelId(targetMetaId, true);
   }
 
   // 2. TikTok Pixel
@@ -483,7 +523,17 @@ export function trackEvent(params: {
     console.error('Error logging analytics event to database:', err);
   }
 
-  // 2. Dispatch to Meta Pixel (fbq)
+  // 2. Dispatch to Meta Pixel (fbq) — ensure active product/store Pixel ID is initialized first
+  try {
+    const productObj = params.productId ? db.getProductById(params.productId) : null;
+    const storeSettings = db.getSettings();
+    const activeMetaId =
+      productObj?.customMetaPixelId?.trim() ||
+      storeSettings?.metaPixelId?.trim() ||
+      DEFAULT_META_PIXEL_ID;
+    activateMetaPixelId(activeMetaId, false);
+  } catch {}
+
   if (window.fbq) {
     try {
       const fbEventId = { eventID: eventId };

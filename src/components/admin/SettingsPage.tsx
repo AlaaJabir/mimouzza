@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 import { db } from '../../../convex/db';
+import { activateMetaPixelId, DEFAULT_META_PIXEL_ID } from '../../lib/tracking';
 import { Button } from '../ui/button';
 import { Save, RotateCcw, CheckCircle, Store, ShieldCheck, Activity, BarChart2, Database, RefreshCw } from 'lucide-react';
 
@@ -27,8 +28,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
   const [contactPhone, setContactPhone] = useState('');
 
   // Marketing Pixels
-  const [metaPixelId, setMetaPixelId] = useState('');
-  const [enableMetaPixel, setEnableMetaPixel] = useState(false);
+  const [metaPixelId, setMetaPixelId] = useState(DEFAULT_META_PIXEL_ID);
+  const [enableMetaPixel, setEnableMetaPixel] = useState(true);
   const [tiktokPixelId, setTiktokPixelId] = useState('');
   const [enableTikTokPixel, setEnableTikTokPixel] = useState(false);
   const [googleAnalyticsId, setGoogleAnalyticsId] = useState('');
@@ -44,8 +45,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
       setDefaultShippingText(settings.defaultShippingText || '');
       setDefaultReturnPolicy(settings.defaultReturnPolicy || '');
       setContactPhone(settings.contactPhone || '');
-      setMetaPixelId(settings.metaPixelId || '');
-      setEnableMetaPixel(Boolean(settings.enableMetaPixel));
+      const resolvedMetaId = settings.metaPixelId || DEFAULT_META_PIXEL_ID;
+      setMetaPixelId(resolvedMetaId);
+      setEnableMetaPixel(settings.enableMetaPixel ?? Boolean(resolvedMetaId));
       setTiktokPixelId(settings.tiktokPixelId || '');
       setEnableTikTokPixel(Boolean(settings.enableTikTokPixel));
       setGoogleAnalyticsId(settings.googleAnalyticsId || '');
@@ -70,18 +72,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
     setIsSaving(true);
     try {
       db.setConvexUrl(convexUrl);
+      const cleanMetaId = metaPixelId.trim() || DEFAULT_META_PIXEL_ID;
+      const shouldEnableMeta = Boolean(cleanMetaId) && enableMetaPixel;
+      if (shouldEnableMeta && cleanMetaId) {
+        activateMetaPixelId(cleanMetaId, true);
+      }
       await updateSettings({
         storeName,
         defaultCurrency,
         defaultShippingText,
         defaultReturnPolicy,
         contactPhone,
-        metaPixelId: metaPixelId.trim(),
-        enableMetaPixel,
+        metaPixelId: cleanMetaId,
+        enableMetaPixel: shouldEnableMeta,
         tiktokPixelId: tiktokPixelId.trim(),
-        enableTikTokPixel,
+        enableTikTokPixel: Boolean(tiktokPixelId.trim()) && enableTikTokPixel,
         googleAnalyticsId: googleAnalyticsId.trim(),
-        enableGoogleAnalytics,
+        enableGoogleAnalytics: Boolean(googleAnalyticsId.trim()) && enableGoogleAnalytics,
       });
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
@@ -216,17 +223,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
                   />
                   <span>تفعيل Meta Pixel (Facebook & Instagram Ads)</span>
                 </label>
-                <span className="text-[11px] text-slate-400 font-mono">fbq</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>fbq: {metaPixelId.trim() || DEFAULT_META_PIXEL_ID}</span>
+                </span>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Meta Pixel ID
+                  Meta Pixel ID (يعمل تلقائياً في جميع صفحات الهبوط والتطبيق)
                 </label>
                 <input
                   type="text"
                   value={metaPixelId}
-                  onChange={(e) => setMetaPixelId(e.target.value)}
-                  placeholder="مثال: 123456789012345"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setMetaPixelId(val);
+                    if (val.trim()) {
+                      setEnableMetaPixel(true);
+                    }
+                  }}
+                  placeholder="135752956164308"
                   dir="ltr"
                   className="w-full max-w-md px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left bg-white"
                 />

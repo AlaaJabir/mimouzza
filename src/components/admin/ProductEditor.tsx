@@ -3,6 +3,7 @@ import { Product, ProductBenefit, ProductStatus } from '../../../convex/schema';
 import { useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 import { getProductStatus, normalizeProductSlug } from '../../../convex/db';
+import { activateMetaPixelId } from '../../lib/tracking';
 import { ImageManager, DescriptionImagesManager } from './ImageManager';
 import { VariantEditor } from './VariantEditor';
 import { TemplateSelector } from './TemplateSelector';
@@ -180,6 +181,9 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     setErrorMsg('');
 
     try {
+      if (formData.customMetaPixelId?.trim()) {
+        activateMetaPixelId(formData.customMetaPixelId.trim(), true);
+      }
       let saved: Product;
       if (isEditing && initialProduct?._id) {
         saved = await updateProduct({
@@ -803,52 +807,66 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
 
           {/* Section 11: Per-Product Tracking Pixels */}
           <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              تتبع الإعلانات المخصص للمنتج (Tracking & Pixels)
-            </h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                تتبع الإعلانات المخصص للمنتج (Meta & TikTok Pixel)
+              </h3>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>
+                  Meta Pixel نشط ({formData.customMetaPixelId?.trim() || '135752956164308'})
+                </span>
+              </span>
+            </div>
 
             <div className="space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
-                <input
-                  type="checkbox"
-                  checked={formData.useCustomPixels || false}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, useCustomPixels: e.target.checked }))}
-                  className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
-                />
-                <span>تخصيص بكسل مستقل لهذا المنتج (تجاوز إعدادات المتجر العامة)</span>
-              </label>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                البكسل العام للمتجر (<code className="font-mono font-bold text-slate-900">135752956164308</code>) مفعل تلقائياً على جميع صفحات الهبوط. إذا أردت تشغيل بكسل مختلف خاص بهذا المنتج فقط، أدخل الـ ID بالأسفل وسيشتغل تلقائياً بمجرد حفظ المنتج:
+              </p>
 
-              {formData.useCustomPixels && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Custom Meta Pixel ID
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.customMetaPixelId || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, customMetaPixelId: e.target.value }))}
-                      placeholder="123456789012345"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left"
-                      dir="ltr"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Custom TikTok Pixel ID
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.customTikTokPixelId || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, customTikTokPixelId: e.target.value }))}
-                      placeholder="C9XXXXXXXXXXXXXX"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left"
-                      dir="ltr"
-                    />
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    Meta Pixel ID (خاص بهذا المنتج أو اتركه للبكسل العام)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.customMetaPixelId || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        customMetaPixelId: val,
+                        useCustomPixels: Boolean(val.trim() || prev.customTikTokPixelId?.trim()),
+                      }));
+                    }}
+                    placeholder="135752956164308"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    dir="ltr"
+                  />
                 </div>
-              )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    TikTok Pixel ID (اختياري)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.customTikTokPixelId || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        customTikTokPixelId: val,
+                        useCustomPixels: Boolean(val.trim() || prev.customMetaPixelId?.trim()),
+                      }));
+                    }}
+                    placeholder="C9XXXXXXXXXXXXXX"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

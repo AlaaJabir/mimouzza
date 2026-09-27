@@ -6,6 +6,7 @@ import {
   DiagnosticEventRecord,
   getVisitorId,
   getSessionId,
+  DEFAULT_META_PIXEL_ID,
 } from '../../lib/tracking';
 import { BUSINESS_TIMEZONE } from '../../../convex/analytics';
 import {
@@ -39,7 +40,8 @@ export const TrackingDiagnostics: React.FC = () => {
     return () => window.removeEventListener('cod_diagnostics_updated', handleUpdate);
   }, []);
 
-  const metaConfigured = Boolean(settings?.enableMetaPixel && settings?.metaPixelId);
+  const activeMetaPixelId = settings?.metaPixelId?.trim() || DEFAULT_META_PIXEL_ID;
+  const metaConfigured = (settings?.enableMetaPixel ?? true) && Boolean(activeMetaPixelId);
   const tiktokConfigured = Boolean(settings?.enableTikTokPixel && settings?.tiktokPixelId);
 
   // Check detected pixel dispatches in current browser session
@@ -146,7 +148,7 @@ export const TrackingDiagnostics: React.FC = () => {
             <h3 className="text-xs font-bold text-slate-900">Meta Pixel</h3>
             {metaConfigured ? (
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                مفعّل ({settings?.metaPixelId})
+                مفعّل ({activeMetaPixelId})
               </span>
             ) : (
               <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">

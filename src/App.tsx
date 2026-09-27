@@ -1,10 +1,36 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAppRouter } from './lib/router';
+import { useQuery } from './lib/convex-client';
+import { api } from '../convex/api';
+import { initMarketingPixels, DEFAULT_META_PIXEL_ID } from './lib/tracking';
 import { PublicProductPage } from './pages/PublicProductPage';
 import { AdminLayout } from './components/admin/AdminLayout';
 
 export function App() {
   const { route, goTo } = useAppRouter();
+  const settings = useQuery(api.settings.get);
+
+  useEffect(() => {
+    const metaPixelId = settings?.metaPixelId?.trim() || DEFAULT_META_PIXEL_ID;
+    initMarketingPixels({
+      metaPixelId,
+      enableMeta: settings?.enableMetaPixel ?? true,
+      tiktokPixelId: settings?.tiktokPixelId,
+      enableTikTok: Boolean(settings?.enableTikTokPixel && settings?.tiktokPixelId),
+      gaId: settings?.googleAnalyticsId,
+      enableGA: Boolean(settings?.enableGoogleAnalytics && settings?.googleAnalyticsId),
+    });
+  }, [
+    route.type,
+    route.slug,
+    route.adminSection,
+    settings?.metaPixelId,
+    settings?.enableMetaPixel,
+    settings?.tiktokPixelId,
+    settings?.enableTikTokPixel,
+    settings?.googleAnalyticsId,
+    settings?.enableGoogleAnalytics,
+  ]);
 
   if (route.type === 'public-product' && route.slug) {
     return (

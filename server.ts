@@ -169,6 +169,11 @@ function loadServerDatabase(): ServerDatabaseState {
           ? {
               ...INITIAL_SETTINGS,
               ...parsed.settings,
+              metaPixelId: parsed.settings.metaPixelId || INITIAL_SETTINGS.metaPixelId,
+              enableMetaPixel:
+                parsed.settings.metaPixelId
+                  ? parsed.settings.enableMetaPixel ?? true
+                  : INITIAL_SETTINGS.enableMetaPixel,
               campaignAdSpends: cleanCampaignAdSpends(parsed.settings.campaignAdSpends),
             }
           : { ...INITIAL_SETTINGS };
