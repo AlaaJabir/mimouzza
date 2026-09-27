@@ -169,6 +169,7 @@ function loadServerDatabase(): ServerDatabaseState {
           ? {
               ...INITIAL_SETTINGS,
               ...parsed.settings,
+              moroccoCities: INITIAL_SETTINGS.moroccoCities,
               metaPixelId: parsed.settings.metaPixelId || INITIAL_SETTINGS.metaPixelId,
               enableMetaPixel:
                 parsed.settings.metaPixelId

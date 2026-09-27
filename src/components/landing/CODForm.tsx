@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Product, Order } from '../../../convex/schema';
 import { useMutation, useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
-import { computeAuthoritativeOrderTotal } from '../../../convex/db';
+import { computeAuthoritativeOrderTotal, ALL_MOROCCO_CITIES } from '../../../convex/db';
 import { Button } from '../ui/button';
 import { MimouzzaLogo } from '../ui/MimouzzaLogo';
 import {
@@ -19,6 +19,11 @@ import {
   AlertCircle,
   ShoppingCart,
   AlertTriangle,
+  Search,
+  MapPin,
+  ChevronDown,
+  X,
+  Check,
 } from 'lucide-react';
 
 interface CODFormProps {
@@ -36,6 +41,60 @@ interface CODFormProps {
   isPreview?: boolean;
 }
 
+const CITY_SEARCH_ALIASES: Record<string, string[]> = {
+  'الدار البيضاء (Casablanca)': ['كازا', 'كازابلانكا', 'casa', 'casablanca', 'dar beida', 'addar al baydaa'],
+  'الرباط (Rabat)': ['رباط', 'rbat', 'rabat'],
+  'مراكش (Marrakech)': ['كيش', 'kech', 'marrakesh', 'marrakech', 'mrakch'],
+  'طنجة (Tanger)': ['طانجا', 'طنجا', 'tanja', 'tangier', 'tanger'],
+  'فاس (Fès)': ['fez', 'fes'],
+  'أكادير (Agadir)': ['اكادير', 'أكادير', 'agadir', 'gadir'],
+  'مكناس (Meknès)': ['meknes', 'mknes'],
+  'وجدة (Oujda)': ['oujda', 'wajda'],
+  'القنيطرة (Kénitra)': ['قنيطرة', 'قنيطره', 'kenitra', 'knitra'],
+  'تطوان (Tétouan)': ['تطوان', 'tetouan', 'tetwan'],
+  'تمارة (Témara)': ['تماره', 'temara', 'tmara'],
+  'سلا (Salé)': ['سلا', 'sale', 'sla'],
+  'الجديدة (El Jadida)': ['جديدة', 'مازاغان', 'jadida', 'eljadida', 'mazagan'],
+  'آسفي (Safi)': ['اسفي', 'آسفي', 'safi', 'asfi'],
+  'المحمدية (Mohammédia)': ['محمدية', 'فضالة', 'mohammedia', 'fedala'],
+  'بني ملال (Béni Mellal)': ['بنيملال', 'beni mellal', 'benimellal', 'bni mellal'],
+  'خريبكة (Khouribga)': ['خريبكه', 'khouribga', 'khribga'],
+  'الناظور (Nador)': ['ناظور', 'ناضور', 'nador', 'nadour'],
+  'تازة (Taza)': ['تازه', 'taza'],
+  'سطات (Settat)': ['سطات', 'settat', 'sttat'],
+  'برشيد (Berrechid)': ['برشيد', 'berrechid', 'brchid'],
+  'العيون (Laâyoune)': ['لعيون', 'العيون', 'laayoune', 'layoun', 'el aaiun'],
+  'الداخلة (Dakhla)': ['داخلة', 'داخله', 'dakhla'],
+  'شفشاون (Chefchaouen)': ['الشاون', 'شاون', 'chaouen', 'chefchaouen', 'chawn'],
+  'الحسيمة (Al Hoceïma)': ['حسيمة', 'الحسيمه', 'hoceima', 'alhoceima', 'rif'],
+  'العرائش (Larache)': ['عرائش', 'العرايش', 'larache', 'laaraych'],
+  'القصر الكبير (Ksar El Kébir)': ['القصر', 'قصر الكبير', 'ksar el kebir', 'ksar kebir', 'alcazarquivir'],
+  'الرشيدية (Errachidia)': ['الراشيدية', 'راشيدية', 'رشيدية', 'errachidia', 'rachidia'],
+  'ورزازات (Ouarzazate)': ['ورززات', 'وارزازات', 'ouarzazate', 'warzazat'],
+  'تارودانت (Taroudant)': ['ترودانت', 'taroudant', 'taroudannt'],
+  'الصويرة (Essaouira)': ['صويرة', 'موكادور', 'essaouira', 'souira', 'mogador'],
+  'قلعة السراغنة (El Kelaâ des Sraghna)': ['القلعة', 'قلعة', 'سراغنة', 'kelaa', 'sraghna', 'kelat sraghna'],
+  'الفقيه بن صالح (Fquih Ben Salah)': ['فقيه بن صالح', 'فقيه بنصالح', 'fquih ben salah', 'fkih ben salah'],
+  'سوق السبت أولاد النمة (Souk Sebt Oulad Nemma)': ['سوق السبت', 'اولاد النمة', 'souk sebt', 'oulad nemma'],
+  'سوق الأربعاء الغرب (Souk El Arbaa)': ['سوق الاربعاء', 'سوق لاربع', 'souk larbaa', 'souk el arbaa'],
+};
+
+function normalizeSearchText(text: string): string {
+  return (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip French accents
+    .replace(/[\u064B-\u065F\u0670]/g, '') // strip Arabic tashkeel
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/[\-\_\(\)\/\.\']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export const CODForm: React.FC<CODFormProps> = ({
   product,
   utmParams = {},
@@ -51,6 +110,9 @@ export const CODForm: React.FC<CODFormProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [highlightedCityIndex, setHighlightedCityIndex] = useState(0);
   const [address, setAddress] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
@@ -81,6 +143,84 @@ export const CODForm: React.FC<CODFormProps> = ({
   const formStartedRef = useRef(false);
   const formViewedRef = useRef(false);
   const formContainerRef = useRef<HTMLDivElement>(null);
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+
+  // Full list of Moroccan cities (strictly excluding any 'Autre ville' / 'مدينة أخرى')
+  const citiesList = useMemo<string[]>(() => {
+    const combined = new Set<string>(ALL_MOROCCO_CITIES);
+    if (settings?.moroccoCities && Array.isArray(settings.moroccoCities)) {
+      for (const c of settings.moroccoCities) {
+        const trimmed = (c || '').trim();
+        if (
+          trimmed &&
+          !trimmed.includes('مدينة أخرى') &&
+          !trimmed.toLowerCase().includes('autre')
+        ) {
+          combined.add(trimmed);
+        }
+      }
+    }
+    return Array.from(combined);
+  }, [settings?.moroccoCities]);
+
+  // Filtered cities based on live search query
+  const filteredCities = useMemo<string[]>(() => {
+    const q = normalizeSearchText(citySearchQuery);
+    if (!q) return citiesList;
+
+    return citiesList.filter((cityItem) => {
+      const normalizedCity = normalizeSearchText(cityItem);
+      if (normalizedCity.includes(q)) return true;
+
+      // Also check without "ال" article so searching "عيون" or "دار البيضاء" matches
+      const withoutAl = normalizedCity.replace(/(^|\s)ال/g, '$1');
+      const queryWithoutAl = q.replace(/(^|\s)ال/g, '$1');
+      if (withoutAl.includes(queryWithoutAl)) return true;
+
+      const aliases = CITY_SEARCH_ALIASES[cityItem];
+      if (aliases && aliases.some((alias) => normalizeSearchText(alias).includes(q))) {
+        return true;
+      }
+      return false;
+    });
+  }, [citiesList, citySearchQuery]);
+
+  // Close city dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        cityDropdownRef.current &&
+        !cityDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCityDropdownOpen(false);
+        // If the user typed something that matches an exact city or a single unique city, lock it in
+        const trimmedQuery = citySearchQuery.trim();
+        if (trimmedQuery && !city) {
+          const exactMatch = citiesList.find(
+            (c) => normalizeSearchText(c) === normalizeSearchText(trimmedQuery)
+          );
+          if (exactMatch) {
+            setCity(exactMatch);
+            setCitySearchQuery(exactMatch);
+          } else if (filteredCities.length === 1) {
+            setCity(filteredCities[0]);
+            setCitySearchQuery(filteredCities[0]);
+          } else {
+            // Reset unconfirmed free text so user must pick an exact city from the list
+            setCitySearchQuery('');
+          }
+        } else if (city) {
+          setCitySearchQuery(city);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [city, citySearchQuery, citiesList, filteredCities]);
 
   // 1. Track FORM_VIEW when form enters viewport (only when not in preview mode)
   useEffect(() => {
@@ -149,6 +289,16 @@ export const CODForm: React.FC<CODFormProps> = ({
     }
   };
 
+  const handleSelectExactCity = (selectedCity: string) => {
+    handleFirstInteraction('city');
+    setCity(selectedCity);
+    setCitySearchQuery(selectedCity);
+    setIsCityDropdownOpen(false);
+    if (errors.city) {
+      setErrors((prev) => ({ ...prev, city: '' }));
+    }
+  };
+
   // Validation
   const validateMoroccanPhone = (input: string): boolean => {
     const cleaned = input.replace(/[\s\-\(\)\.]/g, '');
@@ -176,8 +326,10 @@ export const CODForm: React.FC<CODFormProps> = ({
       newErrors.phone = 'رقم هاتف مغربي غير صحيح (مثال: 0612345678 أو 0712345678)';
     }
 
-    if (!city.trim()) {
-      newErrors.city = 'الرجاء اختيار أو تحديد المدينة / City required';
+    // Strict exact Moroccan city validation (Mandatory + Must be chosen from the official list)
+    const cleanCity = city.trim();
+    if (!cleanCity || !citiesList.includes(cleanCity)) {
+      newErrors.city = 'الرجاء البحث واختيار مدينتك بالضبط من القائمة (إجباري)';
     }
 
     if (!address.trim()) {
@@ -293,8 +445,6 @@ export const CODForm: React.FC<CODFormProps> = ({
       }
 
       // 2. Create real validated Order in Convex / Server DB
-      // (Backend validates product, calculates authoritative total, persists Order,
-      //  OrderStatusHistory, and logs authoritative ORDER_CREATED event)
       const order = await createOrder({
         productId: product._id,
         productName: product.name,
@@ -353,20 +503,6 @@ export const CODForm: React.FC<CODFormProps> = ({
       setIsSubmitting(false);
     }
   };
-
-  const citiesList = settings?.moroccoCities || [
-    'الدار البيضاء (Casablanca)',
-    'الرباط (Rabat)',
-    'مراكش (Marrakech)',
-    'فاس (Fès)',
-    'طنجة (Tanger)',
-    'أكادير (Agadir)',
-    'مكناس (Meknès)',
-    'وجدة (Oujda)',
-    'القنيطرة (Kénitra)',
-    'تطوان (Tétouan)',
-    'الجديدة (El Jadida)',
-  ];
 
   // Success State
   if (submittedOrder) {
@@ -441,11 +577,11 @@ export const CODForm: React.FC<CODFormProps> = ({
     <div
       ref={formContainerRef}
       id="order-form-container"
-      className={`bg-white rounded-3xl border border-neutral-200/80 shadow-xl overflow-hidden ${className}`}
+      className={`bg-white rounded-3xl border border-neutral-200/80 shadow-xl ${className}`}
       dir="rtl"
     >
       {/* Header Banner */}
-      <div className="bg-[#C80C32] text-white p-5 sm:p-6 text-center space-y-2">
+      <div className="bg-[#C80C32] text-white p-5 sm:p-6 text-center space-y-2 rounded-t-3xl">
         <div dir="ltr" className="flex items-center justify-center mb-1">
           <MimouzzaLogo height={30} />
         </div>
@@ -645,34 +781,187 @@ export const CODForm: React.FC<CODFormProps> = ({
             )}
           </div>
 
-          {/* City */}
-          <div>
-            <label className="block text-xs sm:text-sm font-extrabold text-[#111111] mb-1.5">
-              المدينة / الإقليم <span className="text-rose-500">*</span>
+          {/* Searchable Moroccan City Selector (Mandatory & Exact Match) */}
+          <div ref={cityDropdownRef} className="relative">
+            <label className="flex items-center justify-between text-xs sm:text-sm font-extrabold text-[#111111] mb-1.5">
+              <span>
+                المدينة / الإقليم <span className="text-rose-500">*</span>
+              </span>
+              {city ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#129A56] bg-[#E8F8F0] px-2 py-0.5 rounded-full">
+                  <Check className="w-3 h-3" />
+                  <span>تم تحديد المدينة</span>
+                </span>
+              ) : (
+                <span className="text-[11px] font-semibold text-neutral-500">
+                  ابحث بالاسم (عربي أو فرنسي) — {citiesList.length} مدينة
+                </span>
+              )}
             </label>
+
             <div className="relative">
-              <select
-                value={city}
+              <Search className="w-4 h-4 text-neutral-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                ref={cityInputRef}
+                type="text"
+                value={isCityDropdownOpen ? citySearchQuery : city || citySearchQuery}
+                onFocus={() => {
+                  handleFirstInteraction('city');
+                  setIsCityDropdownOpen(true);
+                  if (city) {
+                    setCitySearchQuery('');
+                  }
+                  setHighlightedCityIndex(0);
+                }}
+                onClick={() => {
+                  if (!isCityDropdownOpen) {
+                    setIsCityDropdownOpen(true);
+                    if (city) {
+                      setCitySearchQuery('');
+                    }
+                  }
+                }}
                 onChange={(e) => {
                   handleFirstInteraction('city');
-                  setCity(e.target.value);
+                  const val = e.target.value;
+                  setCitySearchQuery(val);
+                  setCity('');
+                  setIsCityDropdownOpen(true);
+                  setHighlightedCityIndex(0);
                   if (errors.city) setErrors((prev) => ({ ...prev, city: '' }));
                 }}
-                className={`w-full px-4 py-3 rounded-2xl border text-sm sm:text-base text-[#111111] bg-[#F8F8F6]/60 focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] appearance-none ${
-                  errors.city ? 'border-rose-500 bg-rose-50/30' : 'border-neutral-200'
+                onKeyDown={(e) => {
+                  if (!isCityDropdownOpen) {
+                    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                      e.preventDefault();
+                      setIsCityDropdownOpen(true);
+                    }
+                    return;
+                  }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlightedCityIndex((prev) =>
+                      filteredCities.length > 0 ? (prev + 1) % filteredCities.length : 0
+                    );
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlightedCityIndex((prev) =>
+                      filteredCities.length > 0
+                        ? (prev - 1 + filteredCities.length) % filteredCities.length
+                        : 0
+                    );
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filteredCities[highlightedCityIndex]) {
+                      handleSelectExactCity(filteredCities[highlightedCityIndex]);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setIsCityDropdownOpen(false);
+                    if (city) setCitySearchQuery(city);
+                  }
+                }}
+                placeholder="ابحث عن مدينتك بالاسم (مثال: الدار البيضاء / Casablanca)..."
+                autoComplete="off"
+                className={`w-full pr-10 pl-10 py-3 rounded-2xl border text-sm sm:text-base text-[#111111] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] transition-colors ${
+                  errors.city
+                    ? 'border-rose-500 bg-rose-50/30'
+                    : city
+                      ? 'border-[#129A56]/60 bg-[#E8F8F0]/25 font-bold'
+                      : 'border-neutral-200 bg-[#F8F8F6]/60'
                 }`}
-              >
-                <option value="">-- اختر مدينتك من القائمة --</option>
-                {citiesList.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute left-3.5 top-3.5 pointer-events-none text-neutral-400 text-xs">
-                ▼
-              </div>
+              />
+
+              {city || citySearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCity('');
+                    setCitySearchQuery('');
+                    setIsCityDropdownOpen(true);
+                    setHighlightedCityIndex(0);
+                    cityInputRef.current?.focus();
+                  }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-neutral-200/80 hover:bg-neutral-300 text-neutral-700 flex items-center justify-center cursor-pointer transition-colors"
+                  aria-label="مسح المدينة"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCityDropdownOpen((prev) => !prev);
+                    cityInputRef.current?.focus();
+                  }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  aria-label="فتح قائمة المدن"
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${
+                      isCityDropdownOpen ? 'rotate-180 text-[#FF6B00]' : ''
+                    }`}
+                  />
+                </button>
+              )}
             </div>
+
+            {/* Searchable Dropdown List of All Moroccan Cities */}
+            {isCityDropdownOpen && (
+              <div className="absolute z-40 mt-1.5 w-full bg-white rounded-2xl border border-neutral-200 shadow-2xl overflow-hidden">
+                <div className="bg-[#F8F8F6] px-3.5 py-2 border-b border-neutral-200/80 flex items-center justify-between text-[11px] font-bold text-neutral-600">
+                  <span>
+                    {citySearchQuery.trim()
+                      ? `نتائج البحث (${filteredCities.length})`
+                      : `جميع مدن المغرب (${citiesList.length} مدينة)`}
+                  </span>
+                  <span className="text-[#FF6B00]">اختر مدينتك بالضبط</span>
+                </div>
+
+                {filteredCities.length > 0 ? (
+                  <div className="max-h-60 sm:max-h-64 overflow-y-auto divide-y divide-neutral-100">
+                    {filteredCities.map((c, idx) => {
+                      const isSelected = city === c;
+                      const isHighlighted = idx === highlightedCityIndex;
+                      return (
+                        <button
+                          type="button"
+                          key={c}
+                          onMouseEnter={() => setHighlightedCityIndex(idx)}
+                          onClick={() => handleSelectExactCity(c)}
+                          className={`w-full px-4 py-2.5 text-right text-xs sm:text-sm flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#FFF3EB] text-[#FF6B00] font-extrabold'
+                              : isHighlighted
+                                ? 'bg-neutral-100 text-[#111111] font-bold'
+                                : 'bg-white hover:bg-neutral-50 text-[#111111] font-semibold'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <MapPin
+                              className={`w-3.5 h-3.5 shrink-0 ${
+                                isSelected ? 'text-[#FF6B00]' : 'text-neutral-400'
+                              }`}
+                            />
+                            <span className="truncate">{c}</span>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-[#FF6B00] shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center space-y-1.5">
+                    <p className="text-xs sm:text-sm font-bold text-neutral-800">
+                      لم يتم العثور على مدينة مطابقة لـ "{citySearchQuery}"
+                    </p>
+                    <p className="text-[11px] text-neutral-500">
+                      يرجى كتابة اسم المدينة بالعربية أو الفرنسية واختيارها من القائمة
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {errors.city && (
               <p className="text-xs sm:text-sm text-rose-600 mt-1 font-medium">{errors.city}</p>
             )}
