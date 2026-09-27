@@ -26,6 +26,148 @@ import {
 export const DEFAULT_CONVEX_CLOUD_URL = 'https://valuable-emu-538.convex.cloud';
 
 const CONVEX_URL_STORAGE_KEY = 'cod_convex_cloud_url_v4';
+const PRODUCTS_BACKUP_STORAGE_KEY = 'cod_convex_products_backup_v5';
+
+/**
+ * Builds an exact validator-compliant payload for `products:create` on Convex Cloud.
+ * Convex `v.object({...})` requires `createdAt` & `updatedAt` and rejects `_id` / `_creationTime`.
+ */
+function buildConvexCreateProductArgs(product: Product): Record<string, any> {
+  const now = Date.now();
+  const status: ProductStatus = getProductStatus(product);
+  const templateId =
+    product.templateId === 'premium' || product.templateId === 'big-offer'
+      ? product.templateId
+      : 'classic-cod';
+
+  const args: Record<string, any> = {
+    name: String(product.name || '').trim() || 'Product',
+    slug: normalizeProductSlug(product.slug || product.name) || `prod-${now.toString(36)}`,
+    shortDescription: String(product.shortDescription || ''),
+    description: String(product.description || ''),
+    price: Number(product.price) || 0,
+    compareAtPrice: Number(product.compareAtPrice) || 0,
+    comparePrice: Number(product.comparePrice ?? product.compareAtPrice) || 0,
+    currency: String(product.currency || 'DH'),
+    images: Array.isArray(product.images) ? product.images.filter(Boolean) : [],
+    descriptionImages: Array.isArray(product.descriptionImages)
+      ? product.descriptionImages.filter(Boolean)
+      : [],
+    benefits: Array.isArray(product.benefits)
+      ? product.benefits.map((b, i) => ({
+          id: String(b.id || `ben_${i}`),
+          icon: String(b.icon || 'CheckCircle'),
+          title: String(b.title || ''),
+          ...(b.description !== undefined ? { description: String(b.description) } : {}),
+        }))
+      : [],
+    variants: Array.isArray(product.variants)
+      ? product.variants.map((v, i) => ({
+          id: String(v.id || `var_${i}`),
+          name: String(v.name || ''),
+          options: Array.isArray(v.options) ? v.options.map(String) : [],
+        }))
+      : [],
+    offerText: String(product.offerText || ''),
+    ctaText: String(product.ctaText || 'اطلب الآن بالدفع عند الاستلام'),
+    shippingText: String(product.shippingText || ''),
+    returnPolicy: String(product.returnPolicy || ''),
+    rating: Number(product.rating) || 4.8,
+    reviewCount: Number(product.reviewCount) || 0,
+    templateId,
+    isPublished: status === 'ACTIVE',
+    status,
+    createdAt: Number(product.createdAt) || now,
+    updatedAt: Number(product.updatedAt) || now,
+  };
+
+  const optionalKeys: (keyof Product)[] = [
+    'badgeText',
+    'canonicalUrl',
+    'countdownDurationMinutes',
+    'countdownEnabled',
+    'countdownEndsAt',
+    'customMetaPixelId',
+    'customTikTokPixelId',
+    'faqs',
+    'ogDescription',
+    'ogImage',
+    'ogTitle',
+    'scarcityEnabled',
+    'seoDescription',
+    'seoTitle',
+    'stockQuantity',
+    'useCustomPixels',
+    'whatsappEnabled',
+    'whatsappNumber',
+  ];
+
+  for (const key of optionalKeys) {
+    const val = product[key];
+    if (val !== undefined && val !== null) {
+      args[key] = val;
+    }
+  }
+
+  return args;
+}
+
+/**
+ * Builds an exact validator-compliant `updates` payload for `products:update` on Convex Cloud.
+ * Note: `products:update` validator does NOT allow `_id`, `_creationTime`, `createdAt`, or `updatedAt`.
+ */
+function buildConvexUpdateProductArgs(updates: Partial<Product>): Record<string, any> {
+  const full = buildConvexCreateProductArgs(updates as Product);
+  const allowedUpdateKeys = new Set([
+    'badgeText',
+    'benefits',
+    'canonicalUrl',
+    'compareAtPrice',
+    'comparePrice',
+    'countdownDurationMinutes',
+    'countdownEnabled',
+    'countdownEndsAt',
+    'ctaText',
+    'currency',
+    'customMetaPixelId',
+    'customTikTokPixelId',
+    'description',
+    'descriptionImages',
+    'faqs',
+    'images',
+    'isPublished',
+    'name',
+    'offerText',
+    'ogDescription',
+    'ogImage',
+    'ogTitle',
+    'price',
+    'rating',
+    'returnPolicy',
+    'reviewCount',
+    'scarcityEnabled',
+    'seoDescription',
+    'seoTitle',
+    'shippingText',
+    'shortDescription',
+    'slug',
+    'status',
+    'stockQuantity',
+    'templateId',
+    'useCustomPixels',
+    'variants',
+    'whatsappEnabled',
+    'whatsappNumber',
+  ]);
+
+  const result: Record<string, any> = {};
+  for (const key of Object.keys(updates)) {
+    if (allowedUpdateKeys.has(key) && full[key] !== undefined) {
+      result[key] = full[key];
+    }
+  }
+  return result;
+}
 
 export const INITIAL_TEMPLATES: Template[] = [
   {
@@ -334,12 +476,107 @@ export class ConvexMemoryStore {
   public connectionStatus: ConvexConnectionStatus = 'connecting';
   public lastSyncedAt: number | null = null;
   public isHydrated = false;
-  private remoteFunctionsReady = false;
+  private remoteFunctionsReady = true;
   private initialSyncPromise: Promise<void> | null = null;
   private pendingProducts = new Map<string, Product>();
+  private deletedProductIds = new Set<string>();
 
   constructor() {
     this.init();
+  }
+
+  private saveProductsBackup() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(PRODUCTS_BACKUP_STORAGE_KEY, JSON.stringify(this.products));
+    } catch {}
+  }
+
+  private loadProductsBackup(): Product[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(PRODUCTS_BACKUP_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((p) => p && !isLegacySeedProduct(p))
+          .map((p) => ({
+            ...p,
+            status: getProductStatus(p),
+            isPublished: getProductStatus(p) === 'ACTIVE',
+            comparePrice: p.comparePrice ?? p.compareAtPrice,
+          }));
+      }
+    } catch {}
+    return [];
+  }
+
+  /**
+   * Merges incoming products into `this.products` without wiping out products from Convex Cloud or Server DB.
+   */
+  private mergeProductsList(incoming: Product[]) {
+    if (!Array.isArray(incoming)) return;
+
+    const normalizedIncoming = incoming
+      .filter((p) => p && !isLegacySeedProduct(p) && !this.deletedProductIds.has(p._id))
+      .map((p) => ({
+        ...p,
+        status: getProductStatus(p),
+        isPublished: getProductStatus(p) === 'ACTIVE',
+        comparePrice: p.comparePrice ?? p.compareAtPrice,
+      }));
+
+    const bySlug = new Map<string, Product>();
+    const byId = new Map<string, Product>();
+
+    const register = (prod: Product) => {
+      if (!prod || this.deletedProductIds.has(prod._id)) return;
+      const slugKey = normalizeProductSlug(prod.slug || prod.name);
+      const existingBySlug = slugKey ? bySlug.get(slugKey) : undefined;
+      const existingById = byId.get(prod._id);
+      const existing = existingById || existingBySlug;
+
+      if (!existing) {
+        byId.set(prod._id, prod);
+        if (slugKey) bySlug.set(slugKey, prod);
+        return;
+      }
+
+      // Prefer real Convex IDs (do not start with 'prod_') or newer updatedAt
+      const prodIsConvexId = !prod._id.startsWith('prod_');
+      const existingIsConvexId = !existing._id.startsWith('prod_');
+      const prodTime = Number(prod.updatedAt || prod.createdAt || 0);
+      const existingTime = Number(existing.updatedAt || existing.createdAt || 0);
+
+      const winner: Product =
+        prodIsConvexId && !existingIsConvexId
+          ? { ...existing, ...prod, _id: prod._id }
+          : !prodIsConvexId && existingIsConvexId
+            ? { ...prod, ...existing, _id: existing._id }
+            : prodTime >= existingTime
+              ? prod
+              : existing;
+
+      byId.delete(existing._id);
+      byId.set(winner._id, winner);
+      if (slugKey) bySlug.set(slugKey, winner);
+    };
+
+    for (const p of this.products) {
+      register(p);
+    }
+    for (const p of normalizedIncoming) {
+      register(p);
+    }
+    for (const [, pending] of Array.from(this.pendingProducts.entries())) {
+      register(pending);
+    }
+
+    this.products = Array.from(byId.values()).sort(
+      (a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)
+    );
+    this.saveProductsBackup();
   }
 
   private init() {
@@ -348,30 +585,15 @@ export class ConvexMemoryStore {
       return;
     }
 
-    // Clean up all legacy localStorage / IndexedDB product & order caches so browser storage
-    // is never used as a product/order/analytics database.
+    // Clean up old demo keys
     try {
       const legacyKeys = [
         'cod_convex_products_v2',
         'cod_convex_orders_v2',
         'cod_convex_analytics_v2',
         'cod_convex_v2_init',
-        'cod_convex_products_v3_real',
-        'cod_convex_orders_v3_real',
-        'cod_convex_order_history_v3_real',
-        'cod_convex_visitors_v3_real',
-        'cod_convex_sessions_v3_real',
-        'cod_convex_templates_v3_real',
-        'cod_convex_settings_v3_real',
-        'cod_convex_analytics_v3_real',
-        'cod_convex_v3_real_init',
       ];
       legacyKeys.forEach((k) => localStorage.removeItem(k));
-      if ('indexedDB' in window) {
-        try {
-          window.indexedDB.deleteDatabase('cod_convex_database_v3_real');
-        } catch {}
-      }
     } catch {}
 
     try {
@@ -382,20 +604,27 @@ export class ConvexMemoryStore {
       this.convexUrl = DEFAULT_CONVEX_CLOUD_URL;
     }
 
-    // Authoritative pull from backend database (/api/db/state)
-    this.initialSyncPromise = this.syncWithServer()
+    // Load local backup immediately so new tabs have instant access before network resolves
+    const backup = this.loadProductsBackup();
+    if (backup.length > 0) {
+      this.products = backup;
+    }
+
+    // Authoritative pull from BOTH Convex Cloud and Backend Server
+    this.initialSyncPromise = Promise.all([
+      this.syncWithConvexCloud(),
+      this.syncWithServer(),
+    ])
+      .then(() => {})
       .finally(() => {
         this.isHydrated = true;
         notifySubscribers(false);
-        void this.syncWithConvexCloud();
       });
 
-    // Periodic authoritative pull from backend server
+    // Periodic authoritative pull
     setInterval(() => {
+      void this.syncWithConvexCloud();
       void this.syncWithServer();
-      if (this.remoteFunctionsReady) {
-        void this.syncWithConvexCloud();
-      }
     }, 4000);
   }
 
@@ -412,92 +641,7 @@ export class ConvexMemoryStore {
    */
   public async uploadImageDataUrl(dataUrl: string): Promise<string> {
     if (!dataUrl || typeof dataUrl !== 'string') return '';
-    const trimmed = dataUrl.trim();
-    if (!trimmed.startsWith('data:image/') || typeof window === 'undefined') {
-      return trimmed;
-    }
-
-    const match = trimmed.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-    if (!match) return trimmed;
-
-    const mimeType = match[1] || 'image/jpeg';
-    const base64 = match[2] || '';
-    if (!base64) return '';
-
-    const CHUNK_SIZE = 100_000; // ~100KB per request — safe for all reverse proxies
-    const totalChunks = Math.max(1, Math.ceil(base64.length / CHUNK_SIZE));
-    const uploadId =
-      'up_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
-
-    try {
-      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-        const chunkData = base64.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
-        const res = await fetch('/api/db/image-chunk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            uploadId,
-            mimeType,
-            chunkIndex,
-            totalChunks,
-            chunkData,
-          }),
-        });
-        if (!res.ok) {
-          break;
-        }
-        const data = await res.json();
-        if (data?.ok && data.completed && data.url) {
-          return data.url as string;
-        }
-      }
-    } catch {
-      // Fallback to single-request endpoint
-    }
-
-    try {
-      const res = await fetch('/api/db/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataUrl: trimmed }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.ok && data.url) {
-          return data.url as string;
-        }
-      }
-    } catch {
-      // Keep original data URL if server is unreachable
-    }
-
-    return trimmed;
-  }
-
-  /**
-   * Uploads any inline base64 `data:image/...` strings one by one in chunks
-   * so that the product JSON payload stays tiny (< 5KB) and never triggers HTTP 413 limits.
-   */
-  private async uploadDataImagesArray(urls?: string[]): Promise<string[]> {
-    if (!Array.isArray(urls) || urls.length === 0) return [];
-    if (typeof window === 'undefined') return urls.filter(Boolean);
-
-    const results: string[] = [];
-    for (const item of urls) {
-      if (!item || typeof item !== 'string') continue;
-      const trimmed = item.trim();
-      if (!trimmed) continue;
-
-      if (trimmed.startsWith('data:image/')) {
-        const uploadedUrl = await this.uploadImageDataUrl(trimmed);
-        if (uploadedUrl) {
-          results.push(uploadedUrl);
-          continue;
-        }
-      }
-      results.push(trimmed);
-    }
-    return results;
+    return dataUrl.trim();
   }
 
   private async persistProductToServer(product: Product): Promise<Product> {
@@ -506,19 +650,15 @@ export class ConvexMemoryStore {
     this.pendingProducts.set(product._id, product);
 
     try {
-      const uploadedImages = await this.uploadDataImagesArray(product.images);
-      const uploadedDescImages = await this.uploadDataImagesArray(product.descriptionImages);
       const cleanOgImage =
         product.ogImage && !product.ogImage.startsWith('data:')
           ? product.ogImage
-          : uploadedImages[0] && !uploadedImages[0].startsWith('data:')
-            ? uploadedImages[0]
+          : product.images[0] && !product.images[0].startsWith('data:')
+            ? product.images[0]
             : '';
 
       const productPayload: Product = {
         ...product,
-        images: uploadedImages,
-        descriptionImages: uploadedDescImages,
         ogImage: cleanOgImage,
       };
 
@@ -530,7 +670,6 @@ export class ConvexMemoryStore {
         body: JSON.stringify({ product: productPayload }),
       });
 
-      // Fallback retry if any remaining inline data URI caused a 413 Payload Too Large at the proxy
       if (!res.ok && res.status === 413) {
         const lightweightPayload: Product = {
           ...productPayload,
@@ -552,6 +691,7 @@ export class ConvexMemoryStore {
         if (savedData && savedData.ok && savedData.product) {
           const authoritativeProduct: Product = {
             ...savedData.product,
+            _id: !product._id.startsWith('prod_') ? product._id : savedData.product._id,
             status: getProductStatus(savedData.product),
             isPublished: getProductStatus(savedData.product) === 'ACTIVE',
             comparePrice: savedData.product.comparePrice ?? savedData.product.compareAtPrice,
@@ -560,37 +700,20 @@ export class ConvexMemoryStore {
           this.pendingProducts.delete(authoritativeProduct._id);
           return authoritativeProduct;
         }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        if (res.status === 400 && errData?.error) {
-          this.pendingProducts.delete(product._id);
-          throw new Error(errData.error);
-        }
       }
-    } catch (err: any) {
-      if (err?.message && err.message.includes('اسم المنتج مطلوب')) {
-        throw err;
-      }
-      console.warn('Product queued for background server sync:', err);
+    } catch {
+      // Server route may not exist on static hosts (e.g. Vercel); Convex Cloud handles persistence
     }
 
-    return this.pendingProducts.get(product._id) || product;
+    this.pendingProducts.delete(product._id);
+    return product;
   }
 
   /**
    * Authoritative pull from the server database (`GET /api/db/state`).
-   * Also flushes any pending newly-saved products if they haven't reached the server yet.
    */
   public async syncWithServer(): Promise<void> {
     if (typeof window === 'undefined') return;
-
-    if (this.pendingProducts.size > 0) {
-      for (const [, pendingProd] of Array.from(this.pendingProducts.entries())) {
-        try {
-          await this.persistProductToServer(pendingProd);
-        } catch {}
-      }
-    }
 
     try {
       const res = await fetch('/api/db/state', {
@@ -599,29 +722,13 @@ export class ConvexMemoryStore {
         cache: 'no-store',
       });
       if (!res.ok) return;
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) return;
+
       const data = await res.json();
       if (data && data.ok) {
-        if (Array.isArray(data.products)) {
-          const serverProducts = (data.products as Product[])
-            .filter((p) => !isLegacySeedProduct(p))
-            .map((p) => ({
-              ...p,
-              status: getProductStatus(p),
-              isPublished: getProductStatus(p) === 'ACTIVE',
-              comparePrice: p.comparePrice ?? p.compareAtPrice,
-            }));
-
-          // Preserve any in-flight pending products not yet in the server snapshot
-          const serverIds = new Set(serverProducts.map((p) => p._id));
-          for (const [id, pending] of Array.from(this.pendingProducts.entries())) {
-            if (!serverIds.has(id)) {
-              serverProducts.unshift(pending);
-            } else {
-              this.pendingProducts.delete(id);
-            }
-          }
-
-          this.products = serverProducts;
+        if (Array.isArray(data.products) && data.products.length > 0) {
+          this.mergeProductsList(data.products as Product[]);
         }
         if (Array.isArray(data.orders)) {
           this.orders = (data.orders as Order[]).filter((o) => !isLegacyFakeOrder(o));
@@ -651,48 +758,114 @@ export class ConvexMemoryStore {
         notifySubscribers(false);
       }
     } catch {
-      // Network error
+      // Network error or static host
     }
   }
 
   /**
-   * Authoritative lookup of a single product by slug or ID directly from the server.
+   * Authoritative lookup of a single product by slug or ID from Convex Cloud + Server DB + Backup.
    */
   public async fetchProductBySlugFromServer(slug: string): Promise<Product | null> {
     if (typeof window === 'undefined') return null;
+    const normTarget = normalizeProductSlug(slug);
+    const rawTarget = (slug || '').trim().toLowerCase();
+
+    // 1. Check Convex Cloud (`products:getBySlug` and `products:list`)
+    try {
+      const directRes = await this.callConvexQuery<Product | null>('products:getBySlug', {
+        slug: (slug || '').trim(),
+      });
+      if (directRes.ok && directRes.value && !isLegacySeedProduct(directRes.value)) {
+        const fetched: Product = {
+          ...directRes.value,
+          status: getProductStatus(directRes.value),
+          isPublished: getProductStatus(directRes.value) === 'ACTIVE',
+          comparePrice: directRes.value.comparePrice ?? directRes.value.compareAtPrice,
+        };
+        this.mergeProductsList([fetched]);
+        notifySubscribers(false);
+        return fetched;
+      }
+
+      if (normTarget && normTarget !== (slug || '').trim()) {
+        const normRes = await this.callConvexQuery<Product | null>('products:getBySlug', {
+          slug: normTarget,
+        });
+        if (normRes.ok && normRes.value && !isLegacySeedProduct(normRes.value)) {
+          const fetched: Product = {
+            ...normRes.value,
+            status: getProductStatus(normRes.value),
+            isPublished: getProductStatus(normRes.value) === 'ACTIVE',
+            comparePrice: normRes.value.comparePrice ?? normRes.value.compareAtPrice,
+          };
+          this.mergeProductsList([fetched]);
+          notifySubscribers(false);
+          return fetched;
+        }
+      }
+
+      const listRes = await this.callConvexQuery<Product[]>('products:list', {});
+      if (listRes.ok && Array.isArray(listRes.value)) {
+        this.mergeProductsList(listRes.value);
+        const matchFromList =
+          listRes.value.find(
+            (p) =>
+              normalizeProductSlug(p.slug) === normTarget ||
+              (p.slug || '').trim().toLowerCase() === rawTarget ||
+              (p._id || '').toLowerCase() === rawTarget
+          ) || null;
+        if (matchFromList && !isLegacySeedProduct(matchFromList)) {
+          const fetched: Product = {
+            ...matchFromList,
+            status: getProductStatus(matchFromList),
+            isPublished: getProductStatus(matchFromList) === 'ACTIVE',
+            comparePrice: matchFromList.comparePrice ?? matchFromList.compareAtPrice,
+          };
+          notifySubscribers(false);
+          return fetched;
+        }
+      }
+    } catch {}
+
+    // 2. Check Express Backend Server (`/api/db/product/:slug`)
     try {
       const res = await fetch(`/api/db/product/${encodeURIComponent(slug)}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         cache: 'no-store',
       });
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (data && data.ok && data.product && !isLegacySeedProduct(data.product)) {
-        const raw = data.product as Product;
-        const fetched: Product = {
-          ...raw,
-          status: getProductStatus(raw),
-          isPublished: getProductStatus(raw) === 'ACTIVE',
-          comparePrice: raw.comparePrice ?? raw.compareAtPrice,
-        };
-        const idx = this.products.findIndex((p) => p._id === fetched._id);
-        if (idx !== -1) {
-          this.products[idx] = fetched;
-        } else {
-          this.products.unshift(fetched);
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data && data.ok && data.product && !isLegacySeedProduct(data.product)) {
+          const raw = data.product as Product;
+          const fetched: Product = {
+            ...raw,
+            status: getProductStatus(raw),
+            isPublished: getProductStatus(raw) === 'ACTIVE',
+            comparePrice: raw.comparePrice ?? raw.compareAtPrice,
+          };
+          this.mergeProductsList([fetched]);
+          notifySubscribers(false);
+          return fetched;
         }
-        notifySubscribers(false);
-        return fetched;
       }
-    } catch {
-      // Ignore network error
-    }
-    return null;
+    } catch {}
+
+    // 3. Check in-memory / local backup
+    const localFound =
+      this.products.find(
+        (p) =>
+          normalizeProductSlug(p.slug) === normTarget ||
+          p.slug.trim().toLowerCase() === rawTarget ||
+          p._id.toLowerCase() === rawTarget
+      ) || null;
+
+    return localFound;
   }
 
   public async reloadFromStorage() {
-    await this.syncWithServer();
+    await Promise.all([this.syncWithConvexCloud(), this.syncWithServer()]);
   }
 
   // --- CONVEX CLOUD HTTP SYNC (https://valuable-emu-538.convex.cloud) ---
@@ -734,8 +907,7 @@ export class ConvexMemoryStore {
   private async callConvexMutation<T>(
     path: string,
     args: Record<string, any> = {}
-  ): Promise<{ ok: boolean; value?: T }> {
-    if (!this.remoteFunctionsReady) return { ok: false };
+  ): Promise<{ ok: boolean; value?: T; errorMessage?: string }> {
     try {
       const res = await fetch(`${this.convexUrl}/api/mutation`, {
         method: 'POST',
@@ -747,9 +919,9 @@ export class ConvexMemoryStore {
         this.lastSyncedAt = Date.now();
         return { ok: true, value: data.value as T };
       }
-      return { ok: false };
-    } catch {
-      return { ok: false };
+      return { ok: false, errorMessage: data.errorMessage };
+    } catch (err: any) {
+      return { ok: false, errorMessage: err?.message };
     }
   }
 
@@ -758,8 +930,6 @@ export class ConvexMemoryStore {
       return { status: 'local_persisted', message: 'Server Mode' };
     }
 
-    await this.syncWithServer();
-
     try {
       const prodRes = await this.callConvexQuery<Product[]>('products:list', {});
 
@@ -767,10 +937,39 @@ export class ConvexMemoryStore {
         this.remoteFunctionsReady = true;
         this.connectionStatus = 'connected';
         this.lastSyncedAt = Date.now();
+
+        const convexProducts = prodRes.value
+          .filter((p) => p && !isLegacySeedProduct(p) && !this.deletedProductIds.has(p._id))
+          .map((p) => ({
+            ...p,
+            status: getProductStatus(p),
+            isPublished: getProductStatus(p) === 'ACTIVE',
+            comparePrice: p.comparePrice ?? p.compareAtPrice,
+          }));
+
+        this.mergeProductsList(convexProducts);
+
+        // Also mirror any local `prod_` products that aren't in Convex Cloud yet up to Convex Cloud
+        const convexSlugs = new Set(convexProducts.map((p) => normalizeProductSlug(p.slug)));
+        for (const localProd of this.products) {
+          const normSlug = normalizeProductSlug(localProd.slug);
+          if (localProd._id.startsWith('prod_') && !convexSlugs.has(normSlug)) {
+            const createArgs = buildConvexCreateProductArgs(localProd);
+            const created = await this.callConvexMutation<string>('products:create', createArgs);
+            if (created.ok && typeof created.value === 'string' && created.value) {
+              const oldId = localProd._id;
+              localProd._id = created.value;
+              convexSlugs.add(normSlug);
+              this.pendingProducts.delete(oldId);
+              this.saveProductsBackup();
+            }
+          }
+        }
+
         notifySubscribers(false);
         return {
           status: 'connected',
-          message: `متصل بنجاح مع قاعدة بيانات Convex Cloud (${this.convexUrl})`,
+          message: `متصل بنجاح مع قاعدة بيانات Convex Cloud (${this.products.length} منتجات محفوظة)`,
         };
       }
 
@@ -780,13 +979,13 @@ export class ConvexMemoryStore {
       notifySubscribers(false);
       return {
         status: 'local_persisted',
-        message: `متصل بقاعدة البيانات الدائمة للخادم (${this.products.length} منتجات، ${this.orders.length} طلبات)`,
+        message: `متصل بقاعدة البيانات الدائمة (${this.products.length} منتجات، ${this.orders.length} طلبات)`,
       };
     } catch {
       this.connectionStatus = 'local_persisted';
       return {
         status: 'local_persisted',
-        message: 'متصل بقاعدة البيانات الدائمة للخادم',
+        message: 'متصل بقاعدة البيانات الدائمة',
       };
     }
   }
@@ -836,19 +1035,47 @@ export class ConvexMemoryStore {
       updatedAt: now,
     };
 
+    // 1. Save to Convex Cloud (`products:create`) with validator-compliant payload
+    const convexCreateArgs = buildConvexCreateProductArgs(newProduct);
+    let convexRes = await this.callConvexMutation<string>('products:create', convexCreateArgs);
+
+    // If payload had too many large data URLs exceeding Convex 1MB limit, keep first 3 images
+    if (!convexRes.ok && convexCreateArgs.images && convexCreateArgs.images.length > 0) {
+      const lighterArgs = {
+        ...convexCreateArgs,
+        images: convexCreateArgs.images.slice(0, 3),
+        descriptionImages: (convexCreateArgs.descriptionImages || []).slice(0, 3),
+        ogImage: '',
+      };
+      convexRes = await this.callConvexMutation<string>('products:create', lighterArgs);
+    }
+
+    if (convexRes.ok && typeof convexRes.value === 'string' && convexRes.value) {
+      newProduct._id = convexRes.value;
+    }
+
     this.products.unshift(newProduct);
+    this.saveProductsBackup();
     notifySubscribers();
 
+    // 2. Also persist to local/server Express DB if available
     const authoritativeProduct = await this.persistProductToServer(newProduct);
-    const idx = this.products.findIndex((p) => p._id === newProduct._id);
+    const finalProduct: Product = {
+      ...authoritativeProduct,
+      _id: !newProduct._id.startsWith('prod_') ? newProduct._id : authoritativeProduct._id,
+    };
+
+    const idx = this.products.findIndex(
+      (p) => p._id === newProduct._id || p._id === finalProduct._id
+    );
     if (idx !== -1) {
-      this.products[idx] = authoritativeProduct;
+      this.products[idx] = finalProduct;
     } else {
-      this.products.unshift(authoritativeProduct);
+      this.products.unshift(finalProduct);
     }
+    this.saveProductsBackup();
     notifySubscribers();
-    void this.callConvexMutation<Product>('products:create', data);
-    return authoritativeProduct;
+    return finalProduct;
   }
 
   public async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
@@ -885,15 +1112,30 @@ export class ConvexMemoryStore {
     };
 
     this.products[idx] = updated;
+    this.saveProductsBackup();
     notifySubscribers();
 
+    // 1. Update in Convex Cloud (`products:update` or `products:create` if not yet in Convex Cloud)
+    if (!id.startsWith('prod_')) {
+      const cleanUpdates = buildConvexUpdateProductArgs(updated);
+      await this.callConvexMutation('products:update', { id, updates: cleanUpdates });
+    } else {
+      const createArgs = buildConvexCreateProductArgs(updated);
+      const created = await this.callConvexMutation<string>('products:create', createArgs);
+      if (created.ok && typeof created.value === 'string' && created.value) {
+        updated._id = created.value;
+        this.products[idx] = updated;
+      }
+    }
+
+    // 2. Also persist to Express DB if available
     const authoritativeProduct = await this.persistProductToServer(updated);
-    const currentIdx = this.products.findIndex((p) => p._id === id);
+    const currentIdx = this.products.findIndex((p) => p._id === id || p._id === updated._id);
     if (currentIdx !== -1) {
       this.products[currentIdx] = authoritativeProduct;
     }
+    this.saveProductsBackup();
     notifySubscribers();
-    void this.callConvexMutation('products:update', { id, updates });
     return authoritativeProduct;
   }
 
@@ -915,7 +1157,15 @@ export class ConvexMemoryStore {
       createdAt: now,
       updatedAt: now,
     };
+
+    const convexCreateArgs = buildConvexCreateProductArgs(copy);
+    const convexRes = await this.callConvexMutation<string>('products:create', convexCreateArgs);
+    if (convexRes.ok && typeof convexRes.value === 'string' && convexRes.value) {
+      copy._id = convexRes.value;
+    }
+
     this.products.unshift(copy);
+    this.saveProductsBackup();
     notifySubscribers();
 
     const authoritativeCopy = await this.persistProductToServer(copy);
@@ -923,9 +1173,8 @@ export class ConvexMemoryStore {
     if (idx !== -1) {
       this.products[idx] = authoritativeCopy;
     }
+    this.saveProductsBackup();
     notifySubscribers();
-
-    void this.callConvexMutation('products:duplicate', { id });
     return authoritativeCopy;
   }
 
@@ -938,36 +1187,28 @@ export class ConvexMemoryStore {
   ): Promise<{ deleted: boolean; archived: boolean; product?: Product }> {
     const hasOrders = this.orders.some((o) => o.productId === id);
 
-    if (typeof window !== 'undefined') {
-      try {
-        const res = await fetch(`/api/db/product/${encodeURIComponent(id)}`, {
-          method: 'DELETE',
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.archived && data.product) {
-            const idx = this.products.findIndex((p) => p._id === id);
-            if (idx !== -1) {
-              this.products[idx] = data.product;
-            }
-            notifySubscribers();
-            return { deleted: false, archived: true, product: data.product };
-          }
-          this.products = this.products.filter((p) => p._id !== id);
-          notifySubscribers();
-          void this.callConvexMutation('products:remove', { id });
-          return { deleted: true, archived: false };
-        }
-      } catch {}
-    }
-
     if (hasOrders) {
       const archived = await this.updateProduct(id, { status: 'ARCHIVED', isPublished: false });
       return { deleted: false, archived: true, product: archived };
     }
 
+    this.deletedProductIds.add(id);
     this.products = this.products.filter((p) => p._id !== id);
+    this.saveProductsBackup();
     notifySubscribers();
+
+    if (!id.startsWith('prod_')) {
+      await this.callConvexMutation('products:remove', { id });
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        await fetch(`/api/db/product/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        });
+      } catch {}
+    }
+
     return { deleted: true, archived: false };
   }
 
@@ -1194,29 +1435,40 @@ export class ConvexMemoryStore {
     }
     notifySubscribers();
 
+    void this.callConvexMutation<Order>('orders:create', data);
+
     if (typeof window !== 'undefined') {
-      const res = await fetch('/api/db/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          order: newOrder,
-          statusHistory: initialHistory,
-          orderEvent: orderCreatedEvent,
-        }),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'فشل تسجيل الطلب في الخادم');
-      }
-      const resData = await res.json();
-      if (resData && resData.ok && resData.order) {
-        const idx = this.orders.findIndex((o) => o._id === newOrder._id);
-        if (idx !== -1) {
-          this.orders[idx] = resData.order;
+      try {
+        const res = await fetch('/api/db/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order: newOrder,
+            statusHistory: initialHistory,
+            orderEvent: orderCreatedEvent,
+          }),
+        });
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          const resData = await res.json();
+          if (resData && resData.ok && resData.order) {
+            const idx = this.orders.findIndex((o) => o._id === newOrder._id);
+            if (idx !== -1) {
+              this.orders[idx] = resData.order;
+            }
+            notifySubscribers();
+            return resData.order as Order;
+          }
+        } else if (res.status === 400 && contentType.includes('application/json')) {
+          const errData = await res.json().catch(() => ({}));
+          if (errData?.error) {
+            throw new Error(errData.error);
+          }
         }
-        notifySubscribers();
-        void this.callConvexMutation<Order>('orders:create', data);
-        return resData.order as Order;
+      } catch (err: any) {
+        if (err?.message && err.message.includes('Invalid order')) {
+          throw err;
+        }
       }
     }
 

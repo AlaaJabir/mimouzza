@@ -22,7 +22,7 @@ const PRESET_STUDIO_IMAGES = [
  * preserves transparency for PNG/WEBP files, and uploads it directly to the server image store
  * (`/api/db/image`) so saving a product never hits HTTP payload size limits.
  */
-export async function compressImageFile(file: File, maxDimension = 1080, quality = 0.82): Promise<string> {
+export async function compressImageFile(file: File, maxDimension = 850, quality = 0.76): Promise<string> {
   const dataUri = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
@@ -75,10 +75,10 @@ export async function compressImageFile(file: File, maxDimension = 1080, quality
           const outputMime = isTransparentFormat ? 'image/webp' : 'image/jpeg';
           let compressed = canvas.toDataURL(outputMime, quality);
 
-          // If the browser doesn't support WebP encoding (falls back to huge uncompressed PNG > 450KB),
-          // scale down or encode as JPEG so individual image payloads never exceed proxy limits.
-          if (compressed.length > 450_000) {
-            const scale = 0.7;
+          // If the browser doesn't support WebP encoding (falls back to huge uncompressed PNG),
+          // scale down and encode compactly so multiple images easily fit inside a 1MB Convex Cloud document.
+          if (compressed.length > 100_000) {
+            const scale = 0.72;
             const smallCanvas = document.createElement('canvas');
             smallCanvas.width = Math.max(1, Math.round(width * scale));
             smallCanvas.height = Math.max(1, Math.round(height * scale));
@@ -89,12 +89,12 @@ export async function compressImageFile(file: File, maxDimension = 1080, quality
                 sCtx.fillRect(0, 0, smallCanvas.width, smallCanvas.height);
               }
               sCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
-              compressed = smallCanvas.toDataURL('image/webp', 0.75);
-              if (compressed.length > 450_000) {
+              compressed = smallCanvas.toDataURL('image/webp', 0.68);
+              if (compressed.length > 100_000 || !compressed.startsWith('data:image/webp')) {
                 sCtx.fillStyle = '#FFFFFF';
                 sCtx.fillRect(0, 0, smallCanvas.width, smallCanvas.height);
                 sCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
-                compressed = smallCanvas.toDataURL('image/jpeg', 0.78);
+                compressed = smallCanvas.toDataURL('image/jpeg', 0.65);
               }
             }
           }
@@ -109,16 +109,6 @@ export async function compressImageFile(file: File, maxDimension = 1080, quality
     };
     reader.readAsDataURL(file);
   });
-
-  // Upload the compressed image to the server image endpoint in safe chunks so it returns a short URL
-  try {
-    const uploadedUrl = await db.uploadImageDataUrl(dataUri);
-    if (uploadedUrl) {
-      return uploadedUrl;
-    }
-  } catch {
-    // Fallback to compressed dataUri if offline
-  }
 
   return dataUri;
 }
