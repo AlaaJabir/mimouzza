@@ -945,12 +945,38 @@ async function startServer() {
     res.json({ ok: true, order: ord, historyEntry: hist, serverTime: serverNow });
   });
 
-  // 9. Delete an order
+  // 9. Delete an order (or bulk delete orders) and clean up associated history & events
+  const purgeOrdersFromServerDb = (idsToRemove: Set<string>) => {
+    serverDb.orders = serverDb.orders.filter((o) => !idsToRemove.has(o._id));
+    serverDb.orderStatusHistory = serverDb.orderStatusHistory.filter(
+      (h) => !idsToRemove.has(h.orderId)
+    );
+    serverDb.analyticsEvents = serverDb.analyticsEvents.filter((e) => {
+      const metaOrderId = e.metadata?.orderId ? String(e.metadata.orderId) : '';
+      if (metaOrderId && idsToRemove.has(metaOrderId)) return false;
+      if (e._id && e._id.startsWith('evt_ord_')) {
+        const extracted = e._id.replace('evt_ord_', '');
+        if (idsToRemove.has(extracted)) return false;
+      }
+      return true;
+    });
+    saveServerDatabase(serverDb);
+  };
+
   app.delete('/api/db/order/:id', (req, res) => {
     const id = req.params.id;
-    serverDb.orders = serverDb.orders.filter((o) => o._id !== id);
-    saveServerDatabase(serverDb);
+    if (id) {
+      purgeOrdersFromServerDb(new Set([id]));
+    }
     res.json({ ok: true });
+  });
+
+  app.post('/api/db/orders/bulk-delete', (req, res) => {
+    const orderIds = Array.isArray(req.body?.orderIds) ? req.body.orderIds.map(String) : [];
+    if (orderIds.length > 0) {
+      purgeOrdersFromServerDb(new Set(orderIds));
+    }
+    res.json({ ok: true, deletedCount: orderIds.length });
   });
 
   // 10. Update settings

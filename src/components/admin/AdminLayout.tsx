@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { Product } from '../../../convex/schema';
-import { useQuery } from '../../lib/convex-client';
+import { useQuery, useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 import { AdminSection } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
@@ -27,6 +27,7 @@ import {
   Eye,
   MoreHorizontal,
   Edit3,
+  Trash2,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -53,6 +54,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const products = useQuery(api.products.list);
   const orders = useQuery(api.orders.list);
+  const removeOrder = useMutation(api.orders.remove);
   const settings = useQuery(api.settings.get);
   const funnel = useQuery(api.analytics.getFunnelMetrics, { range: dashRange });
   const dailySeries = useQuery(api.analytics.getDailyTimeSeries, { range: '7days' });
@@ -864,12 +866,22 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                                 </span>
                               </td>
                               <td className="py-3.5 pr-2 text-right">
-                                <button
-                                  onClick={() => handleNavigateSection('orders')}
-                                  className="px-3 py-1.5 rounded-full bg-[#F8F8F6] hover:bg-[#111111] hover:text-white text-[11px] font-semibold transition-colors cursor-pointer"
-                                >
-                                  Manage
-                                </button>
+                                <div className="inline-flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => handleNavigateSection('orders')}
+                                    className="px-3 py-1.5 rounded-full bg-[#F8F8F6] hover:bg-[#111111] hover:text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                                  >
+                                    Manage
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void removeOrder({ orderId: ord._id })}
+                                    className="p-1.5 rounded-full bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 transition-colors cursor-pointer"
+                                    title="Delete Fake / Test Order"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}

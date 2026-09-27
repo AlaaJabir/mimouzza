@@ -830,10 +830,10 @@ export class ConvexMemoryStore {
     if (!Array.isArray(incoming)) return;
     const byId = new Map<string, OrderStatusHistory>();
     for (const h of this.orderStatusHistory) {
-      if (h && h._id) byId.set(h._id, h);
+      if (h && h._id && !this.deletedOrderIds.has(h.orderId)) byId.set(h._id, h);
     }
     for (const h of incoming) {
-      if (h && h._id) byId.set(h._id, h);
+      if (h && h._id && !this.deletedOrderIds.has(h.orderId)) byId.set(h._id, h);
     }
     this.orderStatusHistory = Array.from(byId.values()).sort((a, b) => b.timestamp - a.timestamp);
   }
@@ -882,13 +882,22 @@ export class ConvexMemoryStore {
 
     if (Array.isArray(data.analyticsEvents)) {
       const eMap = new Map<string, AnalyticsEvent>();
+      const isDeletedOrderEvent = (e: AnalyticsEvent) => {
+        const ordId = e.metadata?.orderId;
+        if (ordId && this.deletedOrderIds.has(String(ordId))) return true;
+        if (e._id && e._id.startsWith('evt_ord_')) {
+          const extracted = e._id.replace('evt_ord_', '');
+          if (this.deletedOrderIds.has(extracted)) return true;
+        }
+        return false;
+      };
       for (const e of this.analyticsEvents) {
-        if (e && !isLegacyFakeEvent(e)) {
+        if (e && !isLegacyFakeEvent(e) && !isDeletedOrderEvent(e)) {
           eMap.set(e.clientEventId || e.eventId || e._id, e);
         }
       }
       for (const e of data.analyticsEvents) {
-        if (e && !isLegacyFakeEvent(e)) {
+        if (e && !isLegacyFakeEvent(e) && !isDeletedOrderEvent(e)) {
           const key = e.clientEventId || e.eventId || e._id;
           if (!eMap.has(key)) eMap.set(key, e);
         }
@@ -2188,25 +2197,56 @@ export class ConvexMemoryStore {
   }
 
   public async deleteOrder(orderId: string): Promise<boolean> {
-    const targetOrder = this.orders.find((o) => o._id === orderId);
+    const count = await this.deleteOrders([orderId]);
+    return count > 0;
+  }
+
+  public async deleteOrders(orderIds: string[]): Promise<number> {
+    if (!Array.isArray(orderIds) || orderIds.length === 0) return 0;
+    const idSet = new Set(orderIds.filter(Boolean));
+    if (idSet.size === 0) return 0;
+
+    const targetOrders = this.orders.filter((o) => idSet.has(o._id));
     const initialLen = this.orders.length;
-    this.deletedOrderIds.add(orderId);
-    this.orders = this.orders.filter((o) => o._id !== orderId);
-    if (this.orders.length !== initialLen) {
-      this.saveProductsBackup();
-      if (targetOrder) {
-        void this.persistOrderToConvexCloud(targetOrder);
+
+    idSet.forEach((id) => this.deletedOrderIds.add(id));
+    this.orders = this.orders.filter((o) => !idSet.has(o._id));
+    this.orderStatusHistory = this.orderStatusHistory.filter((h) => !idSet.has(h.orderId));
+    this.analyticsEvents = this.analyticsEvents.filter((e) => {
+      const metaOrderId = e.metadata?.orderId ? String(e.metadata.orderId) : '';
+      if (metaOrderId && idSet.has(metaOrderId)) return false;
+      if (e._id && e._id.startsWith('evt_ord_')) {
+        const extracted = e._id.replace('evt_ord_', '');
+        if (idSet.has(extracted)) return false;
       }
-      this.scheduleTelemetryConvexSync();
-      if (typeof window !== 'undefined') {
-        await fetch(`/api/db/order/${encodeURIComponent(orderId)}`, { method: 'DELETE' }).catch(
-          () => {}
-        );
-      }
-      notifySubscribers();
       return true;
+    });
+
+    const removedCount = initialLen - this.orders.length;
+    this.saveProductsBackup();
+    notifySubscribers();
+
+    for (const targetOrder of targetOrders) {
+      void this.persistOrderToConvexCloud(targetOrder);
     }
-    return false;
+    this.scheduleTelemetryConvexSync();
+
+    if (typeof window !== 'undefined') {
+      if (idSet.size === 1) {
+        const singleId = Array.from(idSet)[0];
+        await fetch(`/api/db/order/${encodeURIComponent(singleId)}`, {
+          method: 'DELETE',
+        }).catch(() => {});
+      } else {
+        await fetch('/api/db/orders/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: Array.from(idSet) }),
+        }).catch(() => {});
+      }
+    }
+
+    return removedCount;
   }
 
   // --- ANALYTICS EVENTS ---

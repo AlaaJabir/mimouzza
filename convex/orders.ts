@@ -50,6 +50,13 @@ export const remove = {
   },
 };
 
+export const removeMany = {
+  name: 'orders:removeMany',
+  mutation: (args: { orderIds: string[] }) => {
+    return db.deleteOrders(args.orderIds);
+  },
+};
+
 export const getMetrics = {
   name: 'orders:getMetrics',
   query: () => {
