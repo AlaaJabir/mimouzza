@@ -323,6 +323,25 @@ export const CODForm: React.FC<CODFormProps> = ({
       });
       setDuplicateWarning(null);
 
+      // 3. Dispatch ORDER_CREATED to Meta Pixel (Lead & Purchase) and TikTok Pixel (CompletePayment)
+      if (!isPreview) {
+        trackEvent({
+          eventType: 'ORDER_CREATED',
+          customEventId: eventId,
+          productId: product._id,
+          productName: product.name,
+          price: order.total,
+          currency: order.currency || product.currency || 'DH',
+          metadata: {
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            quantity: order.quantity,
+            city: order.city,
+          },
+          isPreview,
+        });
+      }
+
       if (onOrderSuccess) {
         onOrderSuccess(order._id, order.orderNumber);
       }

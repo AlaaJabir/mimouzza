@@ -27,6 +27,48 @@ export const DEFAULT_CONVEX_CLOUD_URL = 'https://valuable-emu-538.convex.cloud';
 
 const CONVEX_URL_STORAGE_KEY = 'cod_convex_cloud_url_v4';
 const PRODUCTS_BACKUP_STORAGE_KEY = 'cod_convex_products_backup_v5';
+const STATE_BACKUP_STORAGE_KEY = 'cod_convex_full_state_backup_v5';
+
+export function isSystemCloudDoc(product: Partial<Product> | null | undefined): boolean {
+  if (!product) return false;
+  const slug = String(product.slug || '').trim();
+  const name = String(product.name || '').trim();
+  return slug.startsWith('__cod_sys_') || name.startsWith('__SYS_');
+}
+
+function buildConvexSystemDocArgs(
+  slug: string,
+  name: string,
+  jsonPayload: Record<string, any>,
+  price = 0
+): Record<string, any> {
+  const now = Date.now();
+  return {
+    name,
+    slug,
+    shortDescription: '__SYSTEM_SYNC__',
+    description: JSON.stringify(jsonPayload),
+    price: Number(price) || 0,
+    compareAtPrice: 0,
+    comparePrice: 0,
+    currency: 'DH',
+    images: [],
+    descriptionImages: [],
+    benefits: [],
+    variants: [],
+    offerText: '',
+    ctaText: 'sys',
+    shippingText: '',
+    returnPolicy: '',
+    rating: 5,
+    reviewCount: 0,
+    templateId: 'classic-cod',
+    isPublished: false,
+    status: 'ARCHIVED',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 /**
  * Builds an exact validator-compliant payload for `products:create` on Convex Cloud.
@@ -279,6 +321,7 @@ export const INITIAL_ORDERS: Order[] = [];
  */
 export function isLegacySeedProduct(product: Partial<Product> | null | undefined): boolean {
   if (!product) return true;
+  if (isSystemCloudDoc(product)) return true;
   const legacyIds = new Set(['prod_beauty_1', 'prod_electronics_2', 'prod_fashion_3']);
   const legacySlugs = new Set([
     'elixir-argan-rose-7in1',
@@ -480,6 +523,11 @@ export class ConvexMemoryStore {
   private initialSyncPromise: Promise<void> | null = null;
   private pendingProducts = new Map<string, Product>();
   private deletedProductIds = new Set<string>();
+  private deletedOrderIds = new Set<string>();
+  private orderConvexDocIds = new Map<string, string>();
+  private settingsConvexDocId: string | null = null;
+  private telemetryConvexDocId: string | null = null;
+  private telemetrySyncTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.init();
@@ -489,11 +537,57 @@ export class ConvexMemoryStore {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(PRODUCTS_BACKUP_STORAGE_KEY, JSON.stringify(this.products));
+      localStorage.setItem(
+        STATE_BACKUP_STORAGE_KEY,
+        JSON.stringify({
+          orders: this.orders,
+          orderStatusHistory: this.orderStatusHistory,
+          visitors: this.visitors.slice(-500),
+          sessions: this.sessions.slice(-500),
+          analyticsEvents: this.analyticsEvents.slice(-1000),
+          settings: this.settings,
+          deletedOrderIds: Array.from(this.deletedOrderIds),
+        })
+      );
     } catch {}
   }
 
   private loadProductsBackup(): Product[] {
     if (typeof window === 'undefined') return [];
+    try {
+      const rawState = localStorage.getItem(STATE_BACKUP_STORAGE_KEY);
+      if (rawState) {
+        const parsedState = JSON.parse(rawState);
+        if (parsedState && typeof parsedState === 'object') {
+          if (Array.isArray(parsedState.deletedOrderIds)) {
+            parsedState.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
+          }
+          if (Array.isArray(parsedState.orders)) {
+            this.orders = parsedState.orders.filter(
+              (o: Order) => o && !isLegacyFakeOrder(o) && !this.deletedOrderIds.has(o._id)
+            );
+          }
+          if (Array.isArray(parsedState.orderStatusHistory)) {
+            this.orderStatusHistory = parsedState.orderStatusHistory;
+          }
+          if (Array.isArray(parsedState.visitors)) {
+            this.visitors = parsedState.visitors;
+          }
+          if (Array.isArray(parsedState.sessions)) {
+            this.sessions = parsedState.sessions;
+          }
+          if (Array.isArray(parsedState.analyticsEvents)) {
+            this.analyticsEvents = parsedState.analyticsEvents.filter(
+              (e: AnalyticsEvent) => e && !isLegacyFakeEvent(e)
+            );
+          }
+          if (parsedState.settings) {
+            this.settings = { ...INITIAL_SETTINGS, ...parsedState.settings };
+          }
+        }
+      }
+    } catch {}
+
     try {
       const raw = localStorage.getItem(PRODUCTS_BACKUP_STORAGE_KEY);
       if (!raw) return [];
@@ -510,6 +604,256 @@ export class ConvexMemoryStore {
       }
     } catch {}
     return [];
+  }
+
+  private mergeOrdersList(incoming: Order[]) {
+    if (!Array.isArray(incoming)) return;
+    const byId = new Map<string, Order>();
+
+    const register = (ord: Order) => {
+      if (!ord || !ord._id || isLegacyFakeOrder(ord) || this.deletedOrderIds.has(ord._id)) return;
+      const existing = byId.get(ord._id);
+      if (!existing) {
+        byId.set(ord._id, ord);
+        return;
+      }
+      const ordTime = Number(ord.updatedAt || ord.createdAt || 0);
+      const existingTime = Number(existing.updatedAt || existing.createdAt || 0);
+      byId.set(ord._id, ordTime >= existingTime ? { ...existing, ...ord } : { ...ord, ...existing });
+    };
+
+    for (const o of this.orders) register(o);
+    for (const o of incoming) register(o);
+
+    this.orders = Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt);
+    this.saveProductsBackup();
+  }
+
+  private mergeStatusHistoryList(incoming: OrderStatusHistory[]) {
+    if (!Array.isArray(incoming)) return;
+    const byId = new Map<string, OrderStatusHistory>();
+    for (const h of this.orderStatusHistory) {
+      if (h && h._id) byId.set(h._id, h);
+    }
+    for (const h of incoming) {
+      if (h && h._id) byId.set(h._id, h);
+    }
+    this.orderStatusHistory = Array.from(byId.values()).sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  private mergeAnalyticsData(data: {
+    visitors?: Visitor[];
+    sessions?: AnalyticsSession[];
+    analyticsEvents?: AnalyticsEvent[];
+  }) {
+    if (Array.isArray(data.visitors)) {
+      const vMap = new Map<string, Visitor>();
+      for (const v of this.visitors) if (v?.visitorId) vMap.set(v.visitorId, v);
+      for (const v of data.visitors) {
+        if (!v?.visitorId) continue;
+        const ex = vMap.get(v.visitorId);
+        if (!ex) vMap.set(v.visitorId, v);
+        else {
+          vMap.set(v.visitorId, {
+            ...ex,
+            firstSeenAt: Math.min(ex.firstSeenAt, v.firstSeenAt || ex.firstSeenAt),
+            lastSeenAt: Math.max(ex.lastSeenAt, v.lastSeenAt || ex.lastSeenAt),
+          });
+        }
+      }
+      this.visitors = Array.from(vMap.values());
+    }
+
+    if (Array.isArray(data.sessions)) {
+      const sMap = new Map<string, AnalyticsSession>();
+      for (const s of this.sessions) if (s?.sessionId) sMap.set(s.sessionId, s);
+      for (const s of data.sessions) {
+        if (!s?.sessionId) continue;
+        const ex = sMap.get(s.sessionId);
+        if (!ex) sMap.set(s.sessionId, s);
+        else {
+          sMap.set(s.sessionId, {
+            ...ex,
+            ...s,
+            startedAt: Math.min(ex.startedAt, s.startedAt || ex.startedAt),
+            lastSeenAt: Math.max(ex.lastSeenAt, s.lastSeenAt || ex.lastSeenAt),
+          });
+        }
+      }
+      this.sessions = Array.from(sMap.values());
+    }
+
+    if (Array.isArray(data.analyticsEvents)) {
+      const eMap = new Map<string, AnalyticsEvent>();
+      for (const e of this.analyticsEvents) {
+        if (e && !isLegacyFakeEvent(e)) {
+          eMap.set(e.clientEventId || e.eventId || e._id, e);
+        }
+      }
+      for (const e of data.analyticsEvents) {
+        if (e && !isLegacyFakeEvent(e)) {
+          const key = e.clientEventId || e.eventId || e._id;
+          if (!eMap.has(key)) eMap.set(key, e);
+        }
+      }
+      this.analyticsEvents = Array.from(eMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+    }
+  }
+
+  public async persistOrderToConvexCloud(order: Order): Promise<void> {
+    try {
+      const compactOrder: Order = {
+        ...order,
+        productImage:
+          order.productImage && order.productImage.startsWith('data:') ? '' : order.productImage,
+      };
+      const orderHistory = this.orderStatusHistory.filter((h) => h.orderId === order._id);
+      const sysSlug = `__cod_sys_order_${order._id}`;
+      const sysName = `__SYS_ORDER__${order.orderNumber}`;
+      const payload = {
+        type: 'ORDER_RECORD',
+        order: compactOrder,
+        history: orderHistory,
+        deleted: this.deletedOrderIds.has(order._id),
+      };
+
+      const existingDocId = this.orderConvexDocIds.get(order._id);
+      if (existingDocId) {
+        await this.callConvexMutation('products:update', {
+          id: existingDocId,
+          updates: {
+            description: JSON.stringify(payload),
+            price: Number(order.total) || 0,
+            isPublished: false,
+            status: 'ARCHIVED',
+          },
+        });
+        return;
+      }
+
+      const found = await this.callConvexQuery<Product | null>('products:getBySlug', {
+        slug: sysSlug,
+      });
+      if (found.ok && found.value && found.value._id) {
+        this.orderConvexDocIds.set(order._id, found.value._id);
+        await this.callConvexMutation('products:update', {
+          id: found.value._id,
+          updates: {
+            description: JSON.stringify(payload),
+            price: Number(order.total) || 0,
+            isPublished: false,
+            status: 'ARCHIVED',
+          },
+        });
+        return;
+      }
+
+      const createArgs = buildConvexSystemDocArgs(sysSlug, sysName, payload, order.total);
+      const created = await this.callConvexMutation<string>('products:create', createArgs);
+      if (created.ok && typeof created.value === 'string' && created.value) {
+        this.orderConvexDocIds.set(order._id, created.value);
+      }
+    } catch {}
+  }
+
+  public scheduleTelemetryConvexSync() {
+    if (typeof window === 'undefined') return;
+    if (this.telemetrySyncTimer) clearTimeout(this.telemetrySyncTimer);
+    this.telemetrySyncTimer = setTimeout(() => {
+      void this.persistTelemetryToConvexCloud();
+    }, 1200);
+  }
+
+  private async persistTelemetryToConvexCloud(): Promise<void> {
+    try {
+      const sysSlug = '__cod_sys_telemetry';
+      const payload = {
+        type: 'TELEMETRY_RECORD',
+        visitors: this.visitors.slice(-300),
+        sessions: this.sessions.slice(-300),
+        analyticsEvents: this.analyticsEvents.slice(-500),
+        orderStatusHistory: this.orderStatusHistory.slice(-300),
+        deletedOrderIds: Array.from(this.deletedOrderIds),
+      };
+
+      if (this.telemetryConvexDocId) {
+        await this.callConvexMutation('products:update', {
+          id: this.telemetryConvexDocId,
+          updates: {
+            description: JSON.stringify(payload),
+            isPublished: false,
+            status: 'ARCHIVED',
+          },
+        });
+        return;
+      }
+
+      const found = await this.callConvexQuery<Product | null>('products:getBySlug', {
+        slug: sysSlug,
+      });
+      if (found.ok && found.value && found.value._id) {
+        this.telemetryConvexDocId = found.value._id;
+        await this.callConvexMutation('products:update', {
+          id: found.value._id,
+          updates: {
+            description: JSON.stringify(payload),
+            isPublished: false,
+            status: 'ARCHIVED',
+          },
+        });
+        return;
+      }
+
+      const createArgs = buildConvexSystemDocArgs(sysSlug, '__SYS_TELEMETRY__', payload, 0);
+      const created = await this.callConvexMutation<string>('products:create', createArgs);
+      if (created.ok && typeof created.value === 'string' && created.value) {
+        this.telemetryConvexDocId = created.value;
+      }
+    } catch {}
+  }
+
+  private async persistSettingsToConvexCloud(): Promise<void> {
+    try {
+      const sysSlug = '__cod_sys_settings';
+      const payload = {
+        type: 'SETTINGS_RECORD',
+        settings: this.settings,
+      };
+
+      if (this.settingsConvexDocId) {
+        await this.callConvexMutation('products:update', {
+          id: this.settingsConvexDocId,
+          updates: {
+            description: JSON.stringify(payload),
+            isPublished: false,
+            status: 'ARCHIVED',
+          },
+        });
+        return;
+      }
+
+      const found = await this.callConvexQuery<Product | null>('products:getBySlug', {
+        slug: sysSlug,
+      });
+      if (found.ok && found.value && found.value._id) {
+        this.settingsConvexDocId = found.value._id;
+        await this.callConvexMutation('products:update', {
+          id: found.value._id,
+          updates: {
+            description: JSON.stringify(payload),
+            isPublished: false,
+            status: 'ARCHIVED',
+          },
+        });
+        return;
+      }
+
+      const createArgs = buildConvexSystemDocArgs(sysSlug, '__SYS_SETTINGS__', payload, 0);
+      const created = await this.callConvexMutation<string>('products:create', createArgs);
+      if (created.ok && typeof created.value === 'string' && created.value) {
+        this.settingsConvexDocId = created.value;
+      }
+    } catch {}
   }
 
   /**
@@ -670,13 +1014,11 @@ export class ConvexMemoryStore {
         body: JSON.stringify({ product: productPayload }),
       });
 
-      if (!res.ok && res.status === 413) {
+      if (!res.ok) {
         const lightweightPayload: Product = {
           ...productPayload,
-          images: productPayload.images.filter((u) => !u.startsWith('data:')),
-          descriptionImages: (productPayload.descriptionImages || []).filter(
-            (u) => !u.startsWith('data:')
-          ),
+          images: productPayload.images.slice(0, 1),
+          descriptionImages: [],
           ogImage: '',
         };
         res = await fetch('/api/db/product', {
@@ -691,10 +1033,11 @@ export class ConvexMemoryStore {
         if (savedData && savedData.ok && savedData.product) {
           const authoritativeProduct: Product = {
             ...savedData.product,
+            ...product,
             _id: !product._id.startsWith('prod_') ? product._id : savedData.product._id,
-            status: getProductStatus(savedData.product),
-            isPublished: getProductStatus(savedData.product) === 'ACTIVE',
-            comparePrice: savedData.product.comparePrice ?? savedData.product.compareAtPrice,
+            status: getProductStatus(product),
+            isPublished: getProductStatus(product) === 'ACTIVE',
+            comparePrice: product.comparePrice ?? product.compareAtPrice,
           };
           this.pendingProducts.delete(product._id);
           this.pendingProducts.delete(authoritativeProduct._id);
@@ -730,29 +1073,24 @@ export class ConvexMemoryStore {
         if (Array.isArray(data.products) && data.products.length > 0) {
           this.mergeProductsList(data.products as Product[]);
         }
-        if (Array.isArray(data.orders)) {
-          this.orders = (data.orders as Order[]).filter((o) => !isLegacyFakeOrder(o));
+        if (Array.isArray(data.orders) && data.orders.length > 0) {
+          this.mergeOrdersList(data.orders as Order[]);
         }
-        if (Array.isArray(data.orderStatusHistory)) {
-          this.orderStatusHistory = data.orderStatusHistory;
+        if (Array.isArray(data.orderStatusHistory) && data.orderStatusHistory.length > 0) {
+          this.mergeStatusHistoryList(data.orderStatusHistory as OrderStatusHistory[]);
         }
-        if (Array.isArray(data.visitors)) {
-          this.visitors = data.visitors;
-        }
-        if (Array.isArray(data.sessions)) {
-          this.sessions = data.sessions;
-        }
-        if (Array.isArray(data.analyticsEvents)) {
-          this.analyticsEvents = (data.analyticsEvents as AnalyticsEvent[]).filter(
-            (e) => !isLegacyFakeEvent(e)
-          );
-        }
+        this.mergeAnalyticsData({
+          visitors: data.visitors,
+          sessions: data.sessions,
+          analyticsEvents: data.analyticsEvents,
+        });
         if (data.settings) {
-          this.settings = { ...INITIAL_SETTINGS, ...data.settings };
+          this.settings = { ...INITIAL_SETTINGS, ...data.settings, ...this.settings };
         }
         if (Array.isArray(data.templates) && data.templates.length > 0) {
           this.templates = data.templates;
         }
+        this.saveProductsBackup();
         this.lastSyncedAt = Date.now();
         this.isHydrated = true;
         notifySubscribers(false);
