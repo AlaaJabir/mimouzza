@@ -40,7 +40,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
   return (
     <div className="w-full max-w-xl mx-auto space-y-3.5">
       {/* Main Image Frame */}
-      <div className="relative aspect-square w-full max-h-[440px] sm:max-h-[500px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm group mx-auto flex items-center justify-center">
+      <div className="relative aspect-square w-full max-h-[440px] sm:max-h-[500px] rounded-3xl overflow-hidden bg-[#F8F8F6] border border-neutral-200/80 shadow-sm group mx-auto flex items-center justify-center">
         {currentImage ? (
           <img
             src={currentImage}
@@ -49,29 +49,29 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center text-slate-400 p-8 text-center">
-            <ImageIcon className="w-12 h-12 mb-2 text-slate-300" />
+          <div className="flex flex-col items-center justify-center text-neutral-400 p-8 text-center">
+            <ImageIcon className="w-12 h-12 mb-2 text-neutral-300" />
             <span className="text-xs font-semibold">{productName || 'صورة المنتج'}</span>
           </div>
         )}
 
         {/* Discount Badge */}
         {discountPercentage && discountPercentage > 0 && (
-          <div className="absolute top-3.5 right-3.5 bg-rose-600 text-white font-black text-sm sm:text-base px-3.5 py-1.5 rounded-xl shadow-md tracking-wider">
+          <div className="absolute top-3.5 right-3.5 bg-[#FF6B00] text-white font-black text-sm sm:text-base px-3.5 py-1.5 rounded-full shadow-md tracking-wider">
             خصم {discountPercentage}%
           </div>
         )}
 
         {/* Custom Highlight Tag */}
         {badgeText && (
-          <div className="absolute top-3.5 left-3.5 bg-slate-900/90 backdrop-blur-xs text-amber-300 font-bold text-xs sm:text-sm px-3 py-1.5 rounded-lg shadow-xs">
+          <div className="absolute top-3.5 left-3.5 bg-[#111111]/90 backdrop-blur-xs text-white font-bold text-xs sm:text-sm px-3.5 py-1.5 rounded-full shadow-xs">
             {badgeText}
           </div>
         )}
 
         {/* Counter indicator */}
         {displayImages.length > 1 && (
-          <div className="absolute bottom-3.5 left-3.5 bg-black/65 backdrop-blur-xs text-white text-xs px-2.5 py-1 rounded-md font-mono font-bold">
+          <div className="absolute bottom-3.5 left-3.5 bg-[#111111]/75 backdrop-blur-xs text-white text-xs px-3 py-1 rounded-full font-mono font-bold">
             {selectedIndex + 1} / {displayImages.length}
           </div>
         )}
@@ -87,10 +87,10 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
                 key={idx}
                 type="button"
                 onClick={() => handleSelectImage(idx)}
-                className={`relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                className={`relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-amber-500 ring-2 ring-amber-500/20 opacity-100 shadow-xs'
-                    : 'border-slate-200 opacity-60 hover:opacity-90 hover:border-slate-300'
+                    ? 'border-[#FF6B00] ring-2 ring-[#FF6B00]/20 opacity-100 shadow-xs'
+                    : 'border-neutral-200 opacity-60 hover:opacity-90 hover:border-neutral-300'
                 }`}
               >
                 <img

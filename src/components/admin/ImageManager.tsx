@@ -9,12 +9,12 @@ interface ImageManagerProps {
 }
 
 const PRESET_STUDIO_IMAGES = [
-  { label: 'سيروم الجمال المغربي (Beauty Serum)', url: '/src/assets/images/seed_beauty_serum_1790331758543.jpg' },
-  { label: 'سماعات احترافية ANC (Wireless Headphones)', url: '/src/assets/images/seed_headphones_1790331773135.jpg' },
-  { label: 'ساعة كرونوغراف ياقوتية (Luxury Watch)', url: '/src/assets/images/seed_luxury_watch_1790331784875.jpg' },
-  { label: 'منتج عناية بالبشرة (Cosmetics Jar)', url: 'https://images.unsplash.com/photo-1608248597359-577c27632617?auto=format&fit=crop&w=800&q=80' },
-  { label: 'سماعات أذن سوداء (Black Audio)', url: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80' },
-  { label: 'ساعة يد كلاسيكية (Minimal Watch)', url: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Moroccan Beauty Serum', url: '/src/assets/images/seed_beauty_serum_1790331758543.jpg' },
+  { label: 'Wireless ANC Headphones', url: '/src/assets/images/seed_headphones_1790331773135.jpg' },
+  { label: 'Luxury Chronograph Watch', url: '/src/assets/images/seed_luxury_watch_1790331784875.jpg' },
+  { label: 'Skincare Cosmetics Jar', url: 'https://images.unsplash.com/photo-1608248597359-577c27632617?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Studio Black Audio', url: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Minimalist Wristwatch', url: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=800&q=80' },
 ];
 
 /**
@@ -187,43 +187,43 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-left" dir="ltr">
       <div className="flex items-center justify-between">
-        <label className="block text-xs font-bold text-slate-800">
-          صور المنتج (Product Images)
-          <span className="text-slate-400 font-normal ml-2">
-            ({images.length} صور مضافة — الصورة الأولى هي الصورة الرئيسية)
+        <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+          Product Gallery Images
+          <span className="text-neutral-400 font-normal ml-2 normal-case">
+            ({images.length} images — first image is primary)
           </span>
         </label>
 
         {/* Upload Mode Selector */}
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+        <div className="flex items-center gap-1 bg-[#F8F8F6] p-1 rounded-full border border-neutral-200">
           <button
             type="button"
             onClick={() => setMode('upload')}
-            className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-              mode === 'upload' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+            className={`px-3 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 ${
+              mode === 'upload' ? 'bg-[#111111] text-white shadow-2xs' : 'text-neutral-500 hover:text-[#111111]'
             }`}
           >
             <Upload className="w-3 h-3" />
-            <span>رفع من الجهاز (Upload)</span>
+            <span>Upload File</span>
           </button>
           <button
             type="button"
             onClick={() => setMode('url')}
-            className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-              mode === 'url' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+            className={`px-3 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 ${
+              mode === 'url' ? 'bg-[#111111] text-white shadow-2xs' : 'text-neutral-500 hover:text-[#111111]'
             }`}
           >
             <Link className="w-3 h-3" />
-            <span>رابط صورة (URL)</span>
+            <span>Image URL</span>
           </button>
         </div>
       </div>
 
       {/* Upload Box */}
       {mode === 'upload' ? (
-        <div className="border-2 border-dashed border-slate-300 hover:border-amber-400 rounded-xl p-4 text-center bg-slate-50/50 transition-colors">
+        <div className="border-2 border-dashed border-neutral-300 hover:border-[#FF6B00] rounded-2xl p-5 text-center bg-[#F8F8F6] transition-colors">
           <input
             ref={fileInputRef}
             type="file"
@@ -237,21 +237,21 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
             htmlFor="product-image-file-input"
             className="cursor-pointer flex flex-col items-center justify-center space-y-1.5"
           >
-            <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-[#FF6B00]/15 text-[#FF6B00] flex items-center justify-center">
               <Upload className="w-4 h-4" />
             </div>
-            <div className="text-xs font-bold text-slate-800">
+            <div className="text-xs font-bold text-[#111111]">
               {isProcessingFile
-                ? 'جاري ضغط وحفظ الصور في قاعدة البيانات...'
-                : 'انقر لاختيار صور من جهازك (JPG, PNG, WEBP)'}
+                ? 'Compressing & saving images to database...'
+                : 'Click to upload product photos (JPG, PNG, WEBP)'}
             </div>
-            <p className="text-[11px] text-slate-400">
-              يتم ضغط وتحسين الصور تلقائياً وحفظها بشكل دائم في قاعدة البيانات
+            <p className="text-[11px] text-neutral-400">
+              Automatically compressed and persisted in your database
             </p>
             {uploadSuccessCount > 0 && (
               <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full mt-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>تم رفع وتجهيز {uploadSuccessCount} صور بنجاح!</span>
+                <span>Uploaded {uploadSuccessCount} image(s) successfully!</span>
               </div>
             )}
           </label>
@@ -269,27 +269,26 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
                   handleAddUrl();
                 }
               }}
-              placeholder="الصق رابط الصورة (https://...) ثم اضغط إضافة"
-              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+              placeholder="Paste image URL (https://...) and click Add"
+              className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
             />
           </div>
-          <Button
+          <button
             type="button"
             onClick={handleAddUrl}
-            size="sm"
-            className="text-xs shrink-0 bg-slate-900 text-white"
+            className="px-4 py-2 rounded-full text-xs font-bold shrink-0 bg-[#111111] text-white flex items-center gap-1 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            إضافة الرابط
-          </Button>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add URL</span>
+          </button>
         </div>
       )}
 
       {/* Quick Studio Presets */}
-      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
-        <div className="text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>صور استوديو احترافية جاهزة (Studio Presets):</span>
+      <div className="p-3.5 bg-[#F8F8F6] border border-neutral-200/80 rounded-2xl space-y-2">
+        <div className="text-[11px] font-bold text-[#111111] flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
+          <span>Quick Studio Presets:</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {PRESET_STUDIO_IMAGES.map((preset, idx) => (
@@ -297,7 +296,7 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
               key={idx}
               type="button"
               onClick={() => handleAddPreset(preset.url)}
-              className="text-[11px] px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:border-amber-400 hover:text-slate-900 transition-colors cursor-pointer"
+              className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white border border-neutral-200 text-neutral-700 hover:border-[#FF6B00] hover:text-[#111111] transition-colors cursor-pointer"
             >
               + {preset.label}
             </button>
@@ -307,20 +306,20 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
 
       {/* Image Thumbnails & Ordering List */}
       {images.length === 0 ? (
-        <div className="p-8 border-2 border-dashed border-slate-200 rounded-xl text-center text-slate-400 space-y-2">
-          <ImageIcon className="w-8 h-8 mx-auto text-slate-300" />
-          <div className="text-xs">لم تتم إضافة أي صور بعد. ارفع صورة أو الصق رابطاً أعلاه.</div>
+        <div className="p-8 border-2 border-dashed border-neutral-200 rounded-2xl text-center text-neutral-400 space-y-2">
+          <ImageIcon className="w-8 h-8 mx-auto text-neutral-300" />
+          <div className="text-xs">No images added yet. Upload a photo or paste a URL above.</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {images.map((imgUrl, index) => (
             <div
               key={index}
-              className={`relative flex items-center gap-3 p-2.5 rounded-xl border bg-white shadow-2xs group ${
-                index === 0 ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-slate-200'
+              className={`relative flex items-center gap-3 p-2.5 rounded-2xl border bg-white shadow-2xs group ${
+                index === 0 ? 'border-[#FF6B00] ring-2 ring-[#FF6B00]/15' : 'border-neutral-200'
               }`}
             >
-              <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+              <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200">
                 <img
                   src={imgUrl}
                   alt={`Product img ${index + 1}`}
@@ -328,28 +327,27 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
                   className="w-full h-full object-cover"
                 />
                 {index === 0 && (
-                  <span className="absolute bottom-0 inset-x-0 bg-amber-500 text-slate-950 font-black text-[9px] text-center py-0.5">
-                    الرئيسية
+                  <span className="absolute bottom-0 inset-x-0 bg-[#FF6B00] text-white font-black text-[9px] text-center py-0.5">
+                    PRIMARY
                   </span>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-bold text-slate-800 truncate flex items-center gap-1.5">
-                  <span>صورة #{index + 1}</span>
+                <div className="text-[11px] font-bold text-[#111111] truncate flex items-center gap-1.5">
+                  <span>Image #{index + 1}</span>
                   {index !== 0 && (
                     <button
                       type="button"
                       onClick={() => handleSetPrimary(index)}
-                      className="text-[10px] text-amber-600 hover:text-amber-700 font-semibold cursor-pointer underline"
-                      title="تعيين كصورة رئيسية"
+                      className="text-[10px] text-[#FF6B00] hover:underline font-semibold cursor-pointer"
                     >
-                      (تعيين كرئيسية)
+                      (Set Primary)
                     </button>
                   )}
                 </div>
-                <div className="text-[10px] text-slate-400 truncate font-mono">
-                  {imgUrl.startsWith('data:') ? 'محفوظة في قاعدة البيانات (Compressed DB)' : imgUrl}
+                <div className="text-[10px] text-neutral-400 truncate font-mono">
+                  {imgUrl.startsWith('data:') ? 'Persisted in DB' : imgUrl}
                 </div>
               </div>
 
@@ -360,8 +358,8 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
                     type="button"
                     disabled={index === 0}
                     onClick={() => handleMove(index, 'up')}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-30 cursor-pointer"
-                    title="تحريك لأعلى"
+                    className="p-1 rounded hover:bg-neutral-100 text-neutral-500 disabled:opacity-30 cursor-pointer"
+                    title="Move up"
                   >
                     <ArrowUp className="w-3.5 h-3.5" />
                   </button>
@@ -369,8 +367,8 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
                     type="button"
                     disabled={index === images.length - 1}
                     onClick={() => handleMove(index, 'down')}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-30 cursor-pointer"
-                    title="تحريك لأسفل"
+                    className="p-1 rounded hover:bg-neutral-100 text-neutral-500 disabled:opacity-30 cursor-pointer"
+                    title="Move down"
                   >
                     <ArrowDown className="w-3.5 h-3.5" />
                   </button>
@@ -379,7 +377,7 @@ export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) 
                   type="button"
                   onClick={() => handleRemove(index)}
                   className="p-1 rounded hover:bg-rose-50 text-rose-600 cursor-pointer"
-                  title="حذف الصورة"
+                  title="Remove image"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -444,7 +442,7 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
         fileArray.map((file) => compressImageFile(file, 1400, 0.86))
       );
       onChange([...images, ...processed]);
-      setUploadNotice(`تم استيراد وحفظ ${processed.length} صورة (PNG / JPG) تحت الوصف بنجاح!`);
+      setUploadNotice(`Imported and saved ${processed.length} description image(s)!`);
       setTimeout(() => setUploadNotice(''), 4000);
     } catch (err) {
       console.error('Error importing description images:', err);
@@ -474,15 +472,15 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
   };
 
   return (
-    <div className="mt-3 p-4 rounded-xl border border-amber-200/90 bg-amber-50/40 space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-2.5">
+    <div className="mt-3 p-4 rounded-2xl border border-neutral-200 bg-white space-y-4 text-left" dir="ltr">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-100 pb-3">
         <div>
-          <label className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-            <ImageIcon className="w-4 h-4 text-amber-600" />
-            <span>صور إضافية أسفل الوصف (Description Images / PNG — روابط أو استيراد)</span>
+          <label className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
+            <ImageIcon className="w-4 h-4 text-[#FF6B00]" />
+            <span>Description Feature Images (PNG / JPG below Arabic description)</span>
           </label>
-          <p className="text-[11px] text-slate-600 mt-0.5">
-            تظهر هذه الصور مباشرة تحت نص الوصف في جميع صفحات الهبوط وتُحفظ تلقائياً في قاعدة البيانات (DB).
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            Displayed directly below the product description across all landing page templates.
           </p>
         </div>
 
@@ -499,35 +497,35 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
           />
           <label
             htmlFor="desc-images-import-input"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#FF6B00] hover:bg-[#e66000] text-white font-bold text-xs cursor-pointer shadow-2xs transition-colors"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span>{isUploading ? 'جاري استيراد الصور...' : 'استيراد صور / PNG من الجهاز'}</span>
+            <span>{isUploading ? 'Importing...' : 'Upload PNG / JPG'}</span>
           </label>
         </div>
       </div>
 
       {uploadNotice && (
-        <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{uploadNotice}</span>
         </div>
       )}
 
-      {/* Link Input Boxes (Des cases des liens pour les images / PNG) */}
+      {/* Link Input Boxes */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-            <Link className="w-3.5 h-3.5 text-amber-600" />
-            <span>خانات روابط الصور (Cases des liens d&apos;images / PNG URL):</span>
+          <span className="text-[11px] font-bold text-neutral-700 flex items-center gap-1">
+            <Link className="w-3.5 h-3.5 text-[#FF6B00]" />
+            <span>Image URL Input Slots:</span>
           </span>
           <button
             type="button"
             onClick={handleAddAnotherLinkBox}
-            className="text-[11px] font-bold text-amber-700 hover:text-amber-800 bg-white px-2.5 py-1 rounded-md border border-amber-300 hover:bg-amber-50 transition-colors cursor-pointer flex items-center gap-1"
+            className="text-[11px] font-bold text-[#111111] bg-[#F8F8F6] px-3 py-1 rounded-full border border-neutral-200 hover:border-[#FF6B00] transition-colors cursor-pointer flex items-center gap-1"
           >
             <Plus className="w-3 h-3" />
-            <span>إضافة خانة رابط جديدة</span>
+            <span>Add URL Slot</span>
           </button>
         </div>
 
@@ -545,26 +543,24 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
                       handleAddLinkFromBox(idx);
                     }
                   }}
-                  placeholder={`خانة رابط صورة #${idx + 1}: الصق رابط الصورة أو PNG (https://...) ثم اضغط إضافة`}
+                  placeholder={`Slot #${idx + 1}: Paste image or PNG URL (https://...)`}
                   dir="ltr"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono text-left"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00] font-mono text-left"
                 />
               </div>
-              <Button
+              <button
                 type="button"
-                size="sm"
                 onClick={() => handleAddLinkFromBox(idx)}
-                className="text-xs bg-slate-900 hover:bg-slate-800 text-white shrink-0"
+                className="px-3.5 py-2 rounded-full text-xs font-bold bg-[#111111] hover:bg-neutral-800 text-white shrink-0 flex items-center gap-1 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                إضافة للوصف
-              </Button>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add</span>
+              </button>
               {linkBoxes.length > 1 && (
                 <button
                   type="button"
                   onClick={() => handleRemoveLinkBox(idx)}
-                  className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white cursor-pointer"
-                  title="حذف الخانة"
+                  className="p-2 text-neutral-400 hover:text-rose-600 rounded-lg cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -577,8 +573,8 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
       {/* Added Description Images List */}
       {images.length > 0 && (
         <div className="space-y-2 pt-1">
-          <div className="text-[11px] font-bold text-slate-700">
-            الصور المضافة تحت الوصف حالياً ({images.length} صور محفوظة في قاعدة البيانات):
+          <div className="text-[11px] font-bold text-[#111111]">
+            Saved Description Images ({images.length}):
           </div>
           <div className="space-y-2">
             {images.map((imgUrl, index) => {
@@ -586,9 +582,9 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
               return (
                 <div
                   key={index}
-                  className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 bg-white shadow-2xs"
+                  className="flex items-center gap-3 p-2.5 rounded-2xl border border-neutral-200 bg-[#F8F8F6]"
                 >
-                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border border-neutral-200 shrink-0 flex items-center justify-center">
                     <img
                       src={imgUrl}
                       alt={`Description img ${index + 1}`}
@@ -599,17 +595,17 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
 
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-extrabold text-slate-900 bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
-                        صورة الوصف #{index + 1}
+                      <span className="text-[11px] font-extrabold text-white bg-[#111111] px-2.5 py-0.5 rounded-full">
+                        Desc Image #{index + 1}
                       </span>
                       <span className="text-[10px] text-emerald-700 font-semibold">
-                        ✓ محفوظة في قاعدة البيانات
+                        ✓ Saved in DB
                       </span>
                     </div>
 
                     {isDataUri ? (
-                      <div className="text-[11px] text-slate-500 font-mono truncate">
-                        صورة PNG / JPG مستوردة من الجهاز (Stored in DB)
+                      <div className="text-[11px] text-neutral-500 font-mono truncate">
+                        Uploaded PNG / JPG (Stored in DB)
                       </div>
                     ) : (
                       <input
@@ -617,7 +613,7 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
                         value={imgUrl}
                         onChange={(e) => handleUpdateExistingImageUrl(index, e.target.value)}
                         dir="ltr"
-                        className="w-full px-2.5 py-1 text-xs font-mono text-left rounded border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+                        className="w-full px-2.5 py-1 text-xs font-mono text-left rounded-lg border border-neutral-200 bg-white focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
                       />
                     )}
                   </div>
@@ -627,8 +623,7 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
                       type="button"
                       disabled={index === 0}
                       onClick={() => handleMove(index, 'up')}
-                      className="p-1.5 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-30 cursor-pointer"
-                      title="تحريك لأعلى"
+                      className="p-1.5 rounded hover:bg-neutral-200 text-neutral-500 disabled:opacity-30 cursor-pointer"
                     >
                       <ArrowUp className="w-4 h-4" />
                     </button>
@@ -636,8 +631,7 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
                       type="button"
                       disabled={index === images.length - 1}
                       onClick={() => handleMove(index, 'down')}
-                      className="p-1.5 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-30 cursor-pointer"
-                      title="تحريك لأسفل"
+                      className="p-1.5 rounded hover:bg-neutral-200 text-neutral-500 disabled:opacity-30 cursor-pointer"
                     >
                       <ArrowDown className="w-4 h-4" />
                     </button>
@@ -645,7 +639,6 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
                       type="button"
                       onClick={() => handleRemove(index)}
                       className="p-1.5 rounded hover:bg-rose-50 text-rose-600 cursor-pointer"
-                      title="حذف الصورة"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

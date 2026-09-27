@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ProductVariantGroup } from '../../../convex/schema';
 import { Plus, Trash2, Tag, X } from 'lucide-react';
-import { Button } from '../ui/button';
 
 interface VariantEditorProps {
   variants: ProductVariantGroup[];
@@ -57,14 +56,14 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({ variants, onChange
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-left" dir="ltr">
       <div className="flex items-center justify-between">
         <div>
-          <label className="block text-xs font-bold text-slate-800">
-            خيارات المنتج ومتغيراته (Variants & Options)
+          <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+            Product Variants &amp; Bundles
           </label>
-          <p className="text-[11px] text-slate-500">
-            أضف خيارات كالحجم، اللون، أو العروض التوفيرية ليختار الزبون منها في استمارة الطلب
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            Add size, color, or bundle options (can be written in Arabic for the landing page checkout form).
           </p>
         </div>
       </div>
@@ -81,44 +80,43 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({ variants, onChange
               handleAddGroup();
             }
           }}
-          placeholder="مثال: الحجم / المقاس أو اللون أو باقات العرض"
-          className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+          placeholder="e.g. المقاس / الحجم or اللون or العرض"
+          className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
         />
-        <Button
+        <button
           type="button"
           onClick={handleAddGroup}
-          size="sm"
-          className="text-xs shrink-0"
+          className="px-4 py-2 rounded-full bg-[#111111] hover:bg-neutral-800 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors"
         >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          إضافة نوع خيار جديد
-        </Button>
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add Variant Group</span>
+        </button>
       </div>
 
       {/* Variant Groups List */}
       {variants.length === 0 ? (
-        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-          لا توجد خيارات مخصصة لهذا المنتج (يمكن للمشتري اختيار الكمية فقط).
+        <div className="p-4 bg-[#F8F8F6] rounded-2xl border border-neutral-200/80 text-center text-xs text-neutral-500">
+          No custom variants added (customers will select quantity tiers 1, 2, or 3).
         </div>
       ) : (
         <div className="space-y-3">
           {variants.map((group) => (
             <div
               key={group.id}
-              className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-3"
+              className="p-4 rounded-2xl border border-neutral-200 bg-white shadow-2xs space-y-3"
             >
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-amber-500" />
-                  <span className="text-xs font-bold text-slate-900">{group.name}</span>
+                  <Tag className="w-4 h-4 text-[#FF6B00]" />
+                  <span className="text-xs font-extrabold text-[#111111]">{group.name}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleRemoveGroup(group.id)}
-                  className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>حذف الخيار</span>
+                  <span>Remove</span>
                 </button>
               </div>
 
@@ -127,13 +125,13 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({ variants, onChange
                 {group.options.map((opt, optIdx) => (
                   <span
                     key={optIdx}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs font-medium text-slate-800"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F8F8F6] border border-neutral-200 text-xs font-semibold text-[#111111]"
                   >
                     <span>{opt}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveOption(group.id, optIdx)}
-                      className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                      className="text-neutral-400 hover:text-rose-600 cursor-pointer"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -158,15 +156,15 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({ variants, onChange
                       handleAddOption(group.id);
                     }
                   }}
-                  placeholder={`أضف قيمة جديدة لـ (${group.name})، مثلاً: S, M, L...`}
-                  className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 focus:outline-none focus:border-slate-400"
+                  placeholder={`Add option for (${group.name}), e.g. XL, أسود, عبوتين (299 DH)...`}
+                  className="flex-1 px-3.5 py-1.5 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:border-[#FF6B00]"
                 />
                 <button
                   type="button"
                   onClick={() => handleAddOption(group.id)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-full bg-[#FF6B00] hover:bg-[#e66000] text-xs font-bold text-white cursor-pointer transition-colors"
                 >
-                  + إضافة
+                  + Add Option
                 </button>
               </div>
             </div>

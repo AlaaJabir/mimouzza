@@ -108,7 +108,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 md:pb-12" dir="rtl">
+    <div className="min-h-screen bg-[#F8F8F6] text-[#111111] pb-20 md:pb-12" dir="rtl">
       {/* 1. Top shipping/trust announcement */}
       <TopAnnouncementBar
         text={
@@ -117,10 +117,10 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
         }
       />
 
-      {/* Main Container (~2cm wider on each side on desktop) */}
+      {/* Main Container */}
       <div className="max-w-[840px] mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* 2 & 3. Hero Section: Image on top, title, price, button, and guarantees */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-5">
+        <div className="bg-white rounded-3xl border border-neutral-200/80 p-5 sm:p-7 shadow-2xs space-y-5">
           <ProductGallery
             images={product.images}
             productName={product.name}
@@ -132,45 +132,45 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
 
           {/* Product Title directly under image */}
           <div className="text-center space-y-2 pt-1">
-            <h1 className="text-xl sm:text-2xl md:text-[26px] font-extrabold text-slate-900 leading-snug">
+            <h1 className="text-xl sm:text-2xl md:text-[26px] font-extrabold text-[#111111] leading-snug">
               {product.name}
             </h1>
 
             {/* Rating & Social Proof */}
-            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-slate-600">
-              <div className="flex text-amber-400">
+            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-neutral-600">
+              <div className="flex text-[#FF6B00]">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  <Star key={i} className="w-4 h-4 fill-[#FF6B00] text-[#FF6B00]" />
                 ))}
               </div>
-              <span className="font-bold text-slate-900">{product.rating || 4.9}</span>
+              <span className="font-bold text-[#111111]">{product.rating || 4.9}</span>
               <span>·</span>
               <span className="font-medium">({product.reviewCount || 180}+ تقييم)</span>
               <span>·</span>
-              <span className="text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-md text-xs border border-emerald-200/60">
+              <span className="text-[#129A56] font-bold bg-[#E8F8F0] px-2.5 py-0.5 rounded-full text-xs">
                 متوفر في المخزون
               </span>
             </div>
           </div>
 
           {/* Pricing */}
-          <div className="flex items-center justify-center gap-3.5 bg-slate-50 rounded-xl border border-slate-200/80 p-3.5 sm:p-4">
+          <div className="flex items-center justify-center gap-3.5 bg-[#F8F8F6] rounded-2xl border border-neutral-200/80 p-4">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl sm:text-4xl font-black text-amber-600 font-mono">
+              <span className="text-3xl sm:text-4xl font-black text-[#FF6B00] font-mono">
                 {product.price}
               </span>
-              <span className="text-base sm:text-lg font-extrabold text-slate-800">
+              <span className="text-base sm:text-lg font-extrabold text-[#111111]">
                 {product.currency || 'DH'}
               </span>
             </div>
 
             {product.compareAtPrice > product.price && (
-              <div className="flex items-center gap-2.5 text-sm sm:text-base text-slate-400">
+              <div className="flex items-center gap-2.5 text-sm sm:text-base text-neutral-400">
                 <span className="line-through font-mono font-semibold">
                   {product.compareAtPrice} {product.currency || 'DH'}
                 </span>
                 {discountPct && (
-                  <span className="bg-rose-50 text-rose-600 font-extrabold px-2.5 py-0.5 rounded-full text-xs sm:text-sm border border-rose-200">
+                  <span className="bg-[#FFF3EB] text-[#FF6B00] font-extrabold px-3 py-0.5 rounded-full text-xs sm:text-sm border border-[#FF6B00]/25">
                     وفر {discountPct}%
                   </span>
                 )}
@@ -180,12 +180,12 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
 
           {/* Stock Scarcity if configured */}
           {product.scarcityEnabled && (
-            <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl flex items-center justify-between text-xs sm:text-sm text-amber-950 font-bold">
+            <div className="p-3.5 bg-[#FFF3EB] border border-[#FF6B00]/30 rounded-2xl flex items-center justify-between text-xs sm:text-sm text-[#111111] font-bold">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <AlertCircle className="w-4 h-4 text-[#FF6B00] shrink-0" />
                 <span>الكمية المتبقية:</span>
               </div>
-              <span className="font-extrabold text-rose-600 font-mono">
+              <span className="font-extrabold text-[#FF6B00] font-mono">
                 فقط {product.stockQuantity || 7} قطع في المخزون
               </span>
             </div>
@@ -193,8 +193,8 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
 
           {/* Offer Alert if configured */}
           {product.offerText && (
-            <div className="text-xs sm:text-sm font-bold text-amber-950 bg-amber-50/80 border border-amber-200/80 p-3 rounded-xl flex items-center justify-center gap-2 text-center">
-              <span className="text-amber-600 font-black text-base">⚡</span>
+            <div className="text-xs sm:text-sm font-bold text-[#111111] bg-[#FFF3EB] border border-[#FF6B00]/30 p-3.5 rounded-2xl flex items-center justify-center gap-2 text-center">
+              <span className="text-[#FF6B00] font-black text-base">⚡</span>
               <span>{product.offerText}</span>
             </div>
           )}
@@ -204,7 +204,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
             <button
               id="hero_cta"
               onClick={handleHeroCtaClick}
-              className="w-full py-4 px-6 rounded-xl font-extrabold text-base sm:text-lg md:text-xl bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5"
+              className="w-full py-4 px-6 rounded-2xl font-extrabold text-base sm:text-lg md:text-xl bg-[#FF6B00] hover:bg-[#e66000] text-white shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5"
             >
               <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>{product.ctaText || 'اطلب الآن — الدفع عند الاستلام'}</span>
@@ -215,22 +215,22 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
               <button
                 type="button"
                 onClick={handleWhatsAppClick}
-                className="w-full py-3 px-4 rounded-xl border border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full py-3 px-4 rounded-2xl border border-[#129A56] text-[#129A56] hover:bg-[#E8F8F0] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
+                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#129A56]" />
                 <span>اطلب أو استفسر عبر الواتساب (WhatsApp)</span>
               </button>
             )}
           </div>
 
           {/* Quick Trust Checks */}
-          <div className="grid grid-cols-2 gap-2.5 text-xs sm:text-sm text-slate-800 pt-1">
-            <div className="flex items-center justify-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="grid grid-cols-2 gap-2.5 text-xs sm:text-sm text-[#111111] pt-1">
+            <div className="flex items-center justify-center gap-2 bg-[#F8F8F6] p-2.5 rounded-2xl border border-neutral-200/70 text-center">
+              <Check className="w-4 h-4 text-[#FF6B00] shrink-0" />
               <span className="font-semibold">توصيل مجاني لباب منزلك</span>
             </div>
-            <div className="flex items-center justify-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center justify-center gap-2 bg-[#F8F8F6] p-2.5 rounded-2xl border border-neutral-200/70 text-center">
+              <Check className="w-4 h-4 text-[#FF6B00] shrink-0" />
               <span className="font-semibold">الدفع نقداً بعد المعاينة</span>
             </div>
           </div>
@@ -242,7 +242,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
 
           {/* Short Description */}
           {product.shortDescription && (
-            <p className="text-sm sm:text-base text-slate-700 font-medium leading-relaxed text-center pt-3 border-t border-slate-100">
+            <p className="text-sm sm:text-base text-neutral-700 font-medium leading-relaxed text-center pt-3 border-t border-neutral-100">
               {product.shortDescription}
             </p>
           )}
@@ -255,10 +255,10 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
         {product.benefits && product.benefits.length > 0 && (
           <div className="space-y-3.5">
             <div className="text-center">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-900">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-[#111111]">
                 لماذا يفضل زبناؤنا هذا المنتج؟
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              <p className="text-xs sm:text-sm text-neutral-500 mt-1">
                 ضمانات وجودة استثنائية مصممة لراحتك
               </p>
             </div>
@@ -269,13 +269,13 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
         {/* Detailed Product Description & Story + Description Images */}
         {(product.description ||
           (product.descriptionImages && product.descriptionImages.length > 0)) && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-5">
-            <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-600" />
+          <div className="bg-white rounded-3xl border border-neutral-200/80 p-5 sm:p-7 shadow-2xs space-y-5">
+            <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-[#111111] border-b border-neutral-100 pb-3 flex items-center gap-2">
+              <Award className="w-5 h-5 text-[#FF6B00]" />
               تفاصيل ومواصفات المنتج
             </h3>
             {product.description && (
-              <div className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-line font-medium">
+              <div className="text-sm sm:text-base text-neutral-700 leading-relaxed whitespace-pre-line font-medium">
                 {product.description}
               </div>
             )}
@@ -286,7 +286,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
                 {product.descriptionImages.map((imgUrl, idx) => (
                   <div
                     key={idx}
-                    className="w-full rounded-xl overflow-hidden border border-slate-100 bg-slate-50/40"
+                    className="w-full rounded-2xl overflow-hidden border border-neutral-100 bg-[#F8F8F6]/50"
                   >
                     <img
                       src={imgUrl}
@@ -305,9 +305,9 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
                 id="mid_page_cta"
                 type="button"
                 onClick={handleMidCtaClick}
-                className="py-3.5 px-8 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-extrabold text-sm sm:text-base inline-flex items-center gap-2 cursor-pointer"
+                className="py-3.5 px-8 rounded-full bg-[#111111] hover:bg-neutral-800 text-white font-extrabold text-sm sm:text-base inline-flex items-center gap-2 cursor-pointer shadow-sm"
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="w-5 h-5 text-[#FF6B00]" />
                 <span>اطلب الآن قبل نفاد الكمية</span>
               </button>
             </div>

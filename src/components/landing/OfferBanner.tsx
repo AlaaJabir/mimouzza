@@ -13,10 +13,10 @@ export const TopAnnouncementBar: React.FC<{ text?: string }> = ({
 }) => {
   return (
     <div
-      className="w-full bg-slate-950 text-amber-300 text-xs sm:text-sm py-2.5 px-4 text-center font-extrabold flex items-center justify-center gap-2 border-b border-amber-400/20"
+      className="w-full bg-[#111111] text-white text-xs sm:text-sm py-2.5 px-4 text-center font-extrabold flex items-center justify-center gap-2 border-b border-neutral-800"
       dir="rtl"
     >
-      <Truck className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+      <Truck className="w-4 h-4 text-[#FF6B00] shrink-0 animate-pulse" />
       <span className="truncate">{text}</span>
     </div>
   );
@@ -58,38 +58,38 @@ export const OfferBanner: React.FC<OfferBannerProps> = ({
 
   return (
     <div
-      className={`rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 border border-amber-400/50 p-3 sm:p-4 text-slate-900 ${className}`}
+      className={`rounded-3xl bg-[#FFF3EB] border border-[#FF6B00]/30 p-4 sm:p-5 text-[#111111] ${className}`}
       dir="rtl"
     >
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 text-center sm:text-right">
-          <div className="w-9 h-9 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-xs">
-            <Flame className="w-5 h-5 fill-slate-950" />
+        <div className="flex items-center gap-3 text-center sm:text-right">
+          <div className="w-10 h-10 rounded-2xl bg-[#FF6B00] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Flame className="w-5 h-5 fill-white" />
           </div>
           <div>
-            <div className="text-xs font-black text-amber-900 uppercase tracking-wide">
+            <div className="text-xs font-black text-[#FF6B00] uppercase tracking-wide">
               عرض حصري محدود
             </div>
-            <div className="text-sm font-bold text-slate-950">
+            <div className="text-sm font-bold text-[#111111]">
               {offerText || 'خصم خاص + شحن مجاني لكافة المدن المغربية'}
             </div>
           </div>
         </div>
 
         {withCountdown && (
-          <div className="flex items-center gap-1.5 shrink-0 bg-white/90 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-amber-300 shadow-2xs">
-            <Clock className="w-4 h-4 text-rose-600 shrink-0" />
-            <span className="text-[11px] font-semibold text-slate-600 ml-1">ينتهي العرض خلال:</span>
-            <div className="flex items-center gap-1 font-mono font-bold text-xs text-rose-700">
-              <span className="bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+          <div className="flex items-center gap-1.5 shrink-0 bg-white px-3.5 py-2 rounded-2xl border border-[#FF6B00]/25 shadow-2xs">
+            <Clock className="w-4 h-4 text-[#FF6B00] shrink-0" />
+            <span className="text-[11px] font-semibold text-neutral-600 ml-1">ينتهي العرض خلال:</span>
+            <div className="flex items-center gap-1 font-mono font-bold text-xs text-[#FF6B00]">
+              <span className="bg-[#FFF3EB] px-2 py-0.5 rounded-lg border border-[#FF6B00]/20">
                 {String(timeLeft.hours).padStart(2, '0')}
               </span>
               <span>:</span>
-              <span className="bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+              <span className="bg-[#FFF3EB] px-2 py-0.5 rounded-lg border border-[#FF6B00]/20">
                 {String(timeLeft.minutes).padStart(2, '0')}
               </span>
               <span>:</span>
-              <span className="bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+              <span className="bg-[#FFF3EB] px-2 py-0.5 rounded-lg border border-[#FF6B00]/20">
                 {String(timeLeft.seconds).padStart(2, '0')}
               </span>
             </div>

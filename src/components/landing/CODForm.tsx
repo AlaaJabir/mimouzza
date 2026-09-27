@@ -440,33 +440,33 @@ export const CODForm: React.FC<CODFormProps> = ({
     <div
       ref={formContainerRef}
       id="order-form-container"
-      className={`bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden ${className}`}
+      className={`bg-white rounded-3xl border border-neutral-200/80 shadow-xl overflow-hidden ${className}`}
       dir="rtl"
     >
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-5 text-center">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-amber-400 text-slate-950 rounded-full text-xs font-extrabold mb-2 uppercase tracking-wide">
+      <div className="bg-[#111111] text-white p-5 sm:p-6 text-center">
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#FF6B00] text-white rounded-full text-xs font-extrabold mb-2 uppercase tracking-wide">
           <Truck className="w-4 h-4" />
           الدفع نقداً عند الاستلام (COD)
         </div>
         <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white">
           نموذج الطلب السريع
         </h3>
-        <p className="text-xs sm:text-sm text-slate-300 mt-1">
+        <p className="text-xs sm:text-sm text-neutral-300 mt-1">
           املأ بياناتك أسفله وسيصلك المنتج لباب منزلك دون دفع مسبق!
         </p>
       </div>
 
       {/* Duplicate Order Warning Modal / Notice */}
       {duplicateWarning && (
-        <div className="p-4 m-4 bg-amber-50 border-2 border-amber-400 rounded-xl space-y-3">
-          <div className="flex items-start gap-2.5 text-amber-900">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="p-4 m-4 bg-[#FFF3EB] border-2 border-[#FF6B00] rounded-2xl space-y-3">
+          <div className="flex items-start gap-2.5 text-[#111111]">
+            <AlertTriangle className="w-5 h-5 text-[#FF6B00] shrink-0 mt-0.5" />
             <div className="text-xs sm:text-sm">
               <div className="font-bold text-sm sm:text-base">
                 تنبيه: يوجد طلب مسجل مسبقاً بنفس رقم الهاتف!
               </div>
-              <p className="text-amber-800 mt-1">
+              <p className="text-neutral-700 mt-1">
                 لقد تم تسجيل طلب لنفس هذا المنتج برقم{' '}
                 <span className="font-mono font-bold">{duplicateWarning.orderNumber}</span> خلال
                 العشر دقائق الماضية. طلبك قيد التجهيز بالفعل وسيتصل بك فريقنا لتأكيده.
@@ -480,14 +480,14 @@ export const CODForm: React.FC<CODFormProps> = ({
                 setForceSubmitDuplicate(true);
                 setDuplicateWarning(null);
               }}
-              className="px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-bold cursor-pointer"
+              className="px-4 py-2 rounded-full bg-[#FF6B00] hover:bg-[#e66000] text-white text-xs sm:text-sm font-bold cursor-pointer"
             >
               نعم، أريد تأكيد طلب إضافي آخر
             </button>
             <button
               type="button"
               onClick={() => setDuplicateWarning(null)}
-              className="px-3.5 py-2 rounded-lg bg-white border border-amber-300 text-amber-900 text-xs sm:text-sm font-semibold hover:bg-amber-100 cursor-pointer"
+              className="px-4 py-2 rounded-full bg-white border border-neutral-200 text-[#111111] text-xs sm:text-sm font-semibold hover:bg-neutral-50 cursor-pointer"
             >
               إلغاء
             </button>
@@ -509,7 +509,7 @@ export const CODForm: React.FC<CODFormProps> = ({
         />
 
         {errors.form && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs sm:text-sm text-rose-700 flex items-center gap-2">
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs sm:text-sm text-rose-700 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errors.form}</span>
           </div>
@@ -517,12 +517,12 @@ export const CODForm: React.FC<CODFormProps> = ({
 
         {/* Variants Selector */}
         {product.variants && product.variants.length > 0 && (
-          <div className="space-y-3 pb-3 border-b border-slate-100">
+          <div className="space-y-3 pb-3 border-b border-neutral-100">
             {product.variants.map((variant) => (
               <div key={variant.id} className="space-y-2">
-                <label className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center justify-between">
+                <label className="text-xs sm:text-sm font-extrabold text-[#111111] flex items-center justify-between">
                   <span>{variant.name}</span>
-                  <span className="text-slate-500 font-semibold text-xs">
+                  <span className="text-neutral-500 font-semibold text-xs">
                     {selectedVariants[variant.name]}
                   </span>
                 </label>
@@ -534,10 +534,10 @@ export const CODForm: React.FC<CODFormProps> = ({
                         type="button"
                         key={opt}
                         onClick={() => handleVariantSelect(variant.name, opt)}
-                        className={`px-3.5 py-2 text-xs sm:text-sm rounded-lg border font-bold transition-all cursor-pointer ${
+                        className={`px-4 py-2 text-xs sm:text-sm rounded-xl border font-bold transition-all cursor-pointer ${
                           isSelected
-                            ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-500/20 shadow-xs'
-                            : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-slate-700'
+                            ? 'border-[#FF6B00] bg-[#FFF3EB] text-[#111111] ring-2 ring-[#FF6B00]/20 shadow-xs'
+                            : 'border-neutral-200 bg-[#F8F8F6] hover:bg-neutral-100 text-neutral-700'
                         }`}
                       >
                         {opt}
@@ -551,29 +551,29 @@ export const CODForm: React.FC<CODFormProps> = ({
         )}
 
         {/* Quantity Stepper */}
-        <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <div className="flex items-center justify-between bg-[#F8F8F6] p-4 rounded-2xl border border-neutral-200/80">
           <div>
-            <div className="text-xs sm:text-sm font-extrabold text-slate-900">
+            <div className="text-xs sm:text-sm font-extrabold text-[#111111]">
               الكمية المطلوبة (Quantity)
             </div>
-            <div className="text-xs text-slate-500">اختر عدد القطع المراد طلبها</div>
+            <div className="text-xs text-neutral-500">اختر عدد القطع المراد طلبها</div>
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => handleQuantityChange(quantity - 1)}
-              className="w-9 h-9 rounded-lg bg-white border border-slate-300 text-slate-800 font-extrabold hover:bg-slate-100 flex items-center justify-center cursor-pointer shadow-xs text-base"
+              className="w-9 h-9 rounded-xl bg-white border border-neutral-200 text-[#111111] font-extrabold hover:bg-neutral-100 flex items-center justify-center cursor-pointer shadow-2xs text-base"
               aria-label="Decrease quantity"
             >
               -
             </button>
-            <span className="font-mono font-extrabold text-base sm:text-lg w-7 text-center text-slate-900">
+            <span className="font-mono font-extrabold text-base sm:text-lg w-7 text-center text-[#111111]">
               {quantity}
             </span>
             <button
               type="button"
               onClick={() => handleQuantityChange(quantity + 1)}
-              className="w-9 h-9 rounded-lg bg-white border border-slate-300 text-slate-800 font-extrabold hover:bg-slate-100 flex items-center justify-center cursor-pointer shadow-xs text-base"
+              className="w-9 h-9 rounded-xl bg-white border border-neutral-200 text-[#111111] font-extrabold hover:bg-neutral-100 flex items-center justify-center cursor-pointer shadow-2xs text-base"
               aria-label="Increase quantity"
             >
               +
@@ -585,7 +585,7 @@ export const CODForm: React.FC<CODFormProps> = ({
         <div className="space-y-3.5">
           {/* Full Name */}
           <div>
-            <label className="block text-xs sm:text-sm font-extrabold text-slate-800 mb-1.5">
+            <label className="block text-xs sm:text-sm font-extrabold text-[#111111] mb-1.5">
               الاسم الكامل <span className="text-rose-500">*</span>
             </label>
             <input
@@ -597,8 +597,8 @@ export const CODForm: React.FC<CODFormProps> = ({
                 if (errors.customerName) setErrors((prev) => ({ ...prev, customerName: '' }));
               }}
               placeholder="مثال: يوسف الإدريسي"
-              className={`w-full px-4 py-3 rounded-xl border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                errors.customerName ? 'border-rose-500 bg-rose-50/30' : 'border-slate-300 bg-white'
+              className={`w-full px-4 py-3 rounded-2xl border text-sm sm:text-base text-[#111111] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] ${
+                errors.customerName ? 'border-rose-500 bg-rose-50/30' : 'border-neutral-200 bg-[#F8F8F6]/60'
               }`}
             />
             {errors.customerName && (
@@ -610,7 +610,7 @@ export const CODForm: React.FC<CODFormProps> = ({
 
           {/* Phone Number */}
           <div>
-            <label className="block text-xs sm:text-sm font-extrabold text-slate-800 mb-1.5">
+            <label className="block text-xs sm:text-sm font-extrabold text-[#111111] mb-1.5">
               رقم الهاتف (الواتساب للتأكيد) <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
@@ -624,18 +624,18 @@ export const CODForm: React.FC<CODFormProps> = ({
                 }}
                 placeholder="0612345678 أو 0712345678"
                 dir="ltr"
-                className={`w-full px-4 py-3 rounded-xl border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 text-left font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.phone ? 'border-rose-500 bg-rose-50/30' : 'border-slate-300 bg-white'
+                className={`w-full px-4 py-3 rounded-2xl border text-sm sm:text-base text-[#111111] placeholder:text-neutral-400 text-left font-mono focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] ${
+                  errors.phone ? 'border-rose-500 bg-rose-50/30' : 'border-neutral-200 bg-[#F8F8F6]/60'
                 }`}
               />
-              <span className="absolute right-3.5 top-3 text-xs sm:text-sm text-slate-400 font-bold pointer-events-none">
+              <span className="absolute right-3.5 top-3 text-xs sm:text-sm text-neutral-400 font-bold pointer-events-none">
                 🇲🇦 +212
               </span>
             </div>
             {errors.phone ? (
               <p className="text-xs sm:text-sm text-rose-600 mt-1 font-medium">{errors.phone}</p>
             ) : (
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 سيتصل بك الموزع عبر هذا الرقم لتسليم الطلب
               </p>
             )}
@@ -643,7 +643,7 @@ export const CODForm: React.FC<CODFormProps> = ({
 
           {/* City */}
           <div>
-            <label className="block text-xs sm:text-sm font-extrabold text-slate-800 mb-1.5">
+            <label className="block text-xs sm:text-sm font-extrabold text-[#111111] mb-1.5">
               المدينة / الإقليم <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
@@ -654,8 +654,8 @@ export const CODForm: React.FC<CODFormProps> = ({
                   setCity(e.target.value);
                   if (errors.city) setErrors((prev) => ({ ...prev, city: '' }));
                 }}
-                className={`w-full px-4 py-3 rounded-xl border text-sm sm:text-base text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 appearance-none ${
-                  errors.city ? 'border-rose-500 bg-rose-50/30' : 'border-slate-300'
+                className={`w-full px-4 py-3 rounded-2xl border text-sm sm:text-base text-[#111111] bg-[#F8F8F6]/60 focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] appearance-none ${
+                  errors.city ? 'border-rose-500 bg-rose-50/30' : 'border-neutral-200'
                 }`}
               >
                 <option value="">-- اختر مدينتك من القائمة --</option>
@@ -665,7 +665,7 @@ export const CODForm: React.FC<CODFormProps> = ({
                   </option>
                 ))}
               </select>
-              <div className="absolute left-3.5 top-3.5 pointer-events-none text-slate-400 text-xs">
+              <div className="absolute left-3.5 top-3.5 pointer-events-none text-neutral-400 text-xs">
                 ▼
               </div>
             </div>
@@ -676,7 +676,7 @@ export const CODForm: React.FC<CODFormProps> = ({
 
           {/* Detailed Address */}
           <div>
-            <label className="block text-xs sm:text-sm font-extrabold text-slate-800 mb-1.5">
+            <label className="block text-xs sm:text-sm font-extrabold text-[#111111] mb-1.5">
               عنوان التوصيل (الحي، الشارع، رقم المنزل) <span className="text-rose-500">*</span>
             </label>
             <input
@@ -688,8 +688,8 @@ export const CODForm: React.FC<CODFormProps> = ({
                 if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
               }}
               placeholder="مثال: حي الرياض، شارع النخيل رقم 15"
-              className={`w-full px-4 py-3 rounded-xl border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                errors.address ? 'border-rose-500 bg-rose-50/30' : 'border-slate-300 bg-white'
+              className={`w-full px-4 py-3 rounded-2xl border text-sm sm:text-base text-[#111111] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] ${
+                errors.address ? 'border-rose-500 bg-rose-50/30' : 'border-neutral-200 bg-[#F8F8F6]/60'
               }`}
             />
             {errors.address && (
@@ -699,7 +699,7 @@ export const CODForm: React.FC<CODFormProps> = ({
 
           {/* Notes (Optional) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+            <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
               ملاحظات إضافية للتوصيل (اختياري)
             </label>
             <input
@@ -710,28 +710,28 @@ export const CODForm: React.FC<CODFormProps> = ({
                 setNotes(e.target.value);
               }}
               placeholder="مثال: يفضل الاتصال في المساء"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-700 bg-slate-50/50 placeholder:text-slate-400 focus:outline-none focus:border-slate-400"
+              className="w-full px-3.5 py-2.5 rounded-2xl border border-neutral-200 text-xs sm:text-sm text-[#111111] bg-[#F8F8F6]/50 placeholder:text-neutral-400 focus:outline-none focus:border-[#111111]"
             />
           </div>
         </div>
 
         {/* Pricing Summary Box */}
-        <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 space-y-2">
-          <div className="flex justify-between items-center text-xs sm:text-sm text-slate-700 font-medium">
+        <div className="bg-[#FFF3EB] border border-[#FF6B00]/25 rounded-2xl p-4 space-y-2">
+          <div className="flex justify-between items-center text-xs sm:text-sm text-neutral-700 font-medium">
             <span>سعر الوحدة:</span>
-            <span className="font-mono font-bold">
+            <span className="font-mono font-bold text-[#111111]">
               {product.price} {product.currency || 'DH'}
             </span>
           </div>
-          <div className="flex justify-between items-center text-xs sm:text-sm text-slate-700 font-medium">
+          <div className="flex justify-between items-center text-xs sm:text-sm text-neutral-700 font-medium">
             <span>مصاريف التوصيل:</span>
-            <span className="text-emerald-700 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded text-xs">
+            <span className="text-[#129A56] font-extrabold bg-[#E8F8F0] px-2.5 py-0.5 rounded-full text-xs">
               مجاني 100%
             </span>
           </div>
-          <div className="pt-2 border-t border-amber-200/60 flex justify-between items-center text-slate-900">
+          <div className="pt-2 border-t border-[#FF6B00]/20 flex justify-between items-center text-[#111111]">
             <span className="font-extrabold text-sm sm:text-base">المجموع الإجمالي للدفع:</span>
-            <span className="text-xl sm:text-2xl font-black text-amber-600 font-mono">
+            <span className="text-xl sm:text-2xl font-black text-[#FF6B00] font-mono">
               {totalPrice} {product.currency || 'DH'}
             </span>
           </div>
@@ -742,11 +742,11 @@ export const CODForm: React.FC<CODFormProps> = ({
           id="final_cta"
           type="submit"
           disabled={isSubmitting}
-          className="w-full py-4 px-6 rounded-xl font-extrabold text-base sm:text-lg bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-md hover:shadow-lg hover:from-amber-400 hover:to-amber-300 transition-all transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5"
+          className="w-full py-4 px-6 rounded-2xl font-extrabold text-base sm:text-lg bg-[#FF6B00] hover:bg-[#e66000] text-white shadow-md hover:shadow-lg transition-all transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5"
         >
           {isSubmitting ? (
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               <span>جاري تسجيل طلبك...</span>
             </div>
           ) : (
@@ -758,13 +758,13 @@ export const CODForm: React.FC<CODFormProps> = ({
         </button>
 
         {/* Trust Guarantees */}
-        <div className="grid grid-cols-2 gap-2.5 pt-2 text-xs sm:text-sm text-slate-700 font-semibold text-center">
-          <div className="flex items-center justify-center gap-1.5 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="grid grid-cols-2 gap-2.5 pt-2 text-xs sm:text-sm text-[#111111] font-semibold text-center">
+          <div className="flex items-center justify-center gap-1.5 p-2.5 bg-[#F8F8F6] rounded-xl border border-neutral-200/70">
+            <ShieldCheck className="w-4 h-4 text-[#129A56] shrink-0" />
             <span>معاينة الطرد قبل الدفع</span>
           </div>
-          <div className="flex items-center justify-center gap-1.5 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-            <Truck className="w-4 h-4 text-blue-600 shrink-0" />
+          <div className="flex items-center justify-center gap-1.5 p-2.5 bg-[#F8F8F6] rounded-xl border border-neutral-200/70">
+            <Truck className="w-4 h-4 text-[#FF6B00] shrink-0" />
             <span>توصيل سريع لكافة المدن</span>
           </div>
         </div>

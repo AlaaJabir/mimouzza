@@ -37,10 +37,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   return (
     <div className="relative w-full">
       {isPreview && (
-        <div className="bg-amber-500 text-slate-950 text-xs font-black py-1.5 px-4 text-center sticky top-0 z-50 shadow-xs flex items-center justify-center gap-2">
-          <span>👀 معاينة مباشرة (Live Preview Mode — No Analytics Recorded)</span>
-          <span className="text-[11px] font-medium bg-slate-950/10 px-2 py-0.5 rounded">
-            القالب: {product.templateId}
+        <div className="bg-[#FF6B00] text-white text-xs font-extrabold py-1.5 px-4 text-center sticky top-0 z-50 shadow-xs flex items-center justify-center gap-2" dir="ltr">
+          <span>Live Preview Mode — Analytics Paused</span>
+          <span className="text-[11px] font-bold bg-black/20 px-2.5 py-0.5 rounded-full">
+            Template: {product.templateId}
           </span>
         </div>
       )}

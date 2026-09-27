@@ -700,7 +700,7 @@ export class ConvexMemoryStore {
     }
   }
 
-  public async persistOrderToConvexCloud(order: Order): Promise<void> {
+  public async persistOrderToConvexCloud(order: Order, isNewOrder = false): Promise<void> {
     try {
       const compactOrder: Order = {
         ...order,
@@ -731,21 +731,23 @@ export class ConvexMemoryStore {
         return;
       }
 
-      const found = await this.callConvexQuery<Product | null>('products:getBySlug', {
-        slug: sysSlug,
-      });
-      if (found.ok && found.value && found.value._id) {
-        this.orderConvexDocIds.set(order._id, found.value._id);
-        await this.callConvexMutation('products:update', {
-          id: found.value._id,
-          updates: {
-            description: JSON.stringify(payload),
-            price: Number(order.total) || 0,
-            isPublished: false,
-            status: 'ARCHIVED',
-          },
+      if (!isNewOrder) {
+        const found = await this.callConvexQuery<Product | null>('products:getBySlug', {
+          slug: sysSlug,
         });
-        return;
+        if (found.ok && found.value && found.value._id) {
+          this.orderConvexDocIds.set(order._id, found.value._id);
+          await this.callConvexMutation('products:update', {
+            id: found.value._id,
+            updates: {
+              description: JSON.stringify(payload),
+              price: Number(order.total) || 0,
+              isPublished: false,
+              status: 'ARCHIVED',
+            },
+          });
+          return;
+        }
       }
 
       const createArgs = buildConvexSystemDocArgs(sysSlug, sysName, payload, order.total);
@@ -756,12 +758,12 @@ export class ConvexMemoryStore {
     } catch {}
   }
 
-  public scheduleTelemetryConvexSync() {
+  public scheduleTelemetryConvexSync(delayMs = 300) {
     if (typeof window === 'undefined') return;
     if (this.telemetrySyncTimer) clearTimeout(this.telemetrySyncTimer);
     this.telemetrySyncTimer = setTimeout(() => {
       void this.persistTelemetryToConvexCloud();
-    }, 1200);
+    }, delayMs);
   }
 
   private async persistTelemetryToConvexCloud(): Promise<void> {
@@ -1826,8 +1828,11 @@ export class ConvexMemoryStore {
     this.saveProductsBackup();
     notifySubscribers();
 
-    void this.persistOrderToConvexCloud(newOrder);
-    this.scheduleTelemetryConvexSync();
+    // Await Convex Cloud persistence directly so cross-device mobile orders are 100% saved in Convex Cloud before resolving
+    await Promise.all([
+      this.persistOrderToConvexCloud(newOrder, true),
+      this.persistTelemetryToConvexCloud(),
+    ]);
 
     if (typeof window !== 'undefined') {
       try {

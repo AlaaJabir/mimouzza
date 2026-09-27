@@ -27,7 +27,7 @@ export const Benefits: React.FC<BenefitsProps> = ({
   if (!benefits || benefits.length === 0) return null;
 
   const getIcon = (iconName: string) => {
-    const props = { className: 'w-5 h-5 text-amber-600 shrink-0' };
+    const props = { className: 'w-5 h-5 text-[#FF6B00] shrink-0' };
     switch (iconName.toLowerCase()) {
       case 'truck':
         return <Truck {...props} />;
@@ -55,13 +55,13 @@ export const Benefits: React.FC<BenefitsProps> = ({
     return (
       <div className={`space-y-2 ${className}`} dir="rtl">
         {benefits.map((b) => (
-          <div key={b.id} className="flex items-start gap-2 text-slate-800 text-sm">
-            <span className="p-0.5 bg-emerald-100 text-emerald-700 rounded-full mt-0.5">
+          <div key={b.id} className="flex items-start gap-2 text-[#111111] text-sm">
+            <span className="p-0.5 bg-[#FFF3EB] text-[#FF6B00] rounded-full mt-0.5">
               <Check className="w-3.5 h-3.5" />
             </span>
             <div>
-              <span className="font-bold text-slate-900">{b.title}</span>
-              {b.description && <span className="text-slate-600 text-xs mr-1.5">— {b.description}</span>}
+              <span className="font-bold text-[#111111]">{b.title}</span>
+              {b.description && <span className="text-neutral-600 text-xs mr-1.5">— {b.description}</span>}
             </div>
           </div>
         ))}
@@ -74,15 +74,15 @@ export const Benefits: React.FC<BenefitsProps> = ({
       {benefits.map((b) => (
         <div
           key={b.id}
-          className="flex items-start gap-3.5 p-4 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-amber-300 transition-colors"
+          className="flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-2xs hover:border-[#FF6B00]/40 transition-colors"
         >
-          <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-[#FFF3EB] border border-[#FF6B00]/20 flex items-center justify-center shrink-0">
             {getIcon(b.icon)}
           </div>
           <div>
-            <h4 className="text-sm sm:text-base font-extrabold text-slate-900 mb-1">{b.title}</h4>
+            <h4 className="text-sm sm:text-base font-extrabold text-[#111111] mb-1">{b.title}</h4>
             {b.description && (
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">{b.description}</p>
+              <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-medium">{b.description}</p>
             )}
           </div>
         </div>

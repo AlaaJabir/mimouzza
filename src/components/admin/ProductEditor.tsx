@@ -225,22 +225,22 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-100">
+    <div className="flex flex-col h-full bg-[#F8F8F6] text-left" dir="ltr">
       {/* Top Action Bar */}
-      <div className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
+      <div className="h-16 bg-white border-b border-neutral-200/80 px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
-            title="رجوع للقائمة"
+            className="p-2 rounded-full hover:bg-[#F8F8F6] text-[#111111] transition-colors cursor-pointer border border-neutral-200"
+            title="Back to Products"
           >
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-4 h-4 rotate-180" />
           </button>
           <div>
-            <h2 className="text-sm font-bold text-slate-900 leading-tight">
-              {isEditing ? `تعديل: ${formData.name || 'بدون اسم'}` : 'إنشاء منتج جديد'}
+            <h2 className="text-sm font-extrabold text-[#111111] leading-tight">
+              {isEditing ? `Edit Product: ${formData.name || 'Untitled'}` : 'Create New Product'}
             </h2>
-            <div className="text-[11px] text-slate-400 font-mono">
+            <div className="text-[11px] text-neutral-400 font-mono">
               /p/{formData.slug || 'slug-placeholder'}
             </div>
           </div>
@@ -250,10 +250,10 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           <button
             type="button"
             onClick={() => setSplitView((v) => !v)}
-            className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+            className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-neutral-200 text-xs font-bold text-[#111111] hover:bg-[#F8F8F6] transition-colors cursor-pointer"
           >
-            <Columns className="w-3.5 h-3.5" />
-            <span>{splitView ? 'إخفاء المعاينة' : 'إظهار المعاينة التفاعلية'}</span>
+            <Columns className="w-3.5 h-3.5 text-[#FF6B00]" />
+            <span>{splitView ? 'Hide Live Preview' : 'Show Live Preview'}</span>
           </button>
 
           {formData.slug && (
@@ -261,35 +261,36 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
               href={`/p/${formData.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-neutral-200 bg-[#F8F8F6] hover:bg-neutral-200/60 text-xs font-bold text-[#111111] transition-colors"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-              <span>فتح الرابط المباشر</span>
+              <ExternalLink className="w-3.5 h-3.5 text-[#FF6B00]" />
+              <span>Open Public Link</span>
             </a>
           )}
 
-          <Button
+          <button
+            type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+            className="px-5 py-2 rounded-full text-xs bg-[#FF6B00] hover:bg-[#e66000] text-white font-bold transition-colors cursor-pointer shadow-xs"
           >
             {isSaving ? (
               <span className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-                <span>جاري الحفظ...</span>
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>Saving...</span>
               </span>
             ) : saveSuccess ? (
-              <span className="flex items-center gap-1.5 text-emerald-950">
-                <CheckCircle className="w-4 h-4 text-emerald-700" />
-                <span>تم الحفظ في قاعدة البيانات!</span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4" />
+                <span>Saved to Database!</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5">
                 <Save className="w-4 h-4" />
-                <span>{isEditing ? 'حفظ التغييرات' : 'نشر وإنشاء المنتج'}</span>
+                <span>{isEditing ? 'Save Changes' : 'Publish Product'}</span>
               </span>
             )}
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -305,7 +306,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
         {/* Editor Form Columns */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-4xl mx-auto">
           {/* Section 1: Template Selection */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
             <TemplateSelector
               selectedId={formData.templateId}
               onSelect={(templateId) => setFormData((prev) => ({ ...prev, templateId }))}
@@ -313,32 +314,33 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </div>
 
           {/* Section 2: Basic Info */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              المعلومات الأساسية (Basic Info)
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+            <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-2">
+              Basic Product Info (Arabic Landing Copy)
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  اسم المنتج (Product Name) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Product Title (Displayed in Arabic on Landing Page) <span className="text-[#FF6B00]">*</span>
                 </label>
                 <input
                   type="text"
+                  dir="auto"
                   value={formData.name}
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="مثال: سيروم الأرغان وماء الورد الملكي"
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  رابط الصفحة (Slug URL) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Public URL Slug <span className="text-[#FF6B00]">*</span>
                 </label>
                 <div className="flex gap-1.5">
                   <div className="relative flex-1">
-                    <span className="absolute left-3 top-2 text-xs text-slate-400 font-mono pointer-events-none">
+                    <span className="absolute left-3 top-2.5 text-xs text-neutral-400 font-mono pointer-events-none">
                       /p/
                     </span>
                     <input
@@ -351,56 +353,59 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                         }))
                       }
                       placeholder="beauty-set"
-                      className="w-full pl-8 pr-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-left"
+                      className="w-full pl-8 pr-3 py-2 text-xs font-mono rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00] text-left"
                       dir="ltr"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={generateRandomSlug}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium hover:bg-slate-100 text-slate-700 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-bold hover:bg-[#F8F8F6] text-[#111111] cursor-pointer"
                   >
-                    توليد تلقائي
+                    Auto-Generate
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  شارة التميز (Badge / Kicker)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Highlight Badge (Arabic)
                 </label>
                 <input
                   type="text"
+                  dir="rtl"
                   value={formData.badgeText || ''}
                   onChange={(e) => setFormData((prev) => ({ ...prev, badgeText: e.target.value }))}
                   placeholder="مثال: الأكثر طلباً هذا الأسبوع"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  الوصف القصير (Short Description)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Short Subtitle (Arabic)
                 </label>
                 <input
                   type="text"
+                  dir="rtl"
                   value={formData.shortDescription}
                   onChange={(e) => setFormData((prev) => ({ ...prev, shortDescription: e.target.value }))}
                   placeholder="سطر واحد جذاب يظهر في أعلى الصفحة..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
 
-              <div className="sm:col-span-2 p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
-                <label className="block text-xs font-bold text-slate-800">
-                  الوصف الكامل والشرح + صور الوصف (Full Description & Description Images / PNG)
+              <div className="sm:col-span-2 p-4 rounded-2xl border border-neutral-200 bg-[#F8F8F6] space-y-3">
+                <label className="block text-xs font-bold text-[#111111]">
+                  Full Product Description (Arabic) &amp; Description Images
                 </label>
                 <textarea
                   rows={6}
+                  dir="rtl"
                   value={formData.description}
                   onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="اكتب مواصفات المنتج، طريقة الاستعمال، والفوائد التفصيلية..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 leading-relaxed font-sans"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00] leading-relaxed"
                 />
 
                 {/* Description Images (Links or PNG/JPG Import) inside Description Box */}
@@ -415,15 +420,15 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </div>
 
           {/* Section 3: Pricing & Offer */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              الأسعار والعرض (Pricing & Offer)
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+            <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-2">
+              Pricing &amp; Promotional Offer
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  سعر البيع الحالي (Price) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Selling Price <span className="text-[#FF6B00]">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -432,17 +437,17 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, price: Number(e.target.value) || 0 }))
                     }
-                    className="w-full px-3 py-2 text-sm font-bold font-mono rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    className="w-full px-3.5 py-2 text-sm font-bold font-mono rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                   />
-                  <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-neutral-400">
                     {formData.currency}
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  السعر القديم المشطوب (Compare Price)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Compare At Price (Strikethrough)
                 </label>
                 <div className="relative">
                   <input
@@ -454,24 +459,24 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                         compareAtPrice: Number(e.target.value) || 0,
                       }))
                     }
-                    className="w-full px-3 py-2 text-sm font-bold font-mono rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    className="w-full px-3.5 py-2 text-sm font-bold font-mono rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                   />
-                  <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-neutral-400">
                     {formData.currency}
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  العملة (Currency)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Currency
                 </label>
                 <select
                   value={formData.currency}
                   onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white"
                 >
-                  <option value="DH">درهم مغربي (DH)</option>
+                  <option value="DH">Moroccan Dirham (DH)</option>
                   <option value="MAD">MAD</option>
                   <option value="$">USD ($)</option>
                   <option value="€">EUR (€)</option>
@@ -479,22 +484,23 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
               </div>
 
               <div className="sm:col-span-3">
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  نص العرض الترويجي (Offer Text)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Top Offer Banner Copy (Arabic)
                 </label>
                 <input
                   type="text"
+                  dir="rtl"
                   value={formData.offerText}
                   onChange={(e) => setFormData((prev) => ({ ...prev, offerText: e.target.value }))}
                   placeholder="مثال: 🔥 خصم 40% لهذا الأسبوع + شحن مجاني لكافة المدن"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
             </div>
           </div>
 
           {/* Section 4: Images */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs">
             <ImageManager
               images={formData.images}
               onChange={(images) => setFormData((prev) => ({ ...prev, images }))}
@@ -502,28 +508,29 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </div>
 
           {/* Section 5: Landing Page Settings & Policies */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              إعدادات صفحة الهبوط وسياسة التوصيل (Landing Page Settings)
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+            <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-2">
+              Landing Page Settings &amp; Policies (Arabic Copy)
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  نص زر الطلب (CTA Text)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Primary CTA Button Copy (Arabic)
                 </label>
                 <input
                   type="text"
+                  dir="rtl"
                   value={formData.ctaText}
                   onChange={(e) => setFormData((prev) => ({ ...prev, ctaText: e.target.value }))}
                   placeholder="اطلب الآن بالدفع عند الاستلام"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  حالة المنتج (Product Status)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Product Status
                 </label>
                 <select
                   value={formData.status || (formData.isPublished ? 'ACTIVE' : 'DRAFT')}
@@ -535,93 +542,101 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                       isPublished: nextStatus === 'ACTIVE',
                     }));
                   }}
-                  className="w-full px-3 py-2 text-xs font-bold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3.5 py-2 text-xs font-bold rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 >
-                  <option value="ACTIVE">🟢 نشط ومنشور للعامة (ACTIVE)</option>
-                  <option value="DRAFT">⚪ مسودة غير منشورة (DRAFT)</option>
-                  <option value="ARCHIVED">🔴 مؤرشف / متوقف (ARCHIVED)</option>
+                  <option value="ACTIVE">🟢 ACTIVE — Published &amp; Accepting Orders</option>
+                  <option value="DRAFT">⚪ DRAFT — Hidden from Public</option>
+                  <option value="ARCHIVED">🔴 ARCHIVED — Paused</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  نص التوصيل والشحن (Shipping Text)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Shipping Policy Copy (Arabic)
                 </label>
                 <input
                   type="text"
+                  dir="rtl"
                   value={formData.shippingText}
                   onChange={(e) => setFormData((prev) => ({ ...prev, shippingText: e.target.value }))}
                   placeholder="🚚 التوصيل مجاني لجميع مدن المغرب — الدفع عند الاستلام"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  سياسة الاسترجاع (Return Policy)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  Return Guarantee Copy (Arabic)
                 </label>
                 <input
                   type="text"
+                  dir="rtl"
                   value={formData.returnPolicy}
                   onChange={(e) => setFormData((prev) => ({ ...prev, returnPolicy: e.target.value }))}
                   placeholder="🔄 إرجاع واستبدال مجاني خلال 14 يوماً مع ضمان كامل"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
             </div>
           </div>
 
           {/* Section 6: Benefits */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                مميزات المنتج وضمانات الثقة (Benefits & Trust)
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+              <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+                Product Benefits &amp; Trust Highlights (Arabic Copy)
               </h3>
-              <Button type="button" onClick={handleAddBenefit} size="sm" variant="outline" className="text-xs">
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                إضافة ميزة
-              </Button>
+              <button
+                type="button"
+                onClick={handleAddBenefit}
+                className="px-3.5 py-1.5 rounded-full bg-[#111111] text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Benefit</span>
+              </button>
             </div>
 
             <div className="space-y-3">
               {formData.benefits.map((b) => (
                 <div
                   key={b.id}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50"
+                  className="flex items-center gap-3 p-3 rounded-2xl border border-neutral-200 bg-[#F8F8F6]"
                 >
                   <select
                     value={b.icon}
                     onChange={(e) => handleUpdateBenefit(b.id, { icon: e.target.value })}
-                    className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white"
+                    className="text-xs px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-white"
                   >
-                    <option value="Award">Award (جودة معتمدة)</option>
-                    <option value="Truck">Truck (توصيل سريع)</option>
-                    <option value="ShieldCheck">ShieldCheck (أمان ودفع)</option>
-                    <option value="RotateCcw">RotateCcw (استرجاع)</option>
-                    <option value="Sparkles">Sparkles (تألق طبيعي)</option>
-                    <option value="CheckCircle">CheckCircle (صح)</option>
+                    <option value="Award">Award (Quality)</option>
+                    <option value="Truck">Truck (Fast Delivery)</option>
+                    <option value="ShieldCheck">ShieldCheck (COD Trust)</option>
+                    <option value="RotateCcw">RotateCcw (Returns)</option>
+                    <option value="Sparkles">Sparkles (Premium)</option>
+                    <option value="CheckCircle">CheckCircle (Verified)</option>
                   </select>
 
                   <input
                     type="text"
+                    dir="rtl"
                     value={b.title}
                     onChange={(e) => handleUpdateBenefit(b.id, { title: e.target.value })}
                     placeholder="عنوان الميزة"
-                    className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                    className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-neutral-200 bg-white"
                   />
 
                   <input
                     type="text"
+                    dir="rtl"
                     value={b.description || ''}
                     onChange={(e) => handleUpdateBenefit(b.id, { description: e.target.value })}
                     placeholder="شرح بسيط للميزة"
-                    className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                    className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-neutral-200 bg-white"
                   />
 
                   <button
                     type="button"
                     onClick={() => handleRemoveBenefit(b.id)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 cursor-pointer"
+                    className="p-1.5 text-neutral-400 hover:text-rose-600 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -631,7 +646,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </div>
 
           {/* Section 7: Variants */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs">
             <VariantEditor
               variants={formData.variants}
               onChange={(variants) => setFormData((prev) => ({ ...prev, variants }))}
@@ -639,26 +654,26 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </div>
 
           {/* Section 8: Scarcity & Urgency (Stock & Timer) */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              إعدادات الندرة والعداد التنازلي (Scarcity & Countdown)
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+            <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-2">
+              Scarcity &amp; Countdown Timer
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+              <div className="space-y-3 p-4 bg-[#F8F8F6] rounded-2xl border border-neutral-200">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#111111]">
                   <input
                     type="checkbox"
                     checked={formData.scarcityEnabled || false}
                     onChange={(e) => setFormData((prev) => ({ ...prev, scarcityEnabled: e.target.checked }))}
-                    className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                    className="rounded border-neutral-300 text-[#FF6B00] focus:ring-[#FF6B00]"
                   />
-                  <span>تفعيل شريط نفاذ المخزون (Stock Scarcity Warning)</span>
+                  <span>Enable Low-Stock Scarcity Bar</span>
                 </label>
                 {formData.scarcityEnabled && (
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      الكمية المتبقية للعرض
+                    <label className="block text-[11px] font-semibold text-neutral-600 mb-1">
+                      Remaining Stock Displayed
                     </label>
                     <input
                       type="number"
@@ -669,27 +684,27 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                           stockQuantity: Number(e.target.value) || 0,
                         }))
                       }
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                      className="w-full px-3 py-1.5 text-xs rounded-xl border border-neutral-200 bg-white"
                       placeholder="7"
                     />
                   </div>
                 )}
               </div>
 
-              <div className="space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+              <div className="space-y-3 p-4 bg-[#F8F8F6] rounded-2xl border border-neutral-200">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#111111]">
                   <input
                     type="checkbox"
                     checked={formData.countdownEnabled || false}
                     onChange={(e) => setFormData((prev) => ({ ...prev, countdownEnabled: e.target.checked }))}
-                    className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                    className="rounded border-neutral-300 text-[#FF6B00] focus:ring-[#FF6B00]"
                   />
-                  <span>تفعيل العداد التنازلي للعرض (Countdown Timer)</span>
+                  <span>Enable Offer Countdown Timer</span>
                 </label>
                 {formData.countdownEnabled && (
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      مدة العداد بالدقائق (مثال: 120 دقيقة = ساعتان)
+                    <label className="block text-[11px] font-semibold text-neutral-600 mb-1">
+                      Countdown Duration (Minutes)
                     </label>
                     <input
                       type="number"
@@ -700,7 +715,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                           countdownDurationMinutes: Number(e.target.value) || 60,
                         }))
                       }
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                      className="w-full px-3 py-1.5 text-xs rounded-xl border border-neutral-200 bg-white"
                     />
                   </div>
                 )}
@@ -709,26 +724,26 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </div>
 
           {/* Section 9: WhatsApp Direct CTA */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              طلب مباشر عبر الواتساب (WhatsApp CTA)
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+            <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-2">
+              WhatsApp Quick Order Button
             </h3>
 
             <div className="space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#111111]">
                 <input
                   type="checkbox"
                   checked={formData.whatsappEnabled || false}
                   onChange={(e) => setFormData((prev) => ({ ...prev, whatsappEnabled: e.target.checked }))}
-                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  className="rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
                 />
-                <span>إظهار زر "طلب أو استفسار عبر الواتساب" في صفحة المنتج</span>
+                <span>Show &quot;Order via WhatsApp&quot; button on product landing page</span>
               </label>
 
               {formData.whatsappEnabled && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">
-                    رقم الواتساب مع كود الدولة (مثال: 212661234567)
+                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                    WhatsApp Number with Country Code (e.g. 212661234567)
                   </label>
                   <input
                     type="text"
@@ -736,7 +751,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                     onChange={(e) => setFormData((prev) => ({ ...prev, whatsappNumber: e.target.value }))}
                     placeholder="2126XXXXXXXX"
                     dir="ltr"
-                    className="w-full max-w-sm px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left"
+                    className="w-full max-w-sm px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] font-mono text-left"
                   />
                 </div>
               )}
@@ -744,61 +759,64 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </div>
 
           {/* Section 10: SEO & Social Share Cards */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              تهيئة محركات البحث ومشاركة الروابط (SEO & Social OpenGraph)
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+            <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-2">
+              SEO &amp; Social OpenGraph Metadata
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  عنوان الصفحة في جوجل (SEO Title)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  SEO Page Title
                 </label>
                 <input
                   type="text"
+                  dir="auto"
                   value={formData.seoTitle || ''}
                   onChange={(e) => setFormData((prev) => ({ ...prev, seoTitle: e.target.value }))}
-                  placeholder="عنوان جذاب يظهر في نتائج البحث..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300"
+                  placeholder="SEO Title..."
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  عنوان المشاركة الاجتماعية (OG Title)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  OpenGraph Share Title
                 </label>
                 <input
                   type="text"
+                  dir="auto"
                   value={formData.ogTitle || ''}
                   onChange={(e) => setFormData((prev) => ({ ...prev, ogTitle: e.target.value }))}
-                  placeholder="عنوان كارت فيسبوك / واتساب..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300"
+                  placeholder="Social card title..."
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6]"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  وصف الصفحة في محركات البحث (SEO Description)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  SEO Meta Description
                 </label>
                 <input
                   type="text"
+                  dir="auto"
                   value={formData.seoDescription || ''}
                   onChange={(e) => setFormData((prev) => ({ ...prev, seoDescription: e.target.value }))}
-                  placeholder="وصف مختصر ومقنع للمنتج..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300"
+                  placeholder="Meta description..."
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6]"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  رابط صورة المشاركة (OG Image URL)
+                <label className="block text-xs font-bold text-[#111111] mb-1">
+                  OpenGraph Share Image URL
                 </label>
                 <input
                   type="text"
                   value={formData.ogImage || ''}
                   onChange={(e) => setFormData((prev) => ({ ...prev, ogImage: e.target.value }))}
                   placeholder="https://..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] font-mono text-left"
                   dir="ltr"
                 />
               </div>
@@ -806,28 +824,28 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </div>
 
           {/* Section 11: Per-Product Tracking Pixels */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                تتبع الإعلانات المخصص للمنتج (Meta & TikTok Pixel)
+          <div className="p-6 bg-white rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+              <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+                Per-Product Ad Pixels (Meta &amp; TikTok)
               </h3>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>
-                  Meta Pixel نشط ({formData.customMetaPixelId?.trim() || '135752956164308'})
+                  Active Meta Pixel ({formData.customMetaPixelId?.trim() || '135752956164308'})
                 </span>
               </span>
             </div>
 
             <div className="space-y-3">
-              <p className="text-[11px] text-slate-600 leading-relaxed">
-                البكسل العام للمتجر (<code className="font-mono font-bold text-slate-900">135752956164308</code>) مفعل تلقائياً على جميع صفحات الهبوط. إذا أردت تشغيل بكسل مختلف خاص بهذا المنتج فقط، أدخل الـ ID بالأسفل وسيشتغل تلقائياً بمجرد حفظ المنتج:
+              <p className="text-[11px] text-neutral-500 leading-relaxed">
+                Your global store Meta Pixel (<code className="font-mono font-bold text-[#111111]">135752956164308</code>) is active on all landing pages by default. Enter an ID below only if you want a dedicated pixel for this product:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">
-                    Meta Pixel ID (خاص بهذا المنتج أو اتركه للبكسل العام)
+                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                    Custom Meta Pixel ID (Optional)
                   </label>
                   <input
                     type="text"
@@ -841,14 +859,14 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                       }));
                     }}
                     placeholder="135752956164308"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] font-mono text-left focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                     dir="ltr"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">
-                    TikTok Pixel ID (اختياري)
+                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                    Custom TikTok Pixel ID (Optional)
                   </label>
                   <input
                     type="text"
@@ -862,7 +880,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                       }));
                     }}
                     placeholder="C9XXXXXXXXXXXXXX"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] font-mono text-left focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                     dir="ltr"
                   />
                 </div>
@@ -873,7 +891,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
 
         {/* Live Preview Panel (Sticky Right / Side-by-Side) */}
         {splitView && (
-          <div className="w-[480px] xl:w-[560px] border-l border-slate-300 bg-slate-900 p-4 shrink-0 hidden lg:block overflow-hidden">
+          <div className="w-[480px] xl:w-[560px] border-l border-neutral-200 bg-[#111111] p-4 shrink-0 hidden lg:block overflow-hidden">
             <LivePreview product={livePreviewProduct} />
           </div>
         )}
