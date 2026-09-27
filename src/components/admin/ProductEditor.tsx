@@ -160,13 +160,20 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     const resolvedStatus: ProductStatus =
       formData.status || (formData.isPublished ? 'ACTIVE' : 'DRAFT');
 
+    const resolvedOgImage =
+      formData.ogImage && !formData.ogImage.startsWith('data:')
+        ? formData.ogImage
+        : formData.images[0] && !formData.images[0].startsWith('data:')
+          ? formData.images[0]
+          : '';
+
     const payloadToSave = {
       ...formData,
       slug: desiredSlug,
       status: resolvedStatus,
       isPublished: resolvedStatus === 'ACTIVE',
       comparePrice: formData.compareAtPrice,
-      ogImage: formData.ogImage || formData.images[0] || '',
+      ogImage: resolvedOgImage,
     };
 
     setIsSaving(true);
@@ -186,6 +193,11 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       setFormData((prev) => ({
         ...prev,
         slug: saved.slug || desiredSlug,
+        images: Array.isArray(saved.images) ? saved.images : prev.images,
+        descriptionImages: Array.isArray(saved.descriptionImages)
+          ? saved.descriptionImages
+          : prev.descriptionImages,
+        ogImage: saved.ogImage || prev.ogImage,
         status: getProductStatus(saved),
         isPublished: getProductStatus(saved) === 'ACTIVE',
       }));

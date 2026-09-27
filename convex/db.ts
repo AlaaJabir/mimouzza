@@ -336,6 +336,7 @@ export class ConvexMemoryStore {
   public isHydrated = false;
   private remoteFunctionsReady = false;
   private initialSyncPromise: Promise<void> | null = null;
+  private pendingProducts = new Map<string, Product>();
 
   constructor() {
     this.init();
@@ -406,11 +407,191 @@ export class ConvexMemoryStore {
   }
 
   /**
+   * Uploads a single `data:image/...` string to the server in safe <=100KB chunks
+   * via `/api/db/image-chunk` so no HTTP request ever triggers proxy 413 limits.
+   */
+  public async uploadImageDataUrl(dataUrl: string): Promise<string> {
+    if (!dataUrl || typeof dataUrl !== 'string') return '';
+    const trimmed = dataUrl.trim();
+    if (!trimmed.startsWith('data:image/') || typeof window === 'undefined') {
+      return trimmed;
+    }
+
+    const match = trimmed.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+    if (!match) return trimmed;
+
+    const mimeType = match[1] || 'image/jpeg';
+    const base64 = match[2] || '';
+    if (!base64) return '';
+
+    const CHUNK_SIZE = 100_000; // ~100KB per request — safe for all reverse proxies
+    const totalChunks = Math.max(1, Math.ceil(base64.length / CHUNK_SIZE));
+    const uploadId =
+      'up_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
+
+    try {
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const chunkData = base64.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
+        const res = await fetch('/api/db/image-chunk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uploadId,
+            mimeType,
+            chunkIndex,
+            totalChunks,
+            chunkData,
+          }),
+        });
+        if (!res.ok) {
+          break;
+        }
+        const data = await res.json();
+        if (data?.ok && data.completed && data.url) {
+          return data.url as string;
+        }
+      }
+    } catch {
+      // Fallback to single-request endpoint
+    }
+
+    try {
+      const res = await fetch('/api/db/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataUrl: trimmed }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.ok && data.url) {
+          return data.url as string;
+        }
+      }
+    } catch {
+      // Keep original data URL if server is unreachable
+    }
+
+    return trimmed;
+  }
+
+  /**
+   * Uploads any inline base64 `data:image/...` strings one by one in chunks
+   * so that the product JSON payload stays tiny (< 5KB) and never triggers HTTP 413 limits.
+   */
+  private async uploadDataImagesArray(urls?: string[]): Promise<string[]> {
+    if (!Array.isArray(urls) || urls.length === 0) return [];
+    if (typeof window === 'undefined') return urls.filter(Boolean);
+
+    const results: string[] = [];
+    for (const item of urls) {
+      if (!item || typeof item !== 'string') continue;
+      const trimmed = item.trim();
+      if (!trimmed) continue;
+
+      if (trimmed.startsWith('data:image/')) {
+        const uploadedUrl = await this.uploadImageDataUrl(trimmed);
+        if (uploadedUrl) {
+          results.push(uploadedUrl);
+          continue;
+        }
+      }
+      results.push(trimmed);
+    }
+    return results;
+  }
+
+  private async persistProductToServer(product: Product): Promise<Product> {
+    if (typeof window === 'undefined') return product;
+
+    this.pendingProducts.set(product._id, product);
+
+    try {
+      const uploadedImages = await this.uploadDataImagesArray(product.images);
+      const uploadedDescImages = await this.uploadDataImagesArray(product.descriptionImages);
+      const cleanOgImage =
+        product.ogImage && !product.ogImage.startsWith('data:')
+          ? product.ogImage
+          : uploadedImages[0] && !uploadedImages[0].startsWith('data:')
+            ? uploadedImages[0]
+            : '';
+
+      const productPayload: Product = {
+        ...product,
+        images: uploadedImages,
+        descriptionImages: uploadedDescImages,
+        ogImage: cleanOgImage,
+      };
+
+      this.pendingProducts.set(product._id, productPayload);
+
+      let res = await fetch('/api/db/product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: productPayload }),
+      });
+
+      // Fallback retry if any remaining inline data URI caused a 413 Payload Too Large at the proxy
+      if (!res.ok && res.status === 413) {
+        const lightweightPayload: Product = {
+          ...productPayload,
+          images: productPayload.images.filter((u) => !u.startsWith('data:')),
+          descriptionImages: (productPayload.descriptionImages || []).filter(
+            (u) => !u.startsWith('data:')
+          ),
+          ogImage: '',
+        };
+        res = await fetch('/api/db/product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product: lightweightPayload }),
+        });
+      }
+
+      if (res.ok) {
+        const savedData = await res.json().catch(() => null);
+        if (savedData && savedData.ok && savedData.product) {
+          const authoritativeProduct: Product = {
+            ...savedData.product,
+            status: getProductStatus(savedData.product),
+            isPublished: getProductStatus(savedData.product) === 'ACTIVE',
+            comparePrice: savedData.product.comparePrice ?? savedData.product.compareAtPrice,
+          };
+          this.pendingProducts.delete(product._id);
+          this.pendingProducts.delete(authoritativeProduct._id);
+          return authoritativeProduct;
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 400 && errData?.error) {
+          this.pendingProducts.delete(product._id);
+          throw new Error(errData.error);
+        }
+      }
+    } catch (err: any) {
+      if (err?.message && err.message.includes('اسم المنتج مطلوب')) {
+        throw err;
+      }
+      console.warn('Product queued for background server sync:', err);
+    }
+
+    return this.pendingProducts.get(product._id) || product;
+  }
+
+  /**
    * Authoritative pull from the server database (`GET /api/db/state`).
-   * Never pushes local client arrays to overwrite server state.
+   * Also flushes any pending newly-saved products if they haven't reached the server yet.
    */
   public async syncWithServer(): Promise<void> {
     if (typeof window === 'undefined') return;
+
+    if (this.pendingProducts.size > 0) {
+      for (const [, pendingProd] of Array.from(this.pendingProducts.entries())) {
+        try {
+          await this.persistProductToServer(pendingProd);
+        } catch {}
+      }
+    }
+
     try {
       const res = await fetch('/api/db/state', {
         method: 'GET',
@@ -421,7 +602,7 @@ export class ConvexMemoryStore {
       const data = await res.json();
       if (data && data.ok) {
         if (Array.isArray(data.products)) {
-          this.products = (data.products as Product[])
+          const serverProducts = (data.products as Product[])
             .filter((p) => !isLegacySeedProduct(p))
             .map((p) => ({
               ...p,
@@ -429,6 +610,18 @@ export class ConvexMemoryStore {
               isPublished: getProductStatus(p) === 'ACTIVE',
               comparePrice: p.comparePrice ?? p.compareAtPrice,
             }));
+
+          // Preserve any in-flight pending products not yet in the server snapshot
+          const serverIds = new Set(serverProducts.map((p) => p._id));
+          for (const [id, pending] of Array.from(this.pendingProducts.entries())) {
+            if (!serverIds.has(id)) {
+              serverProducts.unshift(pending);
+            } else {
+              this.pendingProducts.delete(id);
+            }
+          }
+
+          this.products = serverProducts;
         }
         if (Array.isArray(data.orders)) {
           this.orders = (data.orders as Order[]).filter((o) => !isLegacyFakeOrder(o));
@@ -646,36 +839,16 @@ export class ConvexMemoryStore {
     this.products.unshift(newProduct);
     notifySubscribers();
 
-    if (typeof window !== 'undefined') {
-      const res = await fetch('/api/db/product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product: newProduct }),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'فشل حفظ المنتج في قاعدة البيانات');
-      }
-      const savedData = await res.json();
-      if (savedData && savedData.ok && savedData.product) {
-        const authoritativeProduct: Product = {
-          ...savedData.product,
-          status: getProductStatus(savedData.product),
-          isPublished: getProductStatus(savedData.product) === 'ACTIVE',
-        };
-        const idx = this.products.findIndex((p) => p._id === newProduct._id);
-        if (idx !== -1) {
-          this.products[idx] = authoritativeProduct;
-        } else {
-          this.products.unshift(authoritativeProduct);
-        }
-        notifySubscribers();
-        void this.callConvexMutation<Product>('products:create', data);
-        return authoritativeProduct;
-      }
+    const authoritativeProduct = await this.persistProductToServer(newProduct);
+    const idx = this.products.findIndex((p) => p._id === newProduct._id);
+    if (idx !== -1) {
+      this.products[idx] = authoritativeProduct;
+    } else {
+      this.products.unshift(authoritativeProduct);
     }
-
-    return newProduct;
+    notifySubscribers();
+    void this.callConvexMutation<Product>('products:create', data);
+    return authoritativeProduct;
   }
 
   public async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
@@ -714,34 +887,14 @@ export class ConvexMemoryStore {
     this.products[idx] = updated;
     notifySubscribers();
 
-    if (typeof window !== 'undefined') {
-      const res = await fetch('/api/db/product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product: updated }),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'فشل تحديث المنتج في قاعدة البيانات');
-      }
-      const savedData = await res.json();
-      if (savedData && savedData.ok && savedData.product) {
-        const authoritativeProduct: Product = {
-          ...savedData.product,
-          status: getProductStatus(savedData.product),
-          isPublished: getProductStatus(savedData.product) === 'ACTIVE',
-        };
-        const currentIdx = this.products.findIndex((p) => p._id === id);
-        if (currentIdx !== -1) {
-          this.products[currentIdx] = authoritativeProduct;
-        }
-        notifySubscribers();
-        void this.callConvexMutation('products:update', { id, updates });
-        return authoritativeProduct;
-      }
+    const authoritativeProduct = await this.persistProductToServer(updated);
+    const currentIdx = this.products.findIndex((p) => p._id === id);
+    if (currentIdx !== -1) {
+      this.products[currentIdx] = authoritativeProduct;
     }
-
-    return updated;
+    notifySubscribers();
+    void this.callConvexMutation('products:update', { id, updates });
+    return authoritativeProduct;
   }
 
   public async duplicateProduct(id: string): Promise<Product> {
@@ -765,24 +918,15 @@ export class ConvexMemoryStore {
     this.products.unshift(copy);
     notifySubscribers();
 
-    if (typeof window !== 'undefined') {
-      const res = await fetch('/api/db/product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product: copy }),
-      });
-      if (res.ok) {
-        const savedData = await res.json();
-        if (savedData?.ok && savedData.product) {
-          const idx = this.products.findIndex((p) => p._id === copy._id);
-          if (idx !== -1) this.products[idx] = savedData.product;
-          notifySubscribers();
-        }
-      }
+    const authoritativeCopy = await this.persistProductToServer(copy);
+    const idx = this.products.findIndex((p) => p._id === copy._id);
+    if (idx !== -1) {
+      this.products[idx] = authoritativeCopy;
     }
+    notifySubscribers();
 
     void this.callConvexMutation('products:duplicate', { id });
-    return copy;
+    return authoritativeCopy;
   }
 
   /**

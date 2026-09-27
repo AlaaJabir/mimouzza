@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Upload, Link, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/button';
+import { db } from '../../../convex/db';
 
 interface ImageManagerProps {
   images: string[];
@@ -18,11 +19,11 @@ const PRESET_STUDIO_IMAGES = [
 
 /**
  * Compresses and resizes an uploaded image file so it is fast, lightweight (~80-180KB),
- * preserves transparency for PNG/WEBP files, and is permanently storable in Convex Cloud,
- * Server DB, IndexedDB, and localStorage.
+ * preserves transparency for PNG/WEBP files, and uploads it directly to the server image store
+ * (`/api/db/image`) so saving a product never hits HTTP payload size limits.
  */
-export async function compressImageFile(file: File, maxDimension = 1200, quality = 0.85): Promise<string> {
-  return new Promise((resolve, reject) => {
+export async function compressImageFile(file: File, maxDimension = 1080, quality = 0.82): Promise<string> {
+  const dataUri = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
     reader.onload = (event) => {
@@ -72,7 +73,32 @@ export async function compressImageFile(file: File, maxDimension = 1200, quality
 
           // Use WebP for PNG/WebP to preserve alpha transparency while keeping size compact
           const outputMime = isTransparentFormat ? 'image/webp' : 'image/jpeg';
-          const compressed = canvas.toDataURL(outputMime, quality);
+          let compressed = canvas.toDataURL(outputMime, quality);
+
+          // If the browser doesn't support WebP encoding (falls back to huge uncompressed PNG > 450KB),
+          // scale down or encode as JPEG so individual image payloads never exceed proxy limits.
+          if (compressed.length > 450_000) {
+            const scale = 0.7;
+            const smallCanvas = document.createElement('canvas');
+            smallCanvas.width = Math.max(1, Math.round(width * scale));
+            smallCanvas.height = Math.max(1, Math.round(height * scale));
+            const sCtx = smallCanvas.getContext('2d');
+            if (sCtx) {
+              if (!isTransparentFormat) {
+                sCtx.fillStyle = '#FFFFFF';
+                sCtx.fillRect(0, 0, smallCanvas.width, smallCanvas.height);
+              }
+              sCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+              compressed = smallCanvas.toDataURL('image/webp', 0.75);
+              if (compressed.length > 450_000) {
+                sCtx.fillStyle = '#FFFFFF';
+                sCtx.fillRect(0, 0, smallCanvas.width, smallCanvas.height);
+                sCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+                compressed = smallCanvas.toDataURL('image/jpeg', 0.78);
+              }
+            }
+          }
+
           resolve(compressed);
         } catch {
           resolve(dataUrl);
@@ -83,6 +109,18 @@ export async function compressImageFile(file: File, maxDimension = 1200, quality
     };
     reader.readAsDataURL(file);
   });
+
+  // Upload the compressed image to the server image endpoint in safe chunks so it returns a short URL
+  try {
+    const uploadedUrl = await db.uploadImageDataUrl(dataUri);
+    if (uploadedUrl) {
+      return uploadedUrl;
+    }
+  } catch {
+    // Fallback to compressed dataUri if offline
+  }
+
+  return dataUri;
 }
 
 export const ImageManager: React.FC<ImageManagerProps> = ({ images, onChange }) => {

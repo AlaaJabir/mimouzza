@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import {
   INITIAL_PRODUCTS,
   INITIAL_SETTINGS,
@@ -29,6 +30,16 @@ import type {
 } from './convex/schema';
 
 const DB_FILE_PATH = path.resolve(process.cwd(), '.convex-server-db.json');
+const IMAGES_DB_FILE_PATH = path.resolve(process.cwd(), '.convex-images-db.json');
+
+interface StoredImageRecord {
+  id: string;
+  mimeType: string;
+  base64: string;
+  createdAt: number;
+}
+
+type ServerImagesDatabase = Record<string, StoredImageRecord>;
 
 interface ServerDatabaseState {
   products: Product[];
@@ -40,6 +51,69 @@ interface ServerDatabaseState {
   settings: StoreSettings;
   templates: Template[];
   updatedAt: number;
+}
+
+function loadImagesDatabase(): ServerImagesDatabase {
+  try {
+    if (fs.existsSync(IMAGES_DB_FILE_PATH)) {
+      const raw = fs.readFileSync(IMAGES_DB_FILE_PATH, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as ServerImagesDatabase;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not load .convex-images-db.json, initializing fresh image store:', err);
+  }
+  return {};
+}
+
+function saveImagesDatabase(imagesDb: ServerImagesDatabase) {
+  try {
+    fs.writeFileSync(IMAGES_DB_FILE_PATH, JSON.stringify(imagesDb), 'utf-8');
+  } catch (err) {
+    console.error('Failed to save images DB:', err);
+  }
+}
+
+const serverImagesDb: ServerImagesDatabase = loadImagesDatabase();
+const pendingImageChunks = new Map<
+  string,
+  { mimeType: string; totalChunks: number; chunks: string[]; createdAt: number }
+>();
+
+/**
+ * Converts a base64 `data:image/...` URI into a persistent server-hosted image URL `/api/db/image/:id`.
+ * Keeps product JSON payloads tiny (< 2KB) so saving and syncing products never hits HTTP payload limits.
+ */
+function persistDataUrlImage(urlOrDataUri: string): string {
+  if (!urlOrDataUri || typeof urlOrDataUri !== 'string') return '';
+  const trimmed = urlOrDataUri.trim();
+  if (!trimmed.startsWith('data:image/')) {
+    return trimmed;
+  }
+
+  const match = trimmed.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) {
+    return trimmed;
+  }
+
+  const mimeType = match[1];
+  const base64 = match[2];
+  const hash = crypto.createHash('sha1').update(base64).digest('hex').slice(0, 16);
+  const id = `img_${hash}`;
+
+  if (!serverImagesDb[id]) {
+    serverImagesDb[id] = {
+      id,
+      mimeType,
+      base64,
+      createdAt: Date.now(),
+    };
+    saveImagesDatabase(serverImagesDb);
+  }
+
+  return `/api/db/image/${id}`;
 }
 
 function cleanCampaignAdSpends(spends?: Record<string, number>): Record<string, number> {
@@ -67,8 +141,18 @@ function loadServerDatabase(): ServerDatabaseState {
           .filter((p) => !isLegacySeedProduct(p))
           .map((p) => {
             const status = getProductStatus(p);
+            const images = Array.isArray(p.images)
+              ? p.images.filter(Boolean).map((img) => persistDataUrlImage(img))
+              : [];
+            const descriptionImages = Array.isArray(p.descriptionImages)
+              ? p.descriptionImages.filter(Boolean).map((img) => persistDataUrlImage(img))
+              : [];
+            const ogImage = p.ogImage ? persistDataUrlImage(p.ogImage) : images[0] || '';
             return {
               ...p,
+              images,
+              descriptionImages,
+              ogImage,
               status,
               isPublished: status === 'ACTIVE',
               comparePrice: p.comparePrice ?? p.compareAtPrice,
@@ -199,6 +283,96 @@ async function startServer() {
 
   // High payload limit to support base64 compressed images in products & descriptionImages
   app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  // 0. Dedicated Image Upload & Serving Endpoints (prevents large JSON body 413 errors)
+  app.post('/api/db/image', (req, res) => {
+    try {
+      const dataUrl = req.body?.dataUrl as string | undefined;
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        res.status(400).json({ ok: false, error: 'Missing image dataUrl' });
+        return;
+      }
+      const url = persistDataUrlImage(dataUrl);
+      res.json({ ok: true, url });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err?.message || 'Image upload failed' });
+    }
+  });
+
+  // Chunked image upload endpoint (each chunk <= 120KB so reverse proxies never reject with 413)
+  app.post('/api/db/image-chunk', (req, res) => {
+    try {
+      const { uploadId, mimeType, chunkIndex, totalChunks, chunkData } = req.body || {};
+      if (
+        !uploadId ||
+        typeof chunkIndex !== 'number' ||
+        typeof totalChunks !== 'number' ||
+        typeof chunkData !== 'string'
+      ) {
+        res.status(400).json({ ok: false, error: 'Invalid image chunk payload' });
+        return;
+      }
+
+      let entry = pendingImageChunks.get(uploadId);
+      if (!entry) {
+        entry = {
+          mimeType: mimeType || 'image/jpeg',
+          totalChunks,
+          chunks: new Array(totalChunks).fill(''),
+          createdAt: Date.now(),
+        };
+        pendingImageChunks.set(uploadId, entry);
+      }
+
+      entry.chunks[chunkIndex] = chunkData;
+      const allReceived = entry.chunks.every((c) => typeof c === 'string' && c.length > 0);
+
+      if (allReceived || chunkIndex === totalChunks - 1) {
+        const fullBase64 = entry.chunks.join('');
+        pendingImageChunks.delete(uploadId);
+
+        const hash = crypto.createHash('sha1').update(fullBase64).digest('hex').slice(0, 16);
+        const id = `img_${hash}`;
+        if (!serverImagesDb[id]) {
+          serverImagesDb[id] = {
+            id,
+            mimeType: entry.mimeType || 'image/jpeg',
+            base64: fullBase64,
+            createdAt: Date.now(),
+          };
+          saveImagesDatabase(serverImagesDb);
+        }
+
+        const url = `/api/db/image/${id}`;
+        res.json({ ok: true, completed: true, url });
+        return;
+      }
+
+      res.json({ ok: true, completed: false, chunkIndex });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err?.message || 'Chunk upload failed' });
+    }
+  });
+
+  const serveStoredImage = (req: express.Request, res: express.Response) => {
+    const record = serverImagesDb[req.params.id];
+    if (!record) {
+      res.status(404).send('Image not found');
+      return;
+    }
+    try {
+      const buffer = Buffer.from(record.base64, 'base64');
+      res.setHeader('Content-Type', record.mimeType || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.send(buffer);
+    } catch {
+      res.status(500).send('Failed to decode image');
+    }
+  };
+
+  app.get('/api/db/image/:id', serveStoredImage);
+  app.get('/api/images/:id', serveStoredImage);
 
   // 1. Get full authoritative state (never cached by browser)
   app.get('/api/db/state', (_req, res) => {
@@ -380,57 +554,91 @@ async function startServer() {
 
   // 5. Authoritative Product Create / Update Endpoint
   app.post('/api/db/product', (req, res) => {
-    const serverNow = Date.now();
-    const incoming = req.body?.product as Product | undefined;
-    if (!incoming || !incoming.name?.trim()) {
-      res.status(400).json({ ok: false, error: 'اسم المنتج مطلوب (Product name is required)' });
-      return;
+    try {
+      const serverNow = Date.now();
+      const incoming = (req.body?.product || req.body) as Partial<Product> | undefined;
+      if (!incoming || !incoming.name?.trim()) {
+        res.status(400).json({ ok: false, error: 'اسم المنتج مطلوب (Product name is required)' });
+        return;
+      }
+
+      const existingIdx = incoming._id
+        ? serverDb.products.findIndex((p) => p._id === incoming._id)
+        : -1;
+      const existingProduct = existingIdx !== -1 ? serverDb.products[existingIdx] : null;
+
+      const productId =
+        existingProduct?._id ||
+        incoming._id ||
+        `prod_${serverNow.toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
+
+      const uniqueSlug = generateUniqueSlug(
+        incoming.slug || incoming.name,
+        serverDb.products,
+        productId
+      );
+
+      const resolvedStatus: ProductStatus =
+        incoming.status || (incoming.isPublished === false ? 'DRAFT' : 'ACTIVE');
+      const resolvedPublished = resolvedStatus === 'ACTIVE';
+
+      const persistedImages = Array.isArray(incoming.images)
+        ? incoming.images.filter(Boolean).map((img) => persistDataUrlImage(img))
+        : existingProduct?.images || [];
+
+      const persistedDescriptionImages = Array.isArray(incoming.descriptionImages)
+        ? incoming.descriptionImages.filter(Boolean).map((img) => persistDataUrlImage(img))
+        : existingProduct?.descriptionImages || [];
+
+      const rawOgImage = incoming.ogImage
+        ? persistDataUrlImage(incoming.ogImage)
+        : persistedImages[0] || '';
+
+      const authoritativeProduct: Product = {
+        shortDescription: '',
+        description: '',
+        currency: 'DH',
+        templateId: 'classic-cod',
+        offerText: '',
+        shippingText: '',
+        returnPolicy: '',
+        benefits: [],
+        variants: [],
+        ctaText: 'اطلب الآن بالدفع عند الاستلام',
+        rating: 4.9,
+        reviewCount: 150,
+        ...(existingProduct || {}),
+        ...incoming,
+        _id: productId,
+        name: incoming.name.trim(),
+        slug: uniqueSlug,
+        price: Math.max(0, Number(incoming.price) || 0),
+        compareAtPrice: Math.max(0, Number(incoming.compareAtPrice ?? incoming.comparePrice) || 0),
+        comparePrice: Math.max(0, Number(incoming.comparePrice ?? incoming.compareAtPrice) || 0),
+        images: persistedImages,
+        descriptionImages: persistedDescriptionImages,
+        ogImage: rawOgImage,
+        status: resolvedStatus,
+        isPublished: resolvedPublished,
+        createdAt: existingProduct?.createdAt || serverNow,
+        updatedAt: serverNow,
+      };
+
+      if (existingIdx !== -1) {
+        serverDb.products[existingIdx] = authoritativeProduct;
+      } else {
+        serverDb.products.unshift(authoritativeProduct);
+      }
+
+      saveServerDatabase(serverDb);
+      res.json({ ok: true, product: authoritativeProduct, serverTime: serverNow });
+    } catch (err: any) {
+      console.error('Error saving product:', err);
+      res.status(500).json({
+        ok: false,
+        error: err?.message || 'حدث خطأ في الخادم أثناء حفظ المنتج',
+      });
     }
-
-    const existingIdx = serverDb.products.findIndex((p) => p._id === incoming._id);
-    const existingProduct = existingIdx !== -1 ? serverDb.products[existingIdx] : null;
-
-    const productId =
-      existingProduct?._id ||
-      incoming._id ||
-      `prod_${serverNow.toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-
-    const uniqueSlug = generateUniqueSlug(
-      incoming.slug || incoming.name,
-      serverDb.products,
-      productId
-    );
-
-    const resolvedStatus: ProductStatus =
-      incoming.status || (incoming.isPublished === false ? 'DRAFT' : 'ACTIVE');
-    const resolvedPublished = resolvedStatus === 'ACTIVE';
-
-    const authoritativeProduct: Product = {
-      ...incoming,
-      _id: productId,
-      name: incoming.name.trim(),
-      slug: uniqueSlug,
-      price: Math.max(0, Number(incoming.price) || 0),
-      compareAtPrice: Math.max(0, Number(incoming.compareAtPrice ?? incoming.comparePrice) || 0),
-      comparePrice: Math.max(0, Number(incoming.comparePrice ?? incoming.compareAtPrice) || 0),
-      images: Array.isArray(incoming.images) ? incoming.images.filter(Boolean) : [],
-      descriptionImages: Array.isArray(incoming.descriptionImages)
-        ? incoming.descriptionImages.filter(Boolean)
-        : [],
-      status: resolvedStatus,
-      isPublished: resolvedPublished,
-      createdAt: existingProduct?.createdAt || serverNow,
-      updatedAt: serverNow,
-    };
-
-    if (existingIdx !== -1) {
-      serverDb.products[existingIdx] = authoritativeProduct;
-    } else {
-      serverDb.products.unshift(authoritativeProduct);
-    }
-
-    saveServerDatabase(serverDb);
-    res.json({ ok: true, product: authoritativeProduct, serverTime: serverNow });
   });
 
   // 6. Product Delete / Archive Endpoint (protects products that have existing orders)
