@@ -6,6 +6,7 @@ import { LandingPage } from '../components/landing/LandingPage';
 import { initMarketingPixels } from '../lib/tracking';
 import { ArrowRight, ShieldAlert, EyeOff, Eye } from 'lucide-react';
 import { MimouzzaLogo } from '../components/ui/MimouzzaLogo';
+import { useAdminAuth } from '../lib/auth';
 
 interface PublicProductPageProps {
   slug: string;
@@ -23,6 +24,7 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
   slug,
   utmParams,
 }) => {
+  const { isAuthenticated } = useAdminAuth();
   // Convex reactive query for this product
   const productFromStore = useQuery(api.products.getBySlug, { slug });
   const settings = useQuery(api.settings.get);
@@ -215,21 +217,23 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
       {/* Render Template (Top bar inside template is seamless #C80C32 with MimouzzaLogo) */}
       <LandingPage product={product} utmParams={utmParams} isPreview={isPreviewMode} />
 
-      {/* Subtle Floating Admin Shortcut Pill on Desktop Bottom-Left so top bar is never split */}
-      <div className="hidden md:flex fixed bottom-4 left-4 z-50 items-center gap-2 bg-[#111111]/90 backdrop-blur-md text-white text-xs py-2 px-4 rounded-full border border-white/15 shadow-lg select-none" dir="ltr">
-        {productStatus !== 'ACTIVE' && (
-          <span className="bg-[#C80C32] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-            {productStatus === 'ARCHIVED' ? 'Archived' : 'Draft'}
-          </span>
-        )}
-        <a
-          href="/admin"
-          className="text-white hover:text-amber-300 font-bold text-xs flex items-center gap-1.5 transition-colors"
-        >
-          <span>Admin Dashboard</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </a>
-      </div>
+      {/* Subtle Floating Admin Shortcut Pill on Desktop Bottom-Left (visible only to authenticated Admin) */}
+      {(isAuthenticated || isPreviewMode) && (
+        <div className="hidden md:flex fixed bottom-4 left-4 z-50 items-center gap-2 bg-[#111111]/90 backdrop-blur-md text-white text-xs py-2 px-4 rounded-full border border-white/15 shadow-lg select-none" dir="ltr">
+          {productStatus !== 'ACTIVE' && (
+            <span className="bg-[#C80C32] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+              {productStatus === 'ARCHIVED' ? 'Archived' : 'Draft'}
+            </span>
+          )}
+          <a
+            href="/admin"
+            className="text-white hover:text-amber-300 font-bold text-xs flex items-center gap-1.5 transition-colors"
+          >
+            <span>Admin Dashboard</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
     </div>
   );
 };

@@ -87,10 +87,20 @@ export function parseCurrentRoute(): RouteState {
     return { path, type: 'admin', adminSection: 'dashboard', utmParams };
   }
 
-  // Default root '/' -> redirect to admin dashboard, or show admin landing
+  // Frontpage & Sign-In routes
+  if (path === '/' || path === '/login' || path === '/signin') {
+    return {
+      path,
+      type: 'home',
+      adminSection: 'dashboard',
+      utmParams,
+    };
+  }
+
+  // Default fallback -> Frontpage & Sign-In
   return {
     path: '/',
-    type: 'admin',
+    type: 'home',
     adminSection: 'dashboard',
     utmParams,
   };

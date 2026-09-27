@@ -11,11 +11,15 @@ import {
   Settings,
   Plus,
   Bell,
+  LogOut,
+  Globe,
 } from 'lucide-react';
 import { useMutation, useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 import { AdminSection } from './AdminSidebar';
 import { MimouzzaLogo } from '../ui/MimouzzaLogo';
+import { useAdminAuth } from '../../lib/auth';
+import { navigate } from '../../lib/router';
 
 interface AdminHeaderProps {
   title?: string;
@@ -34,7 +38,13 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const resetSeed = useMutation(api.settings.resetSeed);
   const products = useQuery(api.products.listPublished);
   const metrics = useQuery(api.orders.getMetrics);
+  const { adminSession, logout } = useAdminAuth();
   const [confirmingClear, setConfirmingClear] = useState(false);
+
+  const handleSignOut = () => {
+    logout();
+    navigate('/login');
+  };
 
   const handleClearAnalytics = async () => {
     await resetSeed({});
@@ -197,15 +207,36 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             )}
           </button>
 
-          {/* User Profile Pill */}
-          <div className="hidden sm:flex items-center gap-2.5 bg-black/15 pl-1.5 pr-3.5 py-1 rounded-full border border-white/20">
+          {/* Frontpage Showcase Link */}
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            title="View Platform Frontpage"
+            className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors cursor-pointer"
+          >
+            <Globe className="w-3.5 h-3.5 text-white" />
+            <span>Frontpage</span>
+          </button>
+
+          {/* User Profile Pill & Sign Out */}
+          <div className="hidden sm:flex items-center gap-2 bg-black/15 pl-1.5 pr-2 py-1 rounded-full border border-white/20">
             <div className="w-7 h-7 rounded-full bg-white text-[#C80C32] flex items-center justify-center text-xs font-extrabold">
-              M
+              A
             </div>
-            <div className="text-left leading-tight">
-              <div className="text-xs font-bold text-white">Mimouzza</div>
-              <div className="text-[10px] font-medium text-white/75">Admin</div>
+            <div className="text-left leading-tight pr-1">
+              <div className="text-[11px] font-bold text-white truncate max-w-[145px]">
+                {adminSession?.email || 'professionnal.a@gmail.com'}
+              </div>
+              <div className="text-[10px] font-medium text-white/75">Administrator</div>
             </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              title="Sign Out"
+              className="w-7 h-7 rounded-full bg-white/15 hover:bg-white text-white hover:text-[#C80C32] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </div>
