@@ -14,6 +14,7 @@ import { OrderTable } from './OrderTable';
 import { TemplatesPage } from './TemplatesPage';
 import { SettingsPage } from './SettingsPage';
 import { LivePreview } from './LivePreview';
+import { MimouzzaLogo } from '../ui/MimouzzaLogo';
 import {
   Plus,
   ExternalLink,
@@ -131,7 +132,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Orders');
-    XLSX.writeFile(wb, `Nestora_COD_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `Mimouzza_COD_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   // Compute Order Distribution donut percentages
@@ -938,14 +939,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             className="w-full max-w-5xl h-[90vh] bg-[#111111] rounded-3xl overflow-hidden shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="h-12 bg-[#111111] px-5 flex items-center justify-between border-b border-neutral-800 text-xs text-white">
-              <span className="font-bold flex items-center gap-2">
-                <span>Live Landing Page Preview:</span>
-                <span className="text-[#FF6B00]">{previewModalProduct.name}</span>
-              </span>
+            <div className="h-13 bg-[#C80C32] px-5 flex items-center justify-between border-b border-[#a60828] text-xs text-white">
+              <div className="flex items-center gap-3">
+                <MimouzzaLogo height={26} />
+                <span className="font-bold text-white/90 hidden sm:inline">
+                  — {previewModalProduct.name}
+                </span>
+              </div>
               <button
                 onClick={() => setPreviewModalProduct(null)}
-                className="p-1.5 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-800 cursor-pointer"
+                className="p-1.5 rounded-full text-white/85 hover:text-white hover:bg-white/15 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

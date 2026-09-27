@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
+import { MimouzzaLogo } from '../ui/MimouzzaLogo';
 
 export type AdminSection =
   | 'dashboard'
@@ -92,20 +93,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 shrink-0 select-none">
       {/* Brand Zone */}
-      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm">
-            COD
-          </div>
-          <div>
-            <div className="text-sm font-bold text-white tracking-tight">
-              COD Landing Builder
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium">
-              {settings?.storeName || 'المتجر الإلكتروني'}
-            </div>
-          </div>
-        </div>
+      <div className="px-5 py-4 bg-[#C80C32] border-b border-[#a60828] flex items-center justify-center">
+        <MimouzzaLogo height={34} />
       </div>
 
       {/* Quick Action Button */}

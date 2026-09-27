@@ -7,6 +7,7 @@ import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
+import { MimouzzaLogo } from '../../ui/MimouzzaLogo';
 import { trackEvent } from '../../../lib/tracking';
 import {
   Star,
@@ -336,6 +337,18 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({
         {/* FAQ */}
         <FAQ faqs={product.faqs} className="text-neutral-100" />
       </div>
+
+      {/* Seamless Brand Footer Bar */}
+      <footer className="w-full bg-[#C80C32] text-white py-5 px-4 mt-8 border-t border-[#a60828]">
+        <div className="max-w-[840px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div dir="ltr" className="flex items-center justify-center">
+            <MimouzzaLogo height={30} />
+          </div>
+          <p className="text-xs text-white/90 font-semibold text-center sm:text-right">
+            جميع الحقوق محفوظة © Mimouzza — الدفع عند الاستلام وشحن سريع لكافة المدن
+          </p>
+        </div>
+      </footer>
 
       {/* Sticky Bottom Bar on Mobile */}
       <StickyOrderButton

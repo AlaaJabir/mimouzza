@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Flame, Clock } from 'lucide-react';
+import { MimouzzaLogo } from '../ui/MimouzzaLogo';
 
 interface OfferBannerProps {
   shippingText?: string;
@@ -12,13 +13,23 @@ export const TopAnnouncementBar: React.FC<{ text?: string }> = ({
   text = '🚚 التوصيل مجاني لجميع مدن المغرب — الدفع نقداً عند الاستلام بعد المعاينة',
 }) => {
   return (
-    <div
-      className="w-full bg-[#111111] text-white text-xs sm:text-sm py-2.5 px-4 text-center font-extrabold flex items-center justify-center gap-2 border-b border-neutral-800"
-      dir="rtl"
-    >
-      <Truck className="w-4 h-4 text-[#FF6B00] shrink-0 animate-pulse" />
-      <span className="truncate">{text}</span>
-    </div>
+    <header className="w-full bg-[#C80C32] text-white border-b border-[#a60828] shadow-xs">
+      <div className="max-w-[840px] mx-auto px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2">
+        {/* Seamless Mimouzza Logo directly on #C80C32 Bar */}
+        <div dir="ltr" className="flex items-center justify-center shrink-0">
+          <MimouzzaLogo height={34} />
+        </div>
+
+        {/* Shipping / Trust Text */}
+        <div
+          className="text-xs sm:text-sm text-center sm:text-right font-extrabold flex items-center justify-center gap-2 text-white/95"
+          dir="rtl"
+        >
+          <Truck className="w-4 h-4 text-amber-300 shrink-0 animate-pulse" />
+          <span className="leading-snug">{text}</span>
+        </div>
+      </div>
+    </header>
   );
 };
 

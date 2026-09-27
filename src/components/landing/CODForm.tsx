@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 import { computeAuthoritativeOrderTotal } from '../../../convex/db';
 import { Button } from '../ui/button';
+import { MimouzzaLogo } from '../ui/MimouzzaLogo';
 import {
   trackEvent,
   getVisitorId,
@@ -444,15 +445,18 @@ export const CODForm: React.FC<CODFormProps> = ({
       dir="rtl"
     >
       {/* Header Banner */}
-      <div className="bg-[#111111] text-white p-5 sm:p-6 text-center">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#FF6B00] text-white rounded-full text-xs font-extrabold mb-2 uppercase tracking-wide">
-          <Truck className="w-4 h-4" />
+      <div className="bg-[#C80C32] text-white p-5 sm:p-6 text-center space-y-2">
+        <div dir="ltr" className="flex items-center justify-center mb-1">
+          <MimouzzaLogo height={30} />
+        </div>
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-white/15 border border-white/25 text-white rounded-full text-xs font-extrabold uppercase tracking-wide">
+          <Truck className="w-4 h-4 text-amber-300" />
           الدفع نقداً عند الاستلام (COD)
         </div>
         <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white">
           نموذج الطلب السريع
         </h3>
-        <p className="text-xs sm:text-sm text-neutral-300 mt-1">
+        <p className="text-xs sm:text-sm text-white/90 mt-1">
           املأ بياناتك أسفله وسيصلك المنتج لباب منزلك دون دفع مسبق!
         </p>
       </div>

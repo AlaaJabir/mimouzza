@@ -36,15 +36,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <div className="relative w-full">
+      {renderTemplate()}
       {isPreview && (
-        <div className="bg-[#FF6B00] text-white text-xs font-extrabold py-1.5 px-4 text-center sticky top-0 z-50 shadow-xs flex items-center justify-center gap-2" dir="ltr">
-          <span>Live Preview Mode — Analytics Paused</span>
-          <span className="text-[11px] font-bold bg-black/20 px-2.5 py-0.5 rounded-full">
-            Template: {product.templateId}
-          </span>
+        <div
+          className="fixed bottom-3 right-3 z-40 bg-[#C80C32]/95 text-white text-[11px] font-extrabold py-1.5 px-3.5 rounded-full shadow-lg border border-white/20 flex items-center gap-2 pointer-events-none"
+          dir="ltr"
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" />
+          <span>Live Preview ({product.templateId})</span>
         </div>
       )}
-      {renderTemplate()}
     </div>
   );
 };

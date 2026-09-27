@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Store,
   RotateCcw,
   ExternalLink,
   LayoutDashboard,
@@ -16,6 +15,7 @@ import {
 import { useMutation, useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 import { AdminSection } from './AdminSidebar';
+import { MimouzzaLogo } from '../ui/MimouzzaLogo';
 
 interface AdminHeaderProps {
   title?: string;
@@ -91,53 +91,41 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
   return (
     <header
-      className="w-full bg-[#F8F8F6] px-4 sm:px-8 pt-4 pb-2 shrink-0 border-b border-neutral-200/60"
+      className="w-full bg-[#C80C32] text-white px-4 sm:px-8 py-3 shrink-0 border-b border-[#a60828] shadow-sm"
       dir="ltr"
     >
       <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4">
-        {/* Brand Logo */}
+        {/* Seamless Brand Logo on #C80C32 Bar */}
         <div
           onClick={() => onNavigate?.('dashboard')}
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center cursor-pointer py-0.5 transition-opacity hover:opacity-95"
         >
-          <div className="w-10 h-10 rounded-2xl bg-[#FF6B00] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-            <Store className="w-5 h-5 stroke-[2.2]" />
-          </div>
-          <div>
-            <span className="text-lg font-extrabold tracking-tight text-[#111111] block leading-none">
-              Nestora<span className="text-[#FF6B00]">COD</span>
-            </span>
-            <span className="text-[10px] font-semibold text-neutral-400 tracking-wider uppercase">
-              Commerce Suite
-            </span>
-          </div>
+          <MimouzzaLogo height={38} />
         </div>
 
         {/* Center Horizontal Pill Navigation */}
         <nav className="order-3 xl:order-2 w-full xl:w-auto flex items-center justify-start xl:justify-center overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
-          <div className="bg-white p-1.5 rounded-full border border-neutral-200/80 shadow-2xs inline-flex items-center gap-1">
+          <div className="bg-black/15 p-1.5 rounded-full border border-white/15 inline-flex items-center gap-1">
             {navItems.map((item) => {
               const isActive = currentSection === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => onNavigate?.(item.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                     isActive
-                      ? 'bg-[#111111] text-white shadow-xs'
-                      : 'text-neutral-600 hover:text-[#111111] hover:bg-neutral-100/80'
+                      ? 'bg-white text-[#C80C32] shadow-xs'
+                      : 'text-white/90 hover:text-white hover:bg-white/15'
                   }`}
                 >
                   {item.icon}
                   <span>{item.label}</span>
                   {item.badge !== undefined && item.badge > 0 && (
                     <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
                         isActive
-                          ? 'bg-[#FF6B00] text-white'
-                          : item.id === 'orders'
-                          ? 'bg-[#FF6B00]/15 text-[#FF6B00]'
-                          : 'bg-neutral-200 text-neutral-700'
+                          ? 'bg-[#C80C32] text-white'
+                          : 'bg-white/25 text-white'
                       }`}
                     >
                       {item.badge}
@@ -156,17 +144,17 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               href={`/p/${sampleSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-neutral-200/90 bg-white hover:bg-neutral-50 text-xs font-semibold text-[#111111] transition-colors shadow-2xs"
+              className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors"
             >
               <span>Live Storefront</span>
-              <ExternalLink className="w-3.5 h-3.5 text-[#FF6B00]" />
+              <ExternalLink className="w-3.5 h-3.5 text-white" />
             </a>
           )}
 
           {onCreateProduct && (
             <button
               onClick={onCreateProduct}
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FF6B00] hover:bg-[#e66000] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-neutral-100 text-[#C80C32] text-xs font-extrabold transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>New Product</span>
@@ -174,16 +162,16 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           )}
 
           {confirmingClear ? (
-            <div className="flex items-center gap-1.5 bg-white p-1 rounded-full border border-rose-200">
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-full border border-white/40">
               <button
                 onClick={handleClearAnalytics}
-                className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold cursor-pointer"
+                className="px-3 py-1 rounded-full bg-[#C80C32] hover:bg-[#a60828] text-white text-[11px] font-bold cursor-pointer"
               >
                 Confirm Reset
               </button>
               <button
                 onClick={() => setConfirmingClear(false)}
-                className="px-2.5 py-1 rounded-full text-neutral-600 text-[11px] font-medium cursor-pointer"
+                className="px-2.5 py-1 rounded-full text-neutral-700 text-[11px] font-bold cursor-pointer"
               >
                 Cancel
               </button>
@@ -192,7 +180,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             <button
               onClick={() => setConfirmingClear(true)}
               title="Reset Analytics & Demo Records"
-              className="w-9 h-9 rounded-full border border-neutral-200/90 bg-white hover:bg-neutral-50 flex items-center justify-center text-neutral-600 hover:text-[#111111] transition-colors cursor-pointer shadow-2xs"
+              className="w-9 h-9 rounded-full border border-white/25 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -201,22 +189,22 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <button
             onClick={() => onNavigate?.('orders')}
             title="New Orders"
-            className="relative w-9 h-9 rounded-full border border-neutral-200/90 bg-white hover:bg-neutral-50 flex items-center justify-center text-neutral-600 hover:text-[#111111] transition-colors cursor-pointer shadow-2xs"
+            className="relative w-9 h-9 rounded-full border border-white/25 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
           >
             <Bell className="w-4 h-4" />
             {(metrics?.newOrders || 0) > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#FF6B00]" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-300 ring-2 ring-[#C80C32]" />
             )}
           </button>
 
           {/* User Profile Pill */}
-          <div className="hidden sm:flex items-center gap-2.5 bg-white pl-1.5 pr-3.5 py-1 rounded-full border border-neutral-200/90 shadow-2xs">
-            <div className="w-7 h-7 rounded-full bg-[#111111] text-white flex items-center justify-center text-xs font-bold">
-              A
+          <div className="hidden sm:flex items-center gap-2.5 bg-black/15 pl-1.5 pr-3.5 py-1 rounded-full border border-white/20">
+            <div className="w-7 h-7 rounded-full bg-white text-[#C80C32] flex items-center justify-center text-xs font-extrabold">
+              M
             </div>
             <div className="text-left leading-tight">
-              <div className="text-xs font-bold text-[#111111]">Store Admin</div>
-              <div className="text-[10px] font-medium text-neutral-400">Manager</div>
+              <div className="text-xs font-bold text-white">Mimouzza</div>
+              <div className="text-[10px] font-medium text-white/75">Admin</div>
             </div>
           </div>
         </div>
