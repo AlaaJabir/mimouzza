@@ -3,7 +3,6 @@ import { useQuery, useMutation } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
 import { db } from '../../../convex/db';
 import { activateMetaPixelId, DEFAULT_META_PIXEL_ID } from '../../lib/tracking';
-import { Button } from '../ui/button';
 import { Save, RotateCcw, CheckCircle, Store, ShieldCheck, Activity, BarChart2, Database, RefreshCw } from 'lucide-react';
 
 interface SettingsPageProps {
@@ -37,6 +36,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -88,7 +88,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
         tiktokPixelId: tiktokPixelId.trim(),
         enableTikTokPixel: Boolean(tiktokPixelId.trim()) && enableTikTokPixel,
         googleAnalyticsId: googleAnalyticsId.trim(),
-        enableGoogleAnalytics: Boolean(googleAnalyticsId.trim()) && enableGoogleAnalytics,
+        enableGoogleAnalytics: Boolean(settings?.googleAnalyticsId || googleAnalyticsId.trim()) && enableGoogleAnalytics,
       });
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
@@ -100,25 +100,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
   };
 
   const handleResetData = async () => {
-    if (
-      window.confirm(
-        'هل أنت متأكد من رغبتك في مسح سجل الطلبيات والأحداث التحليلية؟ (المنتجات المحفوظة لن يتم حذفها)'
-      )
-    ) {
-      await resetSeed({});
-      window.location.reload();
-    }
+    await resetSeed({});
+    setConfirmReset(false);
+    window.location.reload();
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between">
+    <div className="max-w-4xl space-y-6 text-left" dir="ltr">
+      <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900 mb-1">
-            إعدادات المتجر والتتبع الإعلاني (Store & Tracking Settings)
+          <h2 className="text-xl font-extrabold text-[#111111] mb-1">
+            Store &amp; Tracking Settings
           </h2>
-          <p className="text-xs text-slate-500">
-            تعديل الهوية، قاعدة بيانات Convex، سياسات التوصيل، وبكسلات Meta و TikTok و Google Analytics
+          <p className="text-xs text-neutral-500">
+            Configure your brand profile, Convex Cloud database sync, delivery policies, and Meta / TikTok / GA4 pixels.
           </p>
         </div>
 
@@ -126,76 +121,76 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
           <button
             type="button"
             onClick={onOpenDiagnostics}
-            className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2 rounded-full border border-neutral-200 hover:border-[#111111] bg-[#F8F8F6] text-xs font-bold text-[#111111] flex items-center gap-2 cursor-pointer transition-colors"
           >
-            <Activity className="w-3.5 h-3.5 text-emerald-600" />
-            <span>فحص تشخيص التتبع (Diagnostics)</span>
+            <Activity className="w-3.5 h-3.5 text-[#FF6B00]" />
+            <span>Open Tracking Diagnostics</span>
           </button>
         )}
       </div>
 
       {/* Convex Cloud Database Connection */}
-      <div className="bg-white p-6 rounded-2xl border border-emerald-200/90 shadow-2xs space-y-4 text-right">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            متصل ومحفوظ تلقائياً
-          </span>
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <span>ربط قاعدة البيانات (Convex Cloud Database)</span>
-            <Database className="w-4 h-4 text-emerald-600" />
+      <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+          <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider flex items-center gap-2">
+            <Database className="w-4 h-4 text-[#FF6B00]" />
+            <span>Convex Cloud Database Sync</span>
           </h3>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Connected &amp; Auto-Persisted
+          </span>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-800 mb-1">
-              رابط قاعدة البيانات (Convex Deployment URL)
+            <label className="block text-xs font-bold text-[#111111] mb-1.5">
+              Convex Deployment URL
             </label>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row gap-2.5">
               <input
                 type="text"
                 value={convexUrl}
                 onChange={(e) => setConvexUrl(e.target.value)}
                 dir="ltr"
                 placeholder="https://valuable-emu-538.convex.cloud"
-                className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="flex-1 px-4 py-2.5 text-xs rounded-2xl border border-neutral-200 font-mono text-left bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               />
               <button
                 type="button"
                 onClick={handleSyncConvex}
                 disabled={isSyncing}
-                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                className="px-5 py-2.5 rounded-full bg-[#111111] hover:bg-neutral-800 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shrink-0 transition-colors"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isSyncing ? 'جاري المزامنة...' : 'حفظ ومزامنة الآن'}</span>
+                <span>{isSyncing ? 'Syncing...' : 'Save & Sync Now'}</span>
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
-              <div className="text-[11px] text-slate-500">المنتجات المحفوظة</div>
-              <div className="text-base font-black text-slate-900 font-mono mt-0.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="p-4 rounded-2xl bg-[#F8F8F6] border border-neutral-200/60">
+              <div className="text-[11px] font-semibold text-neutral-500">Saved Products</div>
+              <div className="text-lg font-extrabold text-[#111111] font-mono mt-0.5">
                 {(products || []).length}
               </div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
-              <div className="text-[11px] text-slate-500">الطلبيات ومعلومات الزبناء</div>
-              <div className="text-base font-black text-emerald-600 font-mono mt-0.5">
+            <div className="p-4 rounded-2xl bg-[#F8F8F6] border border-neutral-200/60">
+              <div className="text-[11px] font-semibold text-neutral-500">Customer Orders</div>
+              <div className="text-lg font-extrabold text-[#FF6B00] font-mono mt-0.5">
                 {(orders || []).length}
               </div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center col-span-2 sm:col-span-1">
-              <div className="text-[11px] text-slate-500">تخزين الصور والبيانات</div>
-              <div className="text-xs font-bold text-amber-700 mt-1">
-                قاعدة بيانات Convex الدائمة
+            <div className="p-4 rounded-2xl bg-[#F8F8F6] border border-neutral-200/60">
+              <div className="text-[11px] font-semibold text-neutral-500">Storage Engine</div>
+              <div className="text-xs font-extrabold text-[#111111] mt-1.5">
+                Authoritative Server + Convex
               </div>
             </div>
           </div>
 
           {syncMessage && (
-            <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+            <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
               ✓ {syncMessage}
             </div>
           )}
@@ -204,33 +199,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Marketing & Tracking Pixels */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4 text-right">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-end gap-2">
-            <span>التسويق وتتبع الحملات (Marketing & Pixels)</span>
-            <BarChart2 className="w-4 h-4 text-amber-500" />
+        <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+          <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-3 flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-[#FF6B00]" />
+            <span>Marketing &amp; Ad Pixels</span>
           </h3>
 
           <div className="space-y-4">
             {/* Meta Pixel */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
+            <div className="p-4 rounded-2xl border border-neutral-200/80 bg-[#F8F8F6] space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#111111]">
                   <input
                     type="checkbox"
                     checked={enableMetaPixel}
                     onChange={(e) => setEnableMetaPixel(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-neutral-300 text-[#FF6B00] focus:ring-[#FF6B00]"
                   />
-                  <span>تفعيل Meta Pixel (Facebook & Instagram Ads)</span>
+                  <span>Enable Meta Pixel (Facebook &amp; Instagram Ads)</span>
                 </label>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold font-mono">
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold font-mono">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   <span>fbq: {metaPixelId.trim() || DEFAULT_META_PIXEL_ID}</span>
                 </span>
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Meta Pixel ID (يعمل تلقائياً في جميع صفحات الهبوط والتطبيق)
+                <label className="block text-[11px] font-semibold text-neutral-500 mb-1">
+                  Meta Pixel ID (Fires automatically across all landing pages)
                 </label>
                 <input
                   type="text"
@@ -244,65 +239,65 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
                   }}
                   placeholder="135752956164308"
                   dir="ltr"
-                  className="w-full max-w-md px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left bg-white"
+                  className="w-full max-w-md px-3.5 py-2 text-xs rounded-xl border border-neutral-200 font-mono text-left bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
             </div>
 
             {/* TikTok Pixel */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
+            <div className="p-4 rounded-2xl border border-neutral-200/80 bg-[#F8F8F6] space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#111111]">
                   <input
                     type="checkbox"
                     checked={enableTikTokPixel}
                     onChange={(e) => setEnableTikTokPixel(e.target.checked)}
-                    className="rounded border-slate-300 text-slate-900 focus:ring-slate-800"
+                    className="rounded border-neutral-300 text-[#FF6B00] focus:ring-[#FF6B00]"
                   />
-                  <span>تفعيل TikTok Pixel (TikTok Ads)</span>
+                  <span>Enable TikTok Pixel (TikTok Ads)</span>
                 </label>
-                <span className="text-[11px] text-slate-400 font-mono">ttq</span>
+                <span className="text-[11px] text-neutral-400 font-mono">ttq</span>
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                <label className="block text-[11px] font-semibold text-neutral-500 mb-1">
                   TikTok Pixel ID
                 </label>
                 <input
                   type="text"
                   value={tiktokPixelId}
                   onChange={(e) => setTiktokPixelId(e.target.value)}
-                  placeholder="مثال: C9XXXXXXXXXXXXXX"
+                  placeholder="e.g. C9XXXXXXXXXXXXXX"
                   dir="ltr"
-                  className="w-full max-w-md px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left bg-white"
+                  className="w-full max-w-md px-3.5 py-2 text-xs rounded-xl border border-neutral-200 font-mono text-left bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
             </div>
 
             {/* Google Analytics */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
+            <div className="p-4 rounded-2xl border border-neutral-200/80 bg-[#F8F8F6] space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-900">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#111111]">
                   <input
                     type="checkbox"
                     checked={enableGoogleAnalytics}
                     onChange={(e) => setEnableGoogleAnalytics(e.target.checked)}
-                    className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                    className="rounded border-neutral-300 text-[#FF6B00] focus:ring-[#FF6B00]"
                   />
-                  <span>تفعيل Google Analytics (GA4)</span>
+                  <span>Enable Google Analytics 4 (GA4)</span>
                 </label>
-                <span className="text-[11px] text-slate-400 font-mono">G-XXXXX</span>
+                <span className="text-[11px] text-neutral-400 font-mono">G-XXXXX</span>
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Google Analytics Measurement ID
+                <label className="block text-[11px] font-semibold text-neutral-500 mb-1">
+                  GA4 Measurement ID
                 </label>
                 <input
                   type="text"
                   value={googleAnalyticsId}
                   onChange={(e) => setGoogleAnalyticsId(e.target.value)}
-                  placeholder="مثال: G-1234567890"
+                  placeholder="e.g. G-1234567890"
                   dir="ltr"
-                  className="w-full max-w-md px-3 py-2 text-xs rounded-lg border border-slate-300 font-mono text-left bg-white"
+                  className="w-full max-w-md px-3.5 py-2 text-xs rounded-xl border border-neutral-200 font-mono text-left bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
               </div>
             </div>
@@ -310,40 +305,40 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
         </div>
 
         {/* Store Profile */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4 text-right">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-end gap-2">
-            <span>بيانات وهوية المتجر</span>
-            <Store className="w-4 h-4 text-amber-500" />
+        <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+          <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-3 flex items-center gap-2">
+            <Store className="w-4 h-4 text-[#FF6B00]" />
+            <span>Store Identity &amp; Currency</span>
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">اسم المتجر</label>
+              <label className="block text-xs font-bold text-[#111111] mb-1">Store Name</label>
               <input
                 type="text"
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
-                placeholder="COD Express Maroc"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                placeholder="Nestora COD Maroc"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">العملة الافتراضية</label>
+              <label className="block text-xs font-bold text-[#111111] mb-1">Default Currency</label>
               <select
                 value={defaultCurrency}
                 onChange={(e) => setDefaultCurrency(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               >
-                <option value="DH">درهم مغربي (DH)</option>
+                <option value="DH">Moroccan Dirham (DH)</option>
                 <option value="MAD">MAD</option>
                 <option value="$">USD ($)</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">
-                رقم هاتف الدعم والخدمة
+              <label className="block text-xs font-bold text-[#111111] mb-1">
+                Support &amp; WhatsApp Phone
               </label>
               <input
                 type="text"
@@ -351,78 +346,100 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
                 onChange={(e) => setContactPhone(e.target.value)}
                 placeholder="+212 661-234567"
                 dir="ltr"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 text-left font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 text-left font-mono bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               />
             </div>
           </div>
         </div>
 
-        {/* Shipping & Returns */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4 text-right">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-end gap-2">
-            <span>سياسات الشحن والاسترجاع الافتراضية</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+        {/* Default Arabic Shipping & Returns for Landing Pages */}
+        <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-xs space-y-4">
+          <h3 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider border-b border-neutral-100 pb-3 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#FF6B00]" />
+            <span>Default Landing Page Policies (Arabic Copy)</span>
           </h3>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">
-                نص الشحن الافتراضي
+              <label className="block text-xs font-bold text-[#111111] mb-1">
+                Default Shipping Banner Copy (Arabic)
               </label>
               <input
                 type="text"
+                dir="rtl"
                 value={defaultShippingText}
                 onChange={(e) => setDefaultShippingText(e.target.value)}
                 placeholder="التوصيل مجاني لجميع مدن المغرب — الدفع عند الاستلام"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">
-                نص سياسة الاسترجاع الافتراضية
+              <label className="block text-xs font-bold text-[#111111] mb-1">
+                Default Return Policy Copy (Arabic)
               </label>
               <input
                 type="text"
+                dir="rtl"
                 value={defaultReturnPolicy}
                 onChange={(e) => setDefaultReturnPolicy(e.target.value)}
                 placeholder="ضمان الاسترجاع والاستبدال المجاني خلال 14 يوماً"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               />
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between">
-          <Button
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <button
             type="submit"
             disabled={isSaving}
-            className="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+            className="px-6 py-2.5 rounded-full text-xs bg-[#FF6B00] hover:bg-[#e66000] text-white font-bold transition-colors cursor-pointer shadow-xs"
           >
             {isSaving ? (
-              <span>جاري الحفظ...</span>
+              <span>Saving Settings...</span>
             ) : savedSuccess ? (
-              <span className="flex items-center gap-1.5 text-emerald-950">
-                <CheckCircle className="w-4 h-4 text-emerald-700" />
-                <span>تم حفظ إعدادات المتجر والتتبع!</span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4" />
+                <span>Settings &amp; Pixels Saved!</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5">
                 <Save className="w-4 h-4" />
-                <span>حفظ التعديلات والتتبع</span>
+                <span>Save Store Settings</span>
               </span>
             )}
-          </Button>
-
-          <button
-            type="button"
-            onClick={handleResetData}
-            className="text-xs text-rose-600 hover:text-rose-700 border border-rose-200 px-3 py-2 rounded-lg bg-rose-50/50 hover:bg-rose-50 flex items-center gap-1.5 cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>استعادة البيانات الافتراضية للمتجر (Reset Seed Data)</span>
           </button>
+
+          {!confirmReset ? (
+            <button
+              type="button"
+              onClick={() => setConfirmReset(true)}
+              className="text-xs font-bold text-rose-600 hover:text-rose-700 border border-rose-200 px-4 py-2 rounded-full bg-rose-50/50 hover:bg-rose-50 flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Clear Orders &amp; Analytics History</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-full">
+              <span className="text-xs font-bold text-rose-800">Confirm reset?</span>
+              <button
+                type="button"
+                onClick={handleResetData}
+                className="px-3 py-1 rounded-full bg-rose-600 text-white text-xs font-bold cursor-pointer"
+              >
+                Yes, Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmReset(false)}
+                className="px-2 py-1 text-xs text-neutral-600 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </form>
     </div>

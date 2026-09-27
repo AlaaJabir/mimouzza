@@ -54,7 +54,7 @@ export const OrderTable: React.FC = () => {
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('ar-MA', {
+    return new Date(timestamp).toLocaleDateString('en-US', {
       timeZone: BUSINESS_TIMEZONE,
       month: 'short',
       day: 'numeric',
@@ -74,13 +74,13 @@ export const OrderTable: React.FC = () => {
   };
 
   const statusOptions: { value: OrderStatus; label: string }[] = [
-    { value: 'NEW', label: 'جديد (PENDING / NEW)' },
-    { value: 'CONFIRMED', label: 'مؤكد (CONFIRMED)' },
-    { value: 'PROCESSING', label: 'قيد التجهيز (PROCESSING)' },
-    { value: 'SHIPPED', label: 'تم الشحن (SHIPPED)' },
-    { value: 'DELIVERED', label: 'تم التسليم (DELIVERED)' },
-    { value: 'CANCELLED', label: 'ملغي (CANCELLED)' },
-    { value: 'FAILED', label: 'فشل التوصيل (FAILED)' },
+    { value: 'NEW', label: 'New / Pending' },
+    { value: 'CONFIRMED', label: 'Confirmed' },
+    { value: 'PROCESSING', label: 'Processing' },
+    { value: 'SHIPPED', label: 'Shipped' },
+    { value: 'DELIVERED', label: 'Delivered' },
+    { value: 'CANCELLED', label: 'Cancelled' },
+    { value: 'FAILED', label: 'Failed Delivery' },
   ];
 
   const getStatusLabel = (status: OrderStatus) => {
@@ -103,24 +103,24 @@ export const OrderTable: React.FC = () => {
           : '';
 
       return {
-        'رقم الطلب (Order ID)': order.orderNumber,
-        'تاريخ الطلب (Date)': formatExcelDate(order.createdAt),
-        'الاسم الكامل (Customer Name)': order.customerName,
-        'رقم الهاتف (Phone)': order.phone,
-        'المدينة (City)': order.city,
-        'العنوان الكامل (Address)': order.address,
-        'المنتج (Product)': order.productName,
-        'الخيارات (Variants)': variantsStr,
-        'الكمية (Qty)': order.quantity,
-        'المجموع (Total)': order.total,
-        'العملة (Currency)': order.currency || 'DH',
-        'الحالة (Status)': getStatusLabel(order.status),
-        'ملاحظات الزبون (Notes)': order.notes || '',
-        'معرّف الزائر (Visitor ID)': order.visitorId || '',
-        'معرّف الجلسة (Session ID)': order.sessionId || '',
-        'مصدر الزيارة (UTM Source)': order.utmSource || 'Direct',
-        'الحملة الإعلانية (UTM Campaign)': order.utmCampaign || '',
-        'الوسيط (UTM Medium)': order.utmMedium || '',
+        'Order ID': order.orderNumber,
+        Date: formatExcelDate(order.createdAt),
+        'Customer Name': order.customerName,
+        Phone: order.phone,
+        City: order.city,
+        Address: order.address,
+        Product: order.productName,
+        Variants: variantsStr,
+        Qty: order.quantity,
+        Total: order.total,
+        Currency: order.currency || 'DH',
+        Status: getStatusLabel(order.status),
+        Notes: order.notes || '',
+        'Visitor ID': order.visitorId || '',
+        'Session ID': order.sessionId || '',
+        'UTM Source': order.utmSource || 'Direct',
+        'UTM Campaign': order.utmCampaign || '',
+        'UTM Medium': order.utmMedium || '',
       };
     });
 
@@ -158,20 +158,50 @@ export const OrderTable: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Search, Filters & Excel Export Bar */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+    <div className="space-y-5" dir="ltr">
+      {/* Page Title & Export Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+            Cash on Delivery Orders
+          </h1>
+          <p className="text-xs sm:text-sm text-neutral-500 mt-0.5">
+            Manage incoming customer orders, update confirmation status, and export to Excel
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={filteredOrders.length === 0}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111111] hover:bg-neutral-800 disabled:opacity-50 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+        >
+          {exportSuccess ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 text-[#129A56]" />
+              <span>Excel Downloaded!</span>
+            </>
+          ) : (
+            <>
+              <FileSpreadsheet className="w-4 h-4 text-[#FF6B00]" />
+              <span>Export to Excel (.xlsx)</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Search & Filters Bar */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-neutral-200/70 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
           {/* Search */}
-          <div className="relative flex-1 max-w-sm">
-            <Search className="w-4 h-4 absolute right-3 top-2.5 text-slate-400" />
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 absolute left-3.5 top-2.5 text-neutral-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="البحث بالاسم، الهاتف، المدينة أو رقم الطلب..."
-              className="w-full pr-9 pl-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900"
-              dir="rtl"
+              placeholder="Search by customer name, phone, city, or order ID..."
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-full bg-[#F8F8F6] border border-neutral-200/80 text-[#111111] placeholder:text-neutral-400 focus:outline-none focus:border-[#111111]"
             />
           </div>
 
@@ -179,9 +209,9 @@ export const OrderTable: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700"
+            className="text-xs px-4 py-2 rounded-full border border-neutral-200/80 bg-[#F8F8F6] text-[#111111] font-semibold focus:outline-none cursor-pointer"
           >
-            <option value="all">جميع الحالات (All Statuses)</option>
+            <option value="all">All Statuses</option>
             {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -193,9 +223,9 @@ export const OrderTable: React.FC = () => {
           <select
             value={productFilter}
             onChange={(e) => setProductFilter(e.target.value)}
-            className="text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 max-w-[220px] truncate"
+            className="text-xs px-4 py-2 rounded-full border border-neutral-200/80 bg-[#F8F8F6] text-[#111111] font-semibold max-w-[240px] truncate focus:outline-none cursor-pointer"
           >
-            <option value="all">جميع المنتجات (All Products)</option>
+            <option value="all">All Products</option>
             {(products || []).map((prod) => (
               <option key={prod._id} value={prod._id}>
                 {prod.name}
@@ -204,96 +234,80 @@ export const OrderTable: React.FC = () => {
           </select>
         </div>
 
-        {/* Count & Excel Export Action */}
-        <div className="flex items-center justify-between sm:justify-end gap-3">
-          <div className="text-xs text-slate-500 font-semibold">
-            عدد الطلبيات الحقيقية:{' '}
-            <span className="text-slate-900 font-bold font-mono">{filteredOrders.length}</span>
+        {/* Count Badge */}
+        <div className="flex items-center justify-end gap-3 px-2">
+          <div className="text-xs text-neutral-500 font-semibold">
+            Total Orders:{' '}
+            <span className="text-[#111111] font-extrabold font-mono">{filteredOrders.length}</span>
           </div>
-
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            disabled={filteredOrders.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-          >
-            {exportSuccess ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-white" />
-                <span>تم تحميل ملف Excel بنجاح!</span>
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>تصدير إلى Excel (.xlsx)</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-3xl border border-neutral-200/70 shadow-2xs overflow-hidden p-2 sm:p-4">
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-neutral-100 text-neutral-400 uppercase tracking-wider font-semibold">
               <tr>
-                <th className="py-3 px-4">رقم الطلب / العميل</th>
-                <th className="py-3 px-4">الهاتف / المدينة والعنوان</th>
-                <th className="py-3 px-4">المنتج / الخيارات</th>
-                <th className="py-3 px-4">الكمية والمجموع</th>
-                <th className="py-3 px-4">مصدر الزيارة (UTM)</th>
-                <th className="py-3 px-4 text-center">الحالة (Status)</th>
-                <th className="py-3 px-4">تاريخ الطلب</th>
+                <th className="py-3.5 px-4">Order ID & Customer</th>
+                <th className="py-3.5 px-4">Phone & Delivery Address</th>
+                <th className="py-3.5 px-4">Product & Variants</th>
+                <th className="py-3.5 px-4">Qty & Total</th>
+                <th className="py-3.5 px-4">Attribution (UTM)</th>
+                <th className="py-3.5 px-4 text-center">Status</th>
+                <th className="py-3.5 px-4">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-neutral-100">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <ShoppingBag className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                    <div className="font-semibold text-slate-500">No data yet — لا توجد طلبيات مسجلة بعد</div>
+                  <td colSpan={7} className="py-14 text-center text-neutral-400">
+                    <ShoppingBag className="w-10 h-10 mx-auto text-neutral-300 mb-2" />
+                    <div className="font-bold text-[#111111]">No orders found</div>
+                    <div className="text-xs text-neutral-400 mt-0.5">
+                      New orders placed on your landing pages will appear here automatically.
+                    </div>
                   </td>
                 </tr>
               ) : (
                 filteredOrders.map((order) => (
                   <tr
                     key={order._id}
-                    className="hover:bg-slate-50/70 transition-colors cursor-pointer"
+                    className="hover:bg-[#F8F8F6]/60 transition-colors cursor-pointer"
                     onClick={() => setSelectedOrder(order)}
                   >
                     {/* Customer & Order ID */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900">{order.customerName}</div>
-                      <div className="font-mono text-[11px] text-amber-700 font-semibold">
+                    <td className="py-4 px-4">
+                      <div className="font-bold text-[#111111] text-sm">{order.customerName}</div>
+                      <div className="font-mono text-[11px] text-[#FF6B00] font-bold mt-0.5">
                         {order.orderNumber}
                       </div>
                     </td>
 
                     {/* Phone, City & Address */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1 text-slate-800 font-mono" dir="ltr">
-                        <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-1.5 text-[#111111] font-mono font-semibold">
+                        <Phone className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                         <span>{order.phone}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] text-slate-600 mt-0.5 font-medium">
-                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-[11px] text-neutral-600 mt-0.5 font-medium">
+                        <MapPin className="w-3.5 h-3.5 text-[#FF6B00] shrink-0" />
                         <span className="truncate max-w-[160px]">{order.city}</span>
                       </div>
                       {order.address && (
-                        <div className="text-[10px] text-slate-400 truncate max-w-[180px] mt-0.5">
+                        <div className="text-[11px] text-neutral-400 truncate max-w-[200px] mt-0.5">
                           {order.address}
                         </div>
                       )}
                     </td>
 
                     {/* Product & Variant */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-slate-900 truncate max-w-[180px]">
+                    <td className="py-4 px-4">
+                      <div className="font-bold text-[#111111] truncate max-w-[200px]">
                         {order.productName}
                       </div>
                       {order.variants && Object.keys(order.variants).length > 0 && (
-                        <div className="text-[10px] text-slate-500 truncate max-w-[180px]">
+                        <div className="text-[11px] text-neutral-500 truncate max-w-[200px] mt-0.5">
                           {Object.entries(order.variants)
                             .map(([, v]) => `${v}`)
                             .join(' · ')}
@@ -302,35 +316,45 @@ export const OrderTable: React.FC = () => {
                     </td>
 
                     {/* Quantity & Total */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-black text-slate-900 font-mono text-sm">
+                    <td className="py-4 px-4">
+                      <div className="font-extrabold text-[#111111] font-mono text-sm tabular-nums">
                         {order.total} {order.currency || 'DH'}
                       </div>
-                      <div className="text-[11px] text-slate-500">
-                        {order.quantity} قطعة
+                      <div className="text-[11px] text-neutral-500 font-medium">
+                        Qty: {order.quantity}
                       </div>
                     </td>
 
                     {/* UTM Source */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-4 px-4">
                       {order.utmSource ? (
-                        <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono text-[10px] border border-blue-200">
+                        <span className="inline-block px-2.5 py-1 rounded-full bg-[#FFF3EB] text-[#FF6B00] font-mono text-[10px] font-bold">
                           {order.utmSource}
                           {order.utmCampaign ? ` / ${order.utmCampaign}` : ''}
                         </span>
                       ) : (
-                        <span className="text-[11px] text-slate-400">Direct / Organic</span>
+                        <span className="text-[11px] text-neutral-400 font-medium">
+                          Direct / Organic
+                        </span>
                       )}
                     </td>
 
                     {/* Status Dropdown */}
-                    <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={order.status}
                         onChange={(e) =>
                           handleStatusChange(order._id, e.target.value as OrderStatus)
                         }
-                        className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 font-semibold bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-900"
+                        className={`text-xs px-3 py-1.5 rounded-full border font-bold cursor-pointer focus:outline-none ${
+                          order.status === 'NEW'
+                            ? 'bg-[#FFF3EB] text-[#FF6B00] border-[#FF6B00]/30'
+                            : order.status === 'CONFIRMED' || order.status === 'DELIVERED'
+                            ? 'bg-[#E8F8F0] text-[#129A56] border-[#129A56]/30'
+                            : order.status === 'CANCELLED' || order.status === 'FAILED'
+                            ? 'bg-rose-50 text-rose-600 border-rose-200'
+                            : 'bg-[#F8F8F6] text-[#111111] border-neutral-200'
+                        }`}
                       >
                         {statusOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>
@@ -341,7 +365,7 @@ export const OrderTable: React.FC = () => {
                     </td>
 
                     {/* Date */}
-                    <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
+                    <td className="py-4 px-4 text-neutral-500 font-mono text-[11px]">
                       {formatDate(order.createdAt)}
                     </td>
                   </tr>
@@ -359,132 +383,131 @@ export const OrderTable: React.FC = () => {
           onClick={() => setSelectedOrder(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-right border border-slate-200 max-h-[90vh] overflow-y-auto"
-            dir="rtl"
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-left border border-neutral-200 max-h-[90vh] overflow-y-auto"
+            dir="ltr"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
               <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  تفاصيل الطلبية: {selectedOrder.orderNumber}
+                <h3 className="text-base font-extrabold text-[#111111]">
+                  Order Details: <span className="text-[#FF6B00]">{selectedOrder.orderNumber}</span>
                 </h3>
-                <p className="text-xs text-slate-500">
-                  تاريخ التسجيل: {formatDate(selectedOrder.createdAt)}
+                <p className="text-xs text-neutral-400">
+                  Placed on {formatDate(selectedOrder.createdAt)}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer"
+                className="w-8 h-8 rounded-full hover:bg-neutral-100 flex items-center justify-center text-neutral-400 hover:text-[#111111] cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             {/* Customer Details */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+            <div className="bg-[#F8F8F6] p-4 rounded-2xl border border-neutral-200/70 space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-500">الاسم الكامل:</span>
-                <span className="font-bold text-slate-900">{selectedOrder.customerName}</span>
+                <span className="text-neutral-500 font-medium">Customer Name:</span>
+                <span className="font-bold text-[#111111]">{selectedOrder.customerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">الهاتف:</span>
+                <span className="text-neutral-500 font-medium">Phone:</span>
                 <a
                   href={`tel:${selectedOrder.phone}`}
-                  className="font-mono font-bold text-amber-700 hover:underline"
-                  dir="ltr"
+                  className="font-mono font-bold text-[#FF6B00] hover:underline"
                 >
                   {selectedOrder.phone}
                 </a>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">المدينة:</span>
-                <span className="font-semibold text-slate-900">{selectedOrder.city}</span>
+                <span className="text-neutral-500 font-medium">City:</span>
+                <span className="font-semibold text-[#111111]">{selectedOrder.city}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">العنوان:</span>
-                <span className="text-slate-800 text-right max-w-xs">{selectedOrder.address}</span>
+                <span className="text-neutral-500 font-medium">Delivery Address:</span>
+                <span className="text-[#111111] text-right max-w-xs">{selectedOrder.address}</span>
               </div>
               {selectedOrder.notes && (
-                <div className="flex justify-between border-t border-slate-200 pt-2">
-                  <span className="text-slate-500">ملاحظات الزبون:</span>
-                  <span className="text-amber-800 font-medium">{selectedOrder.notes}</span>
+                <div className="flex justify-between border-t border-neutral-200 pt-2">
+                  <span className="text-neutral-500 font-medium">Customer Notes:</span>
+                  <span className="text-[#FF6B00] font-semibold">{selectedOrder.notes}</span>
                 </div>
               )}
             </div>
 
             {/* Product Details */}
-            <div className="p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+            <div className="p-4 rounded-2xl border border-neutral-200/80 space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">المنتج:</span>
-                <span className="font-bold text-slate-900 truncate max-w-[250px]">
+                <span className="text-neutral-500 font-medium">Product:</span>
+                <span className="font-bold text-[#111111] truncate max-w-[250px]">
                   {selectedOrder.productName}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">الكمية:</span>
-                <span className="font-mono font-bold">{selectedOrder.quantity}</span>
+                <span className="text-neutral-500 font-medium">Quantity:</span>
+                <span className="font-mono font-bold text-[#111111]">{selectedOrder.quantity}</span>
               </div>
               {selectedOrder.variants && Object.keys(selectedOrder.variants).length > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">الخيارات:</span>
-                  <span className="font-semibold text-slate-800">
+                  <span className="text-neutral-500 font-medium">Selected Variants:</span>
+                  <span className="font-semibold text-[#111111]">
                     {Object.entries(selectedOrder.variants)
                       .map(([k, v]) => `${k}: ${v}`)
                       .join(' | ')}
                   </span>
                 </div>
               )}
-              <div className="flex justify-between border-t border-slate-100 pt-2 text-sm font-bold">
-                <span>المجموع الكلي:</span>
-                <span className="text-amber-600 font-mono text-base">
+              <div className="flex justify-between border-t border-neutral-100 pt-2 text-sm font-extrabold">
+                <span>Total COD Amount:</span>
+                <span className="text-[#FF6B00] font-mono text-base">
                   {selectedOrder.total} {selectedOrder.currency || 'DH'}
                 </span>
               </div>
             </div>
 
             {/* Marketing & Session Attribution Details */}
-            <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200/60 text-[11px] space-y-1.5">
-              <div className="font-bold text-blue-900 mb-1">بيانات التتبع والجلسة (Attribution & Identity):</div>
-              <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono" dir="ltr">
+            <div className="p-4 bg-[#F8F8F6] rounded-2xl border border-neutral-200/70 text-[11px] space-y-1.5">
+              <div className="font-bold text-[#111111] mb-1">Attribution & Tracking Identity</div>
+              <div className="grid grid-cols-2 gap-2 text-neutral-500 font-mono">
                 <div className="truncate">
-                  Visitor: <span className="font-bold text-slate-900">{selectedOrder.visitorId || '—'}</span>
+                  Visitor: <span className="font-bold text-[#111111]">{selectedOrder.visitorId || '—'}</span>
                 </div>
                 <div className="truncate">
-                  Session: <span className="font-bold text-slate-900">{selectedOrder.sessionId || '—'}</span>
+                  Session: <span className="font-bold text-[#111111]">{selectedOrder.sessionId || '—'}</span>
                 </div>
                 <div>
-                  Source: <span className="font-bold text-slate-900">{selectedOrder.utmSource || 'direct'}</span>
+                  Source: <span className="font-bold text-[#111111]">{selectedOrder.utmSource || 'direct'}</span>
                 </div>
                 <div>
-                  Medium: <span className="font-bold text-slate-900">{selectedOrder.utmMedium || 'none'}</span>
+                  Medium: <span className="font-bold text-[#111111]">{selectedOrder.utmMedium || 'none'}</span>
                 </div>
                 <div className="col-span-2 truncate">
-                  Campaign: <span className="font-bold text-slate-900">{selectedOrder.utmCampaign || 'none'}</span>
+                  Campaign: <span className="font-bold text-[#111111]">{selectedOrder.utmCampaign || 'none'}</span>
                 </div>
               </div>
             </div>
 
             {/* Order Status History Audit Log */}
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] space-y-2">
-              <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                <History className="w-3.5 h-3.5 text-slate-500" />
-                <span>سجل تغييرات الحالة (Order Status History)</span>
+            <div className="p-4 bg-[#F8F8F6] rounded-2xl border border-neutral-200/70 text-[11px] space-y-2">
+              <div className="font-bold text-[#111111] flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-[#FF6B00]" />
+                <span>Order Status History</span>
               </div>
               {selectedOrderHistory.length === 0 ? (
-                <div className="text-slate-400">لا توجد تغييرات حالة سابقة مسجلة</div>
+                <div className="text-neutral-400">No status changes recorded yet</div>
               ) : (
-                <div className="space-y-1 max-h-32 overflow-y-auto">
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {selectedOrderHistory.map((item) => (
                     <div
                       key={item._id}
-                      className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded border border-slate-200/80 font-mono"
+                      className="flex items-center justify-between bg-white px-3 py-1.5 rounded-xl border border-neutral-200/80 font-mono"
                     >
-                      <div className="flex items-center gap-1.5" dir="ltr">
-                        <span className="text-slate-500">{item.previousStatus || 'CREATED'}</span>
-                        <span className="text-slate-400">→</span>
-                        <span className="font-bold text-emerald-700">{item.newStatus}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-neutral-500">{item.previousStatus || 'CREATED'}</span>
+                        <span className="text-neutral-400">→</span>
+                        <span className="font-bold text-[#129A56]">{item.newStatus}</span>
                       </div>
-                      <span className="text-[10px] text-slate-400" dir="ltr">
+                      <span className="text-[10px] text-neutral-400">
                         {formatDate(item.timestamp)}
                       </span>
                     </div>
@@ -494,15 +517,15 @@ export const OrderTable: React.FC = () => {
             </div>
 
             {/* Status & Delete Controls */}
-            <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+            <div className="pt-2 flex items-center justify-between border-t border-neutral-100">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-700">تحديث الحالة:</span>
+                <span className="text-xs font-bold text-[#111111]">Update Status:</span>
                 <select
                   value={selectedOrder.status}
                   onChange={(e) =>
                     handleStatusChange(selectedOrder._id, e.target.value as OrderStatus)
                   }
-                  className="text-xs px-3 py-1.5 rounded-lg border border-slate-300 font-semibold bg-white"
+                  className="text-xs px-3.5 py-1.5 rounded-full border border-neutral-300 font-bold bg-white cursor-pointer"
                 >
                   {statusOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -515,10 +538,10 @@ export const OrderTable: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDeleteOrder(selectedOrder._id)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>حذف الطلب</span>
+                <span>Delete Order</span>
               </button>
             </div>
           </div>
@@ -527,3 +550,4 @@ export const OrderTable: React.FC = () => {
     </div>
   );
 };
+

@@ -1276,7 +1276,59 @@ export class ConvexMemoryStore {
         this.connectionStatus = 'connected';
         this.lastSyncedAt = Date.now();
 
-        const convexProducts = prodRes.value
+        const rawDocs = prodRes.value;
+        const incomingOrders: Order[] = [];
+        const incomingHistories: OrderStatusHistory[] = [];
+
+        for (const doc of rawDocs) {
+          if (!doc || !isSystemCloudDoc(doc)) continue;
+          const slug = String(doc.slug || '').trim();
+          let parsed: any = null;
+          try {
+            parsed = JSON.parse(doc.description || '{}');
+          } catch {}
+          if (!parsed || typeof parsed !== 'object') continue;
+
+          if (slug.startsWith('__cod_sys_order_') && parsed.order) {
+            const ord = parsed.order as Order;
+            if (ord && ord._id) {
+              this.orderConvexDocIds.set(ord._id, doc._id);
+              if (parsed.deleted) {
+                this.deletedOrderIds.add(ord._id);
+              } else if (!this.deletedOrderIds.has(ord._id) && !isLegacyFakeOrder(ord)) {
+                incomingOrders.push(ord);
+              }
+              if (Array.isArray(parsed.history)) {
+                incomingHistories.push(...parsed.history);
+              }
+            }
+          } else if (slug === '__cod_sys_telemetry' && parsed.type === 'TELEMETRY_RECORD') {
+            this.telemetryConvexDocId = doc._id;
+            if (Array.isArray(parsed.deletedOrderIds)) {
+              parsed.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
+            }
+            if (Array.isArray(parsed.orderStatusHistory)) {
+              incomingHistories.push(...parsed.orderStatusHistory);
+            }
+            this.mergeAnalyticsData({
+              visitors: parsed.visitors,
+              sessions: parsed.sessions,
+              analyticsEvents: parsed.analyticsEvents,
+            });
+          } else if (slug === '__cod_sys_settings' && parsed.settings) {
+            this.settingsConvexDocId = doc._id;
+            this.settings = { ...INITIAL_SETTINGS, ...parsed.settings, ...this.settings };
+          }
+        }
+
+        if (incomingOrders.length > 0) {
+          this.mergeOrdersList(incomingOrders);
+        }
+        if (incomingHistories.length > 0) {
+          this.mergeStatusHistoryList(incomingHistories);
+        }
+
+        const convexProducts = rawDocs
           .filter((p) => p && !isLegacySeedProduct(p) && !this.deletedProductIds.has(p._id))
           .map((p) => ({
             ...p,
@@ -1307,7 +1359,7 @@ export class ConvexMemoryStore {
         notifySubscribers(false);
         return {
           status: 'connected',
-          message: `متصل بنجاح مع قاعدة بيانات Convex Cloud (${this.products.length} منتجات محفوظة)`,
+          message: `Connected to Convex Cloud (${this.products.length} products, ${this.orders.length} orders)`,
         };
       }
 
@@ -1771,17 +1823,26 @@ export class ConvexMemoryStore {
     ) {
       this.analyticsEvents.push(orderCreatedEvent);
     }
+    this.saveProductsBackup();
     notifySubscribers();
 
-    void this.callConvexMutation<Order>('orders:create', data);
+    void this.persistOrderToConvexCloud(newOrder);
+    this.scheduleTelemetryConvexSync();
 
     if (typeof window !== 'undefined') {
       try {
+        const compactOrderForServer: Order = {
+          ...newOrder,
+          productImage:
+            newOrder.productImage && newOrder.productImage.startsWith('data:')
+              ? ''
+              : newOrder.productImage,
+        };
         const res = await fetch('/api/db/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            order: newOrder,
+            order: compactOrderForServer,
             statusHistory: initialHistory,
             orderEvent: orderCreatedEvent,
           }),
@@ -1790,24 +1851,20 @@ export class ConvexMemoryStore {
         if (res.ok && contentType.includes('application/json')) {
           const resData = await res.json();
           if (resData && resData.ok && resData.order) {
+            const mergedOrder: Order = {
+              ...resData.order,
+              productImage: newOrder.productImage || resData.order.productImage,
+            };
             const idx = this.orders.findIndex((o) => o._id === newOrder._id);
             if (idx !== -1) {
-              this.orders[idx] = resData.order;
+              this.orders[idx] = mergedOrder;
             }
+            this.saveProductsBackup();
             notifySubscribers();
-            return resData.order as Order;
-          }
-        } else if (res.status === 400 && contentType.includes('application/json')) {
-          const errData = await res.json().catch(() => ({}));
-          if (errData?.error) {
-            throw new Error(errData.error);
+            return mergedOrder;
           }
         }
-      } catch (err: any) {
-        if (err?.message && err.message.includes('Invalid order')) {
-          throw err;
-        }
-      }
+      } catch {}
     }
 
     return newOrder;
@@ -1882,47 +1939,69 @@ export class ConvexMemoryStore {
       this.analyticsEvents.push(lifecycleEvent);
     }
 
+    this.saveProductsBackup();
     notifySubscribers();
 
+    void this.persistOrderToConvexCloud(updatedOrder);
+    this.scheduleTelemetryConvexSync();
+
     if (typeof window !== 'undefined') {
-      const res = await fetch('/api/db/order-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: updatedOrder._id,
-          status,
-          updatedOrder,
-          historyEntry,
-          lifecycleEvent,
-        }),
-      });
-      if (res.ok) {
-        const resData = await res.json();
-        if (resData?.ok && resData.order) {
-          const currentIdx = this.orders.findIndex((o) => o._id === orderId);
-          if (currentIdx !== -1) {
-            this.orders[currentIdx] = resData.order;
+      try {
+        const compactUpdated: Order = {
+          ...updatedOrder,
+          productImage:
+            updatedOrder.productImage && updatedOrder.productImage.startsWith('data:')
+              ? ''
+              : updatedOrder.productImage,
+        };
+        const res = await fetch('/api/db/order-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: updatedOrder._id,
+            status,
+            updatedOrder: compactUpdated,
+            historyEntry,
+            lifecycleEvent,
+          }),
+        });
+        if (res.ok) {
+          const resData = await res.json().catch(() => null);
+          if (resData?.ok && resData.order) {
+            const currentIdx = this.orders.findIndex((o) => o._id === orderId);
+            if (currentIdx !== -1) {
+              this.orders[currentIdx] = {
+                ...resData.order,
+                productImage: updatedOrder.productImage || resData.order.productImage,
+              };
+            }
+            this.saveProductsBackup();
+            notifySubscribers();
           }
-          notifySubscribers();
         }
-      }
+      } catch {}
     }
 
-    void this.callConvexMutation('orders:updateStatus', { orderId, status });
     return updatedOrder;
   }
 
   public async deleteOrder(orderId: string): Promise<boolean> {
+    const targetOrder = this.orders.find((o) => o._id === orderId);
     const initialLen = this.orders.length;
+    this.deletedOrderIds.add(orderId);
     this.orders = this.orders.filter((o) => o._id !== orderId);
     if (this.orders.length !== initialLen) {
+      this.saveProductsBackup();
+      if (targetOrder) {
+        void this.persistOrderToConvexCloud(targetOrder);
+      }
+      this.scheduleTelemetryConvexSync();
       if (typeof window !== 'undefined') {
         await fetch(`/api/db/order/${encodeURIComponent(orderId)}`, { method: 'DELETE' }).catch(
           () => {}
         );
       }
       notifySubscribers();
-      void this.callConvexMutation('orders:remove', { orderId });
       return true;
     }
     return false;
@@ -1993,7 +2072,9 @@ export class ConvexMemoryStore {
     };
 
     this.analyticsEvents.push(newEvent);
+    this.saveProductsBackup();
     notifySubscribers();
+    this.scheduleTelemetryConvexSync();
 
     if (typeof window !== 'undefined') {
       void fetch('/api/db/event', {
@@ -2018,7 +2099,6 @@ export class ConvexMemoryStore {
         .catch(() => {});
     }
 
-    void this.callConvexMutation('analytics:logEvent', newEvent);
     return newEvent;
   }
 
@@ -2056,24 +2136,28 @@ export class ConvexMemoryStore {
 
   public async updateSettings(updates: Partial<StoreSettings>): Promise<StoreSettings> {
     this.settings = { ...this.settings, ...updates };
+    this.saveProductsBackup();
     notifySubscribers();
+    void this.persistSettingsToConvexCloud();
 
     if (typeof window !== 'undefined') {
-      const res = await fetch('/api/db/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: this.settings }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.ok && data.settings) {
-          this.settings = { ...this.settings, ...data.settings };
-          notifySubscribers();
+      try {
+        const res = await fetch('/api/db/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ settings: this.settings }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.ok && data.settings) {
+            this.settings = { ...this.settings, ...data.settings };
+            this.saveProductsBackup();
+            notifySubscribers();
+          }
         }
-      }
+      } catch {}
     }
 
-    void this.callConvexMutation('settings:update', updates);
     return this.settings;
   }
 
@@ -2081,7 +2165,9 @@ export class ConvexMemoryStore {
     const spends = { ...(this.settings.campaignAdSpends || {}) };
     spends[campaign] = Math.max(0, Number(spend) || 0);
     this.settings.campaignAdSpends = spends;
+    this.saveProductsBackup();
     notifySubscribers();
+    void this.persistSettingsToConvexCloud();
 
     if (typeof window !== 'undefined') {
       await fetch('/api/db/settings', {
@@ -2091,7 +2177,6 @@ export class ConvexMemoryStore {
       }).catch(() => {});
     }
 
-    void this.callConvexMutation('settings:updateAdSpend', { campaign, spend });
     return this.settings;
   }
 

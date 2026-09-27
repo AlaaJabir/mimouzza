@@ -4,11 +4,8 @@ import { api } from '../../../convex/api';
 import {
   ShoppingBag,
   Package,
-  TrendingUp,
   Clock,
-  CheckCircle2,
   DollarSign,
-  ArrowUpRight,
 } from 'lucide-react';
 
 export const DashboardStats: React.FC = () => {
@@ -19,66 +16,72 @@ export const DashboardStats: React.FC = () => {
 
   const stats = [
     {
-      title: 'إجمالي المبيعات (Revenue)',
-      englishTitle: 'Total Revenue',
-      value: `${(metrics?.totalRevenue || 0).toLocaleString()} ${currency}`,
-      subtitle: 'الطلبات المؤكدة وغير الملغاة',
-      icon: <DollarSign className="w-5 h-5 text-emerald-600" />,
-      bg: 'bg-emerald-50/70 border-emerald-200/80',
+      title: 'Total Products',
+      value: metrics?.totalProducts ?? 0,
+      badge: `${metrics?.publishedProducts ?? 0} Active`,
+      badgePositive: true,
+      subtitle: 'Live COD landing pages',
+      icon: <Package className="w-5 h-5 text-[#FF6B00]" />,
     },
     {
-      title: 'طلبيات جديدة (New Orders)',
-      englishTitle: 'Pending Confirmation',
-      value: metrics?.newOrders || 0,
-      subtitle: 'بحاجة إلى اتصال هاتفي للتأكيد',
-      icon: <Clock className="w-5 h-5 text-amber-600" />,
-      bg: 'bg-amber-50/70 border-amber-200/80',
-      highlight: (metrics?.newOrders || 0) > 0,
+      title: 'Total Orders',
+      value: (metrics?.totalOrders ?? 0).toLocaleString(),
+      badge: `${metrics?.confirmedOrders ?? 0} Confirmed`,
+      badgePositive: true,
+      subtitle: 'All-time received orders',
+      icon: <ShoppingBag className="w-5 h-5 text-[#FF6B00]" />,
     },
     {
-      title: 'إجمالي الطلبيات (Total Orders)',
-      englishTitle: 'All Orders',
-      value: metrics?.totalOrders || 0,
-      subtitle: `${metrics?.confirmedOrders || 0} مؤكدة ومشحونة`,
-      icon: <ShoppingBag className="w-5 h-5 text-blue-600" />,
-      bg: 'bg-blue-50/70 border-blue-200/80',
+      title: 'Pending Orders',
+      value: (metrics?.newOrders ?? 0).toLocaleString(),
+      badge: (metrics?.newOrders ?? 0) > 0 ? 'Needs Call' : 'All Clear',
+      badgePositive: (metrics?.newOrders ?? 0) === 0,
+      subtitle: 'Awaiting phone confirmation',
+      icon: <Clock className="w-5 h-5 text-[#FF6B00]" />,
     },
     {
-      title: 'المنتجات المنشورة (Products)',
-      englishTitle: 'Live Landing Pages',
-      value: `${metrics?.publishedProducts || 0} / ${metrics?.totalProducts || 0}`,
-      subtitle: 'صفحات هبوط نشطة تستقبل الزوار',
-      icon: <Package className="w-5 h-5 text-purple-600" />,
-      bg: 'bg-purple-50/70 border-purple-200/80',
+      title: 'Total Revenue',
+      value: `${(metrics?.totalRevenue ?? 0).toLocaleString()} ${currency}`,
+      badge: `${(metrics?.deliveredRevenue ?? 0).toLocaleString()} ${currency} Delivered`,
+      badgePositive: true,
+      subtitle: 'Active & confirmed COD value',
+      icon: <DollarSign className="w-5 h-5 text-[#FF6B00]" />,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" dir="ltr">
       {stats.map((stat, idx) => (
         <div
           key={idx}
-          className={`p-5 rounded-xl border bg-white shadow-2xs hover:shadow-xs transition-shadow ${
-            stat.highlight ? 'ring-2 ring-amber-400/50' : ''
-          }`}
+          className="p-6 rounded-3xl border border-neutral-200/70 bg-white shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-500">{stat.englishTitle}</span>
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${stat.bg}`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-neutral-500">{stat.title}</span>
+            <div className="w-10 h-10 rounded-full bg-[#FFF3EB] flex items-center justify-center shrink-0">
               {stat.icon}
             </div>
           </div>
 
-          <div className="text-2xl font-black text-slate-900 font-mono tabular-nums mb-1">
+          <div className="text-3xl font-extrabold text-[#111111] tracking-tight my-3.5 tabular-nums">
             {stat.value}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-            <span className="font-medium text-slate-700">{stat.title}</span>
+          <div className="flex items-center gap-2 text-xs">
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                stat.badgePositive
+                  ? 'bg-[#E8F8F0] text-[#129A56]'
+                  : 'bg-[#FFF3EB] text-[#FF6B00]'
+              }`}
+            >
+              {stat.badge}
+            </span>
+            <span className="text-neutral-400 font-medium truncate">{stat.subtitle}</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">{stat.subtitle}</p>
         </div>
       ))}
     </div>
   );
 };
+
