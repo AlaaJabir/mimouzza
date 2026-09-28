@@ -6,6 +6,7 @@ import { initMarketingPixels, DEFAULT_META_PIXEL_ID } from './lib/tracking';
 import { PublicProductPage } from './pages/PublicProductPage';
 import { FrontpageSignIn } from './pages/FrontpageSignIn';
 import { AdminLayout } from './components/admin/AdminLayout';
+import { AyaAgentWorkspace } from './ai-agent/page/AyaAgentWorkspace';
 import { useAdminAuth } from './lib/auth';
 
 export function App() {
@@ -34,6 +35,10 @@ export function App() {
     settings?.googleAnalyticsId,
     settings?.enableGoogleAnalytics,
   ]);
+
+  if (route.type === 'ai-agent') {
+    return <AyaAgentWorkspace onBackToAdmin={() => goTo('/admin')} />;
+  }
 
   if (route.type === 'public-product' && route.slug) {
     return (

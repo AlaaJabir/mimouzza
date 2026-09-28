@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { GoogleGenAI, Type } from '@google/genai';
 import {
   INITIAL_PRODUCTS,
   INITIAL_SETTINGS,
@@ -1003,6 +1004,263 @@ async function startServer() {
     serverDb.settings = { ...INITIAL_SETTINGS };
     saveServerDatabase(serverDb);
     res.json({ ok: true });
+  });
+
+  // 12. ISOLATED AYA AI LANDING PAGE AGENT ENDPOINT (ProductionAIProvider)
+  // Does not touch or mutate serverDb (products, orders, analytics, or settings).
+  app.post('/api/aya-agent/generate', async (req, res) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      res.status(503).json({
+        ok: false,
+        error:
+          'GEMINI_API_KEY is not configured on the server. Use DemoAIProvider mode to test the full isolated AYA workflow.',
+      });
+      return;
+    }
+
+    const { systemInstruction, prompt } = req.body || {};
+    if (!prompt || typeof prompt !== 'string') {
+      res.status(400).json({ ok: false, error: 'Missing generation prompt.' });
+      return;
+    }
+
+    try {
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction:
+            typeof systemInstruction === 'string' ? systemInstruction : undefined,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              analysis: {
+                type: Type.OBJECT,
+                properties: {
+                  detectedCategory: { type: Type.STRING },
+                  isRegulatedHealthOrCosmetic: { type: Type.BOOLEAN },
+                  targetCustomer: { type: Type.STRING },
+                  customerProblem: { type: Type.STRING },
+                  customerDesire: { type: Type.STRING },
+                  buyingMotivation: { type: Type.STRING },
+                  objections: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  productBenefits: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  emotionalAngle: { type: Type.STRING },
+                  practicalAngle: { type: Type.STRING },
+                  offerPositioning: { type: Type.STRING },
+                  urgencyMechanism: { type: Type.STRING },
+                  trustRequirements: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  ctaStrategy: { type: Type.STRING },
+                  landingPageStructure: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  appliedSkillsFromZip: { type: Type.ARRAY, items: { type: Type.STRING } },
+                },
+                required: [
+                  'detectedCategory',
+                  'isRegulatedHealthOrCosmetic',
+                  'targetCustomer',
+                  'customerProblem',
+                  'customerDesire',
+                  'buyingMotivation',
+                  'objections',
+                  'productBenefits',
+                  'emotionalAngle',
+                  'practicalAngle',
+                  'offerPositioning',
+                  'urgencyMechanism',
+                  'trustRequirements',
+                  'ctaStrategy',
+                  'landingPageStructure',
+                  'appliedSkillsFromZip',
+                ],
+              },
+              strategy: {
+                type: Type.OBJECT,
+                properties: {
+                  targetAudience: { type: Type.STRING },
+                  mainProblem: { type: Type.STRING },
+                  desiredOutcome: { type: Type.STRING },
+                  mainAngle: { type: Type.STRING },
+                  secondaryAngles: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  objections: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  keyBenefits: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  offerStrategy: { type: Type.STRING },
+                  ctaStrategy: { type: Type.STRING },
+                  socialProofStrategy: { type: Type.STRING },
+                  urgencyStrategy: { type: Type.STRING },
+                },
+                required: [
+                  'targetAudience',
+                  'mainProblem',
+                  'desiredOutcome',
+                  'mainAngle',
+                  'secondaryAngles',
+                  'objections',
+                  'keyBenefits',
+                  'offerStrategy',
+                  'ctaStrategy',
+                  'socialProofStrategy',
+                  'urgencyStrategy',
+                ],
+              },
+              blueprint: {
+                type: Type.OBJECT,
+                properties: {
+                  hero: {
+                    type: Type.OBJECT,
+                    properties: {
+                      hook: { type: Type.STRING },
+                      headline: { type: Type.STRING },
+                      subheadline: { type: Type.STRING },
+                      cta: { type: Type.STRING },
+                      visualDirection: { type: Type.STRING },
+                    },
+                    required: ['hook', 'headline', 'subheadline', 'cta', 'visualDirection'],
+                  },
+                  problem: {
+                    type: Type.OBJECT,
+                    properties: {
+                      headline: { type: Type.STRING },
+                      body: { type: Type.STRING },
+                    },
+                    required: ['headline', 'body'],
+                  },
+                  benefits: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        title: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                      },
+                      required: ['title', 'description'],
+                    },
+                  },
+                  solution: {
+                    type: Type.OBJECT,
+                    properties: {
+                      headline: { type: Type.STRING },
+                      body: { type: Type.STRING },
+                    },
+                    required: ['headline', 'body'],
+                  },
+                  howItWorks: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        stepNumber: { type: Type.STRING },
+                        title: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                      },
+                      required: ['stepNumber', 'title', 'description'],
+                    },
+                  },
+                  socialProof: {
+                    type: Type.OBJECT,
+                    properties: {
+                      headline: { type: Type.STRING },
+                      isPlaceholderRecommendation: { type: Type.BOOLEAN },
+                      recommendationNote: { type: Type.STRING },
+                      items: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            label: { type: Type.STRING },
+                            content: { type: Type.STRING },
+                            verificationType: { type: Type.STRING },
+                          },
+                          required: ['label', 'content', 'verificationType'],
+                        },
+                      },
+                    },
+                    required: [
+                      'headline',
+                      'isPlaceholderRecommendation',
+                      'recommendationNote',
+                      'items',
+                    ],
+                  },
+                  offer: {
+                    type: Type.OBJECT,
+                    properties: {
+                      headline: { type: Type.STRING },
+                      price: { type: Type.STRING },
+                      oldPrice: { type: Type.STRING },
+                      discount: { type: Type.STRING },
+                      bonuses: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    },
+                    required: ['headline', 'price', 'oldPrice', 'discount', 'bonuses'],
+                  },
+                  faq: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        question: { type: Type.STRING },
+                        answer: { type: Type.STRING },
+                      },
+                      required: ['question', 'answer'],
+                    },
+                  },
+                  finalCta: {
+                    type: Type.OBJECT,
+                    properties: {
+                      headline: { type: Type.STRING },
+                      body: { type: Type.STRING },
+                      button: { type: Type.STRING },
+                    },
+                    required: ['headline', 'body', 'button'],
+                  },
+                },
+                required: [
+                  'hero',
+                  'problem',
+                  'benefits',
+                  'solution',
+                  'howItWorks',
+                  'socialProof',
+                  'offer',
+                  'faq',
+                  'finalCta',
+                ],
+              },
+              safetyComplianceNotes: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+            },
+            required: ['analysis', 'strategy', 'blueprint', 'safetyComplianceNotes'],
+          },
+        },
+      });
+
+      const rawText = response.text;
+      if (!rawText) {
+        res.status(500).json({ ok: false, error: 'Empty response from Gemini model.' });
+        return;
+      }
+
+      const parsed = JSON.parse(rawText.trim());
+      res.json({ ok: true, result: parsed });
+    } catch (err: any) {
+      console.error('AYA Gemini generation error:', err);
+      res.status(500).json({
+        ok: false,
+        error: err?.message || 'Failed to generate AYA landing page blueprint.',
+      });
+    }
   });
 
   // Vite middleware for development or static serving in production

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 export interface RouteState {
   path: string;
-  type: 'admin' | 'public-product' | 'home';
+  type: 'admin' | 'public-product' | 'home' | 'ai-agent';
   adminSection: 'dashboard' | 'analytics' | 'products' | 'templates' | 'orders' | 'diagnostics' | 'settings';
   productId?: string;
   isNew?: boolean;
@@ -36,6 +36,21 @@ export function parseCurrentRoute(): RouteState {
     utmContent: searchParams.get('utm_content') || '',
     utmTerm: searchParams.get('utm_term') || '',
   };
+
+  // Isolated AYA AI Landing Page Agent route: /ai-agent or /admin/ai-agent
+  if (
+    path === '/ai-agent' ||
+    path.startsWith('/ai-agent/') ||
+    path === '/admin/ai-agent' ||
+    window.location.hash === '#/ai-agent'
+  ) {
+    return {
+      path: '/ai-agent',
+      type: 'ai-agent',
+      adminSection: 'dashboard',
+      utmParams,
+    };
+  }
 
   // Check public product URL: /p/[slug] or #/p/[slug] or ?p=[slug]
   const hashPath = window.location.hash.startsWith('#/') ? window.location.hash.slice(1) : '';

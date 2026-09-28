@@ -149,6 +149,16 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
         {/* Right Actions & Profile Pill */}
         <div className="order-2 xl:order-3 flex items-center gap-2.5">
+          {/* AYA Isolated AI Landing Page Agent (Demo) */}
+          <button
+            type="button"
+            onClick={() => navigate('/ai-agent')}
+            title="Open AYA AI Landing Page Agent (Isolated Demo)"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-extrabold transition-colors shadow-xs cursor-pointer"
+          >
+            <span>AYA AI Agent</span>
+          </button>
+
           {sampleSlug && (
             <a
               href={`/p/${sampleSlug}`}

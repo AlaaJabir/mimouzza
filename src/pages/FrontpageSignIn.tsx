@@ -134,6 +134,17 @@ export const FrontpageSignIn: React.FC<FrontpageSignInProps> = ({
 
           {/* Right Header Action */}
           <div className="flex items-center gap-3">
+            <a
+              href="/ai-agent"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, '', '/ai-agent');
+                window.dispatchEvent(new Event('app_navigation'));
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-extrabold shadow-xs transition-all cursor-pointer"
+            >
+              <span>AYA AI Agent (Demo)</span>
+            </a>
             {isAuthenticated ? (
               <button
                 type="button"

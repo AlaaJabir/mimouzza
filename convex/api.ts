@@ -15,6 +15,7 @@ export const api = {
     duplicate: products.duplicate,
     remove: products.remove,
     togglePublish: products.togglePublish,
+    updateStatus: products.updateStatus,
   },
   orders: {
     list: orders.list,
@@ -24,6 +25,7 @@ export const api = {
     create: orders.create,
     updateStatus: orders.updateStatus,
     remove: orders.remove,
+    removeMany: orders.removeMany,
     getMetrics: orders.getMetrics,
   },
   templates: {
