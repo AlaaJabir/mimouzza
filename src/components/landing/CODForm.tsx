@@ -463,6 +463,10 @@ export const CODForm: React.FC<CODFormProps> = ({
         visitorId,
         sessionId,
         eventId,
+        fbclid: lastTouch.fbclid,
+        fbc: lastTouch.fbc,
+        fbp: lastTouch.fbp,
+        landingPage: typeof window !== 'undefined' ? window.location.pathname + window.location.search : `/p/${product.slug}`,
         ...resolvedUtm,
       });
 
@@ -731,6 +735,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={customerName}
+              onFocus={() => handleFirstInteraction('customerName')}
               onChange={(e) => {
                 handleFirstInteraction('customerName');
                 setCustomerName(e.target.value);
@@ -757,6 +762,7 @@ export const CODForm: React.FC<CODFormProps> = ({
               <input
                 type="tel"
                 value={phone}
+                onFocus={() => handleFirstInteraction('phone')}
                 onChange={(e) => {
                   handleFirstInteraction('phone');
                   setPhone(e.target.value);
@@ -975,6 +981,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={address}
+              onFocus={() => handleFirstInteraction('address')}
               onChange={(e) => {
                 handleFirstInteraction('address');
                 setAddress(e.target.value);
@@ -998,6 +1005,7 @@ export const CODForm: React.FC<CODFormProps> = ({
             <input
               type="text"
               value={notes}
+              onFocus={() => handleFirstInteraction('notes')}
               onChange={(e) => {
                 handleFirstInteraction('notes');
                 setNotes(e.target.value);

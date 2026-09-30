@@ -725,6 +725,8 @@ export class ConvexMemoryStore {
   private settingsConvexDocId: string | null = null;
   private telemetryConvexDocId: string | null = null;
   private telemetrySyncTimer: ReturnType<typeof setTimeout> | null = null;
+  private isSyncingTelemetry = false;
+  private pendingTelemetryResync = false;
 
   constructor() {
     this.init();
@@ -968,47 +970,67 @@ export class ConvexMemoryStore {
     if (typeof window === 'undefined') return;
     if (this.telemetrySyncTimer) clearTimeout(this.telemetrySyncTimer);
     this.telemetrySyncTimer = setTimeout(() => {
+      this.telemetrySyncTimer = null;
       void this.persistTelemetryToConvexCloud();
     }, delayMs);
   }
 
   private async persistTelemetryToConvexCloud(): Promise<void> {
+    if (this.isSyncingTelemetry) {
+      this.pendingTelemetryResync = true;
+      return;
+    }
+    this.isSyncingTelemetry = true;
+
     try {
       const sysSlug = '__cod_sys_telemetry';
-      const payload = {
-        type: 'TELEMETRY_RECORD',
-        visitors: this.visitors.slice(-300),
-        sessions: this.sessions.slice(-300),
-        analyticsEvents: this.analyticsEvents.slice(-500),
-        orderStatusHistory: this.orderStatusHistory.slice(-300),
-        deletedOrderIds: Array.from(this.deletedOrderIds),
-      };
 
-      if (this.telemetryConvexDocId) {
-        await this.callConvexMutation('products:update', {
-          id: this.telemetryConvexDocId,
-          updates: {
-            description: JSON.stringify(payload),
-            isPublished: false,
-            status: 'ARCHIVED',
-          },
-        });
-        return;
-      }
-
+      // Always pull and merge the latest remote telemetry record first so concurrent visitors never overwrite each other
       const found = await this.callConvexQuery<Product | null>('products:getBySlug', {
         slug: sysSlug,
       });
+
       if (found.ok && found.value && found.value._id) {
         this.telemetryConvexDocId = found.value._id;
+        try {
+          const remoteParsed = JSON.parse(found.value.description || '{}');
+          if (remoteParsed && typeof remoteParsed === 'object') {
+            if (Array.isArray(remoteParsed.deletedOrderIds)) {
+              remoteParsed.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
+            }
+            if (Array.isArray(remoteParsed.orderStatusHistory)) {
+              this.mergeStatusHistoryList(remoteParsed.orderStatusHistory);
+            }
+            this.mergeAnalyticsData({
+              visitors: remoteParsed.visitors,
+              sessions: remoteParsed.sessions,
+              analyticsEvents: remoteParsed.analyticsEvents,
+            });
+          }
+        } catch {}
+      }
+
+      const payload = {
+        type: 'TELEMETRY_RECORD',
+        visitors: this.visitors.slice(-500),
+        sessions: this.sessions.slice(-500),
+        analyticsEvents: this.analyticsEvents.slice(-800),
+        orderStatusHistory: this.orderStatusHistory.slice(-400),
+        deletedOrderIds: Array.from(this.deletedOrderIds),
+      };
+
+      const targetDocId = (found.ok && found.value?._id) || this.telemetryConvexDocId;
+      if (targetDocId) {
+        this.telemetryConvexDocId = targetDocId;
         await this.callConvexMutation('products:update', {
-          id: found.value._id,
+          id: targetDocId,
           updates: {
             description: JSON.stringify(payload),
             isPublished: false,
             status: 'ARCHIVED',
           },
         });
+        this.saveProductsBackup();
         return;
       }
 
@@ -1017,7 +1039,15 @@ export class ConvexMemoryStore {
       if (created.ok && typeof created.value === 'string' && created.value) {
         this.telemetryConvexDocId = created.value;
       }
-    } catch {}
+      this.saveProductsBackup();
+    } catch {
+    } finally {
+      this.isSyncingTelemetry = false;
+      if (this.pendingTelemetryResync) {
+        this.pendingTelemetryResync = false;
+        this.scheduleTelemetryConvexSync(250);
+      }
+    }
   }
 
   private async persistSettingsToConvexCloud(): Promise<void> {
@@ -1843,6 +1873,9 @@ export class ConvexMemoryStore {
     utmCampaign: string;
     utmTerm: string;
     utmContent: string;
+    fbclid?: string;
+    fbc?: string;
+    fbp?: string;
     referrer: string;
     userAgent?: string;
     timestamp: number;
@@ -1880,6 +1913,9 @@ export class ConvexMemoryStore {
         utmCampaign: params.utmCampaign || '',
         utmTerm: params.utmTerm || '',
         utmContent: params.utmContent || '',
+        fbclid: params.fbclid,
+        fbc: params.fbc,
+        fbp: params.fbp,
         referrer: params.referrer || '',
         startedAt: now,
         lastSeenAt: now,
@@ -1893,6 +1929,9 @@ export class ConvexMemoryStore {
       if (!session.utmCampaign && params.utmCampaign) session.utmCampaign = params.utmCampaign;
       if (!session.utmTerm && params.utmTerm) session.utmTerm = params.utmTerm;
       if (!session.utmContent && params.utmContent) session.utmContent = params.utmContent;
+      if (!session.fbclid && params.fbclid) session.fbclid = params.fbclid;
+      if (!session.fbc && params.fbc) session.fbc = params.fbc;
+      if (!session.fbp && params.fbp) session.fbp = params.fbp;
       if (!session.referrer && params.referrer) session.referrer = params.referrer;
     }
 
@@ -2295,6 +2334,9 @@ export class ConvexMemoryStore {
       utmCampaign: event.utmCampaign || '',
       utmTerm: event.utmTerm || '',
       utmContent: event.utmContent || '',
+      fbclid: event.fbclid,
+      fbc: event.fbc,
+      fbp: event.fbp,
       referrer: event.referrer || '',
       userAgent: event.userAgent,
       timestamp: now,

@@ -29,9 +29,19 @@ export function parseCurrentRoute(): RouteState {
   const path = window.location.pathname;
   const searchParams = new URLSearchParams(window.location.search);
 
+  const fbclid = searchParams.get('fbclid') || '';
+  const ttclid = searchParams.get('ttclid') || '';
+  const gclid = searchParams.get('gclid') || '';
+  const rawSource = searchParams.get('utm_source') || '';
+  const rawMedium = searchParams.get('utm_medium') || '';
+
   const utmParams = {
-    utmSource: searchParams.get('utm_source') || '',
-    utmMedium: searchParams.get('utm_medium') || '',
+    utmSource:
+      rawSource ||
+      (fbclid ? 'facebook' : ttclid ? 'tiktok' : gclid ? 'google' : ''),
+    utmMedium:
+      rawMedium ||
+      (fbclid || ttclid ? 'paid_social' : gclid ? 'cpc' : ''),
     utmCampaign: searchParams.get('utm_campaign') || '',
     utmContent: searchParams.get('utm_content') || '',
     utmTerm: searchParams.get('utm_term') || '',

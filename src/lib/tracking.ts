@@ -31,6 +31,10 @@ const SESSION_INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 const FIRST_TOUCH_KEY = 'cod_first_touch_utm';
 const LAST_TOUCH_KEY = 'cod_last_touch_utm';
+const FBCLID_STORAGE_KEY = 'cod_last_fbclid';
+const FBC_COOKIE_NAME = '_fbc';
+const FBP_COOKIE_NAME = '_fbp';
+const SESSION_TRACKED_KEYS_STORAGE = 'cod_session_tracked_keys_v2';
 const LOCAL_DETECTED_EVENTS_KEY = 'cod_local_diagnostics_events';
 
 export interface UtmAttribution {
@@ -39,6 +43,9 @@ export interface UtmAttribution {
   utmCampaign: string;
   utmContent: string;
   utmTerm: string;
+  fbclid?: string;
+  fbc?: string;
+  fbp?: string;
 }
 
 interface StoredSessionState {
@@ -48,8 +55,37 @@ interface StoredSessionState {
   lastActivityAt: number;
 }
 
-// In-memory deduplication sets for the current page load lifecycle
+// In-memory + sessionStorage deduplication sets for the current session lifecycle
 const pageLoadTrackedKeys = new Set<string>();
+
+function hasTrackedInSession(dedupKey: string): boolean {
+  if (pageLoadTrackedKeys.has(dedupKey)) return true;
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = sessionStorage.getItem(SESSION_TRACKED_KEYS_STORAGE);
+    if (raw) {
+      const list: string[] = JSON.parse(raw);
+      if (Array.isArray(list) && list.includes(dedupKey)) {
+        pageLoadTrackedKeys.add(dedupKey);
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
+function markTrackedInSession(dedupKey: string): void {
+  pageLoadTrackedKeys.add(dedupKey);
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = sessionStorage.getItem(SESSION_TRACKED_KEYS_STORAGE);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(list) && !list.includes(dedupKey)) {
+      list.push(dedupKey);
+      sessionStorage.setItem(SESSION_TRACKED_KEYS_STORAGE, JSON.stringify(list.slice(-200)));
+    }
+  } catch {}
+}
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
@@ -149,7 +185,7 @@ export function getSessionId(): string {
 }
 
 /**
- * Captures and persists first-touch and last-touch UTM parameters
+ * Captures and persists first-touch and last-touch UTM parameters + Meta/TikTok/Google click IDs (fbclid, _fbc, _fbp)
  */
 export function captureAndStoreUtm(): { firstTouch: UtmAttribution; lastTouch: UtmAttribution } {
   const empty: UtmAttribution = {
@@ -158,20 +194,93 @@ export function captureAndStoreUtm(): { firstTouch: UtmAttribution; lastTouch: U
     utmCampaign: '',
     utmContent: '',
     utmTerm: '',
+    fbclid: '',
+    fbc: '',
+    fbp: '',
   };
 
   if (typeof window === 'undefined') return { firstTouch: empty, lastTouch: empty };
 
   const params = new URLSearchParams(window.location.search);
+  const urlFbclid = (params.get('fbclid') || '').trim();
+  const urlTtclid = (params.get('ttclid') || '').trim();
+  const urlGclid = (params.get('gclid') || '').trim();
+
+  let fbclid = urlFbclid;
+  try {
+    if (urlFbclid) {
+      localStorage.setItem(FBCLID_STORAGE_KEY, urlFbclid);
+      sessionStorage.setItem(FBCLID_STORAGE_KEY, urlFbclid);
+    } else {
+      fbclid =
+        sessionStorage.getItem(FBCLID_STORAGE_KEY) ||
+        localStorage.getItem(FBCLID_STORAGE_KEY) ||
+        '';
+    }
+  } catch {}
+
+  let fbc = getCookie(FBC_COOKIE_NAME) || '';
+  if (urlFbclid && !fbc) {
+    fbc = `fb.1.${Date.now()}.${urlFbclid}`;
+    setCookie(FBC_COOKIE_NAME, fbc, 90 * 24 * 60 * 60);
+  }
+  const fbp = getCookie(FBP_COOKIE_NAME) || '';
+
+  let rawSource = (params.get('utm_source') || '').trim();
+  let rawMedium = (params.get('utm_medium') || '').trim();
+  const rawCampaign = (params.get('utm_campaign') || '').trim();
+  const rawContent = (params.get('utm_content') || '').trim();
+  const rawTerm = (params.get('utm_term') || '').trim();
+
+  // Automatically infer traffic source & medium from ad click IDs or referrer when utm_source is omitted
+  const ref = (typeof document !== 'undefined' ? document.referrer || '' : '').toLowerCase();
+  if (!rawSource) {
+    if (urlFbclid) {
+      rawSource = ref.includes('instagram.com') ? 'instagram' : 'facebook';
+      if (!rawMedium) rawMedium = 'paid_social';
+    } else if (urlTtclid) {
+      rawSource = 'tiktok';
+      if (!rawMedium) rawMedium = 'paid_social';
+    } else if (urlGclid) {
+      rawSource = 'google';
+      if (!rawMedium) rawMedium = 'cpc';
+    } else if (ref) {
+      if (ref.includes('instagram.com') || ref.includes('ig.me')) {
+        rawSource = 'instagram';
+        if (!rawMedium) rawMedium = 'social';
+      } else if (ref.includes('facebook.com') || ref.includes('fb.com') || ref.includes('fb.me')) {
+        rawSource = 'facebook';
+        if (!rawMedium) rawMedium = 'social';
+      } else if (ref.includes('tiktok.com')) {
+        rawSource = 'tiktok';
+        if (!rawMedium) rawMedium = 'social';
+      } else if (ref.includes('google.')) {
+        rawSource = 'google';
+        if (!rawMedium) rawMedium = 'organic';
+      } else if (ref.includes('youtube.com') || ref.includes('youtu.be')) {
+        rawSource = 'youtube';
+        if (!rawMedium) rawMedium = 'social';
+      } else if (ref.includes('whatsapp.com') || ref.includes('wa.me')) {
+        rawSource = 'whatsapp';
+        if (!rawMedium) rawMedium = 'referral';
+      }
+    }
+  }
+
   const currentUtm: UtmAttribution = {
-    utmSource: (params.get('utm_source') || '').trim(),
-    utmMedium: (params.get('utm_medium') || '').trim(),
-    utmCampaign: (params.get('utm_campaign') || '').trim(),
-    utmContent: (params.get('utm_content') || '').trim(),
-    utmTerm: (params.get('utm_term') || '').trim(),
+    utmSource: rawSource,
+    utmMedium: rawMedium,
+    utmCampaign: rawCampaign,
+    utmContent: rawContent,
+    utmTerm: rawTerm,
+    fbclid: fbclid || undefined,
+    fbc: fbc || undefined,
+    fbp: fbp || undefined,
   };
 
-  const hasCurrentUtm = Object.values(currentUtm).some((val) => Boolean(val));
+  const hasCurrentUtm = Boolean(
+    rawSource || rawMedium || rawCampaign || rawContent || rawTerm || urlFbclid || urlTtclid || urlGclid
+  );
 
   // First Touch
   let firstTouch = empty;
@@ -181,7 +290,7 @@ export function captureAndStoreUtm(): { firstTouch: UtmAttribution; lastTouch: U
       localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(currentUtm));
       firstTouch = currentUtm;
     } else if (storedFirst) {
-      firstTouch = JSON.parse(storedFirst);
+      firstTouch = { ...empty, ...JSON.parse(storedFirst) };
     }
   } catch {}
 
@@ -195,11 +304,15 @@ export function captureAndStoreUtm(): { firstTouch: UtmAttribution; lastTouch: U
     } else {
       const storedSessionLast = sessionStorage.getItem(LAST_TOUCH_KEY);
       const storedLocalLast = localStorage.getItem(LAST_TOUCH_KEY);
-      if (storedSessionLast) lastTouch = JSON.parse(storedSessionLast);
-      else if (storedLocalLast) lastTouch = JSON.parse(storedLocalLast);
+      if (storedSessionLast) lastTouch = { ...empty, ...JSON.parse(storedSessionLast) };
+      else if (storedLocalLast) lastTouch = { ...empty, ...JSON.parse(storedLocalLast) };
       else if (firstTouch.utmSource) lastTouch = firstTouch;
     }
   } catch {}
+
+  if (fbclid && !lastTouch.fbclid) lastTouch.fbclid = fbclid;
+  if (fbc && !lastTouch.fbc) lastTouch.fbc = fbc;
+  if (fbp && !lastTouch.fbp) lastTouch.fbp = fbp;
 
   return { firstTouch, lastTouch };
 }
@@ -460,7 +573,7 @@ export function trackEvent(params: {
     return diagId;
   }
 
-  // Prevent duplicate PAGE_VIEW, PRODUCT_VIEW, VIEW_CONTENT, FORM_VIEW, FORM_START from React re-renders
+  // Prevent duplicate PAGE_VIEW, PRODUCT_VIEW, VIEW_CONTENT, FORM_VIEW, FORM_START from React re-renders or reloads within the same session
   if (
     params.eventType === 'PAGE_VIEW' ||
     params.eventType === 'PRODUCT_VIEW' ||
@@ -471,10 +584,12 @@ export function trackEvent(params: {
     const normalizedType =
       params.eventType === 'VIEW_CONTENT' ? 'PRODUCT_VIEW' : params.eventType;
     const dedupKey = `${sessionId}:${params.productId}:${normalizedType}:${window.location.pathname}`;
-    if (pageLoadTrackedKeys.has(dedupKey)) {
+    const pathDedupKey = `${sessionId}:path:${normalizedType}:${window.location.pathname}`;
+    if (hasTrackedInSession(dedupKey) || hasTrackedInSession(pathDedupKey)) {
       return `ev_dedup_${sessionId}_${params.productId}_${normalizedType}`;
     }
-    pageLoadTrackedKeys.add(dedupKey);
+    markTrackedInSession(dedupKey);
+    markTrackedInSession(pathDedupKey);
   }
 
   const clientTimestamp = Date.now();
@@ -508,9 +623,13 @@ export function trackEvent(params: {
       utmCampaign: lastTouch.utmCampaign || '',
       utmContent: lastTouch.utmContent || '',
       utmTerm: lastTouch.utmTerm || '',
+      fbclid: lastTouch.fbclid,
+      fbc: lastTouch.fbc,
+      fbp: lastTouch.fbp,
       metadata: {
         ...(params.metadata || {}),
         ...(ctaId ? { ctaId, elementId: ctaId } : {}),
+        ...(lastTouch.fbclid ? { fbclid: lastTouch.fbclid } : {}),
       },
     });
 

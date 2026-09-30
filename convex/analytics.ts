@@ -327,9 +327,30 @@ export const getTrafficSourcePerformance = {
       }
     > = {};
 
-    const getSourceKey = (src?: string) => {
-      if (!src || !src.trim()) return 'direct';
-      return src.trim().toLowerCase();
+    const getSourceKey = (item: {
+      utmSource?: string;
+      fbclid?: string;
+      pageUrl?: string;
+      landingPage?: string;
+      referrer?: string;
+    }) => {
+      if (item.utmSource && item.utmSource.trim()) {
+        return item.utmSource.trim().toLowerCase();
+      }
+      const url = (item.pageUrl || item.landingPage || '').toLowerCase();
+      const ref = (item.referrer || '').toLowerCase();
+      if (item.fbclid || url.includes('fbclid=')) {
+        return ref.includes('instagram') ? 'instagram' : 'facebook';
+      }
+      if (url.includes('ttclid=')) return 'tiktok';
+      if (url.includes('gclid=')) return 'google';
+      if (ref.includes('instagram.com') || ref.includes('ig.me')) return 'instagram';
+      if (ref.includes('facebook.com') || ref.includes('fb.com') || ref.includes('fb.me')) {
+        return 'facebook';
+      }
+      if (ref.includes('tiktok.com')) return 'tiktok';
+      if (ref.includes('google.')) return 'google';
+      return 'direct';
     };
 
     const ensureSource = (src: string) => {
@@ -353,7 +374,7 @@ export const getTrafficSourcePerformance = {
     };
 
     events.forEach((e) => {
-      const src = getSourceKey(e.utmSource);
+      const src = getSourceKey(e);
       const bucket = ensureSource(src);
       if (e.visitorId) bucket.visitors.add(e.visitorId);
       else if (e.sessionId) bucket.visitors.add(e.sessionId);
@@ -365,7 +386,7 @@ export const getTrafficSourcePerformance = {
     });
 
     orders.forEach((o) => {
-      const src = getSourceKey(o.utmSource);
+      const src = getSourceKey(o);
       const bucket = ensureSource(src);
       if (o.visitorId) bucket.visitors.add(o.visitorId);
       else if (o.sessionId) bucket.visitors.add(o.sessionId);
@@ -541,8 +562,21 @@ export const getProductAnalyticsTable = {
     const orders = db.getOrders().filter((o) => o.createdAt >= since && o.createdAt <= until);
 
     return products.map((prod) => {
-      const prodEvents = events.filter((e) => e.productId === prod._id);
-      const prodOrders = orders.filter((o) => o.productId === prod._id);
+      const slugNorm = (prod.slug || '').trim().toLowerCase();
+      const matchesProd = (item: { productId?: string; pageUrl?: string; landingPage?: string }) => {
+        if (item.productId === prod._id) return true;
+        if (slugNorm && item.productId && item.productId.trim().toLowerCase() === slugNorm) {
+          return true;
+        }
+        const pathPart = (item.pageUrl || item.landingPage || '').split('?')[0].trim().toLowerCase();
+        if (slugNorm && pathPart === `/p/${slugNorm}`) {
+          return true;
+        }
+        return false;
+      };
+
+      const prodEvents = events.filter((e) => matchesProd(e));
+      const prodOrders = orders.filter((o) => matchesProd(o));
 
       const visitorSet = new Set<string>();
       const sessionSet = new Set<string>();

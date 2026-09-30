@@ -5,9 +5,11 @@ import path from 'path';
 import crypto from 'crypto';
 import { GoogleGenAI, Type } from '@google/genai';
 import {
+  DEFAULT_CONVEX_CLOUD_URL,
   INITIAL_PRODUCTS,
   INITIAL_SETTINGS,
   INITIAL_TEMPLATES,
+  isSystemCloudDoc,
   isLegacySeedProduct,
   isLegacyFakeOrder,
   isLegacyFakeEvent,
@@ -266,6 +268,9 @@ function upsertSessionOnServer(
       utmCampaign: s.utmCampaign || '',
       utmTerm: s.utmTerm || '',
       utmContent: s.utmContent || '',
+      fbclid: s.fbclid,
+      fbc: s.fbc,
+      fbp: s.fbp,
       referrer: s.referrer || '',
       startedAt: serverNow,
       lastSeenAt: serverNow,
@@ -279,14 +284,187 @@ function upsertSessionOnServer(
     if (!existing.utmCampaign && s.utmCampaign) existing.utmCampaign = s.utmCampaign;
     if (!existing.utmTerm && s.utmTerm) existing.utmTerm = s.utmTerm;
     if (!existing.utmContent && s.utmContent) existing.utmContent = s.utmContent;
+    if (!existing.fbclid && s.fbclid) existing.fbclid = s.fbclid;
+    if (!existing.fbc && s.fbc) existing.fbc = s.fbc;
+    if (!existing.fbp && s.fbp) existing.fbp = s.fbp;
     if (!existing.referrer && s.referrer) existing.referrer = s.referrer;
   }
   return existing;
 }
 
+const serverDeletedOrderIds = new Set<string>();
+
+async function syncServerWithConvexCloud(): Promise<void> {
+  try {
+    const convexUrl = process.env.VITE_CONVEX_URL || DEFAULT_CONVEX_CLOUD_URL;
+    const res = await fetch(`${convexUrl}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'products:list', args: {}, format: 'json' }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data?.status !== 'success' || !Array.isArray(data.value)) return;
+
+    const rawDocs: Product[] = data.value;
+    let changed = false;
+
+    for (const doc of rawDocs) {
+      if (!doc) continue;
+      if (isSystemCloudDoc(doc)) {
+        const slug = String(doc.slug || '').trim();
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(doc.description || '{}');
+        } catch {}
+        if (!parsed || typeof parsed !== 'object') continue;
+
+        if (slug.startsWith('__cod_sys_order_') && parsed.order) {
+          const ord = parsed.order as Order;
+          if (ord && ord._id) {
+            if (parsed.deleted) {
+              serverDeletedOrderIds.add(ord._id);
+              const beforeLen = serverDb.orders.length;
+              serverDb.orders = serverDb.orders.filter((o) => o._id !== ord._id);
+              if (serverDb.orders.length !== beforeLen) changed = true;
+            } else if (!serverDeletedOrderIds.has(ord._id) && !isLegacyFakeOrder(ord)) {
+              const exIdx = serverDb.orders.findIndex((o) => o._id === ord._id);
+              if (exIdx === -1) {
+                serverDb.orders.push(ord);
+                changed = true;
+              } else {
+                const exTime = Number(serverDb.orders[exIdx].updatedAt || serverDb.orders[exIdx].createdAt || 0);
+                const ordTime = Number(ord.updatedAt || ord.createdAt || 0);
+                if (ordTime > exTime) {
+                  serverDb.orders[exIdx] = { ...serverDb.orders[exIdx], ...ord };
+                  changed = true;
+                }
+              }
+            }
+            if (Array.isArray(parsed.history)) {
+              for (const h of parsed.history as OrderStatusHistory[]) {
+                if (h && h._id && !serverDeletedOrderIds.has(h.orderId)) {
+                  if (!serverDb.orderStatusHistory.some((ex) => ex._id === h._id)) {
+                    serverDb.orderStatusHistory.push(h);
+                    changed = true;
+                  }
+                }
+              }
+            }
+          }
+        } else if (slug === '__cod_sys_telemetry' && parsed.type === 'TELEMETRY_RECORD') {
+          if (Array.isArray(parsed.deletedOrderIds)) {
+            for (const delId of parsed.deletedOrderIds) {
+              serverDeletedOrderIds.add(String(delId));
+            }
+            const beforeOrders = serverDb.orders.length;
+            serverDb.orders = serverDb.orders.filter((o) => !serverDeletedOrderIds.has(o._id));
+            if (serverDb.orders.length !== beforeOrders) changed = true;
+          }
+          if (Array.isArray(parsed.visitors)) {
+            for (const v of parsed.visitors as Visitor[]) {
+              if (!v?.visitorId) continue;
+              const ex = serverDb.visitors.find((item) => item.visitorId === v.visitorId);
+              if (!ex) {
+                serverDb.visitors.push(v);
+                changed = true;
+              } else if ((v.lastSeenAt || 0) > (ex.lastSeenAt || 0)) {
+                ex.lastSeenAt = v.lastSeenAt;
+                changed = true;
+              }
+            }
+          }
+          if (Array.isArray(parsed.sessions)) {
+            for (const s of parsed.sessions as AnalyticsSession[]) {
+              if (!s?.sessionId) continue;
+              const ex = serverDb.sessions.find((item) => item.sessionId === s.sessionId);
+              if (!ex) {
+                serverDb.sessions.push(s);
+                changed = true;
+              } else if ((s.lastSeenAt || 0) > (ex.lastSeenAt || 0)) {
+                Object.assign(ex, s, { lastSeenAt: Math.max(ex.lastSeenAt, s.lastSeenAt) });
+                changed = true;
+              }
+            }
+          }
+          if (Array.isArray(parsed.analyticsEvents)) {
+            for (const e of parsed.analyticsEvents as AnalyticsEvent[]) {
+              if (!e || isLegacyFakeEvent(e)) continue;
+              const ordId = e.metadata?.orderId ? String(e.metadata.orderId) : '';
+              if (ordId && serverDeletedOrderIds.has(ordId)) continue;
+              const key = e.clientEventId || e.eventId || e._id;
+              if (
+                !serverDb.analyticsEvents.some(
+                  (ex) => (ex.clientEventId || ex.eventId || ex._id) === key
+                )
+              ) {
+                serverDb.analyticsEvents.push(e);
+                changed = true;
+              }
+            }
+          }
+        } else if (slug === '__cod_sys_settings' && parsed.settings) {
+          serverDb.settings = {
+            ...INITIAL_SETTINGS,
+            ...parsed.settings,
+            ...serverDb.settings,
+            moroccoCities: INITIAL_SETTINGS.moroccoCities,
+          };
+        }
+        continue;
+      }
+
+      if (isLegacySeedProduct(doc)) continue;
+      const status = getProductStatus(doc);
+      const images = Array.isArray(doc.images)
+        ? doc.images.filter(Boolean).map((img) => persistDataUrlImage(img))
+        : [];
+      const descriptionImages = Array.isArray(doc.descriptionImages)
+        ? doc.descriptionImages.filter(Boolean).map((img) => persistDataUrlImage(img))
+        : [];
+      const ogImage = doc.ogImage ? persistDataUrlImage(doc.ogImage) : images[0] || '';
+      const normalizedProd: Product = {
+        ...doc,
+        images,
+        descriptionImages,
+        ogImage,
+        status,
+        isPublished: status === 'ACTIVE',
+        comparePrice: doc.comparePrice ?? doc.compareAtPrice,
+      };
+      const exIdx = serverDb.products.findIndex(
+        (p) =>
+          p._id === normalizedProd._id ||
+          normalizeProductSlug(p.slug) === normalizeProductSlug(normalizedProd.slug)
+      );
+      if (exIdx === -1) {
+        serverDb.products.push(normalizedProd);
+        changed = true;
+      } else {
+        const ex = serverDb.products[exIdx];
+        if ((normalizedProd.updatedAt || 0) >= (ex.updatedAt || 0)) {
+          serverDb.products[exIdx] = { ...ex, ...normalizedProd, _id: normalizedProd._id };
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      serverDb.orders.sort((a, b) => b.createdAt - a.createdAt);
+      serverDb.analyticsEvents.sort((a, b) => a.timestamp - b.timestamp);
+      saveServerDatabase(serverDb);
+    }
+  } catch {}
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  void syncServerWithConvexCloud();
+  setInterval(() => {
+    void syncServerWithConvexCloud();
+  }, 15000);
 
   // High payload limit to support base64 compressed images in products & descriptionImages
   app.use(express.json({ limit: '50mb' }));
@@ -464,6 +642,9 @@ async function startServer() {
         utmCampaign: event.utmCampaign,
         utmTerm: event.utmTerm,
         utmContent: event.utmContent,
+        fbclid: event.fbclid,
+        fbc: event.fbc,
+        fbp: event.fbp,
         referrer: event.referrer,
       },
       serverNow

@@ -109,6 +109,9 @@ export interface AnalyticsSession {
   utmCampaign: string;
   utmTerm: string;
   utmContent: string;
+  fbclid?: string;
+  fbc?: string;
+  fbp?: string;
   referrer: string;
   startedAt: number;
   lastSeenAt: number;
@@ -139,6 +142,10 @@ export interface Order {
   utmCampaign: string;
   utmContent: string;
   utmTerm: string;
+  fbclid?: string;
+  fbc?: string;
+  fbp?: string;
+  landingPage?: string;
   createdAt: number;
   updatedAt?: number;
 }
@@ -192,6 +199,9 @@ export interface AnalyticsEvent {
   utmCampaign: string;
   utmContent: string;
   utmTerm: string;
+  fbclid?: string;
+  fbc?: string;
+  fbp?: string;
   metadata?: Record<string, any>;
 }
 
@@ -312,6 +322,9 @@ export default defineSchema({
     utmCampaign: v.string(),
     utmTerm: v.string(),
     utmContent: v.string(),
+    fbclid: v.optional(v.string()),
+    fbc: v.optional(v.string()),
+    fbp: v.optional(v.string()),
     referrer: v.string(),
     startedAt: v.number(),
     lastSeenAt: v.number(),
@@ -353,6 +366,10 @@ export default defineSchema({
     utmCampaign: v.string(),
     utmContent: v.string(),
     utmTerm: v.string(),
+    fbclid: v.optional(v.string()),
+    fbc: v.optional(v.string()),
+    fbp: v.optional(v.string()),
+    landingPage: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
@@ -436,6 +453,9 @@ export default defineSchema({
     utmCampaign: v.string(),
     utmContent: v.string(),
     utmTerm: v.string(),
+    fbclid: v.optional(v.string()),
+    fbc: v.optional(v.string()),
+    fbp: v.optional(v.string()),
     metadata: v.optional(v.any()),
   })
     .index('by_product', ['productId'])
