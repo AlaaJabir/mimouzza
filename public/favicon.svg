@@ -1,0 +1,33 @@
+<svg viewBox="0 0 120 120" width="120" height="120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fav-grad-1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stopColor="#059669" />
+      <stop offset="45%" stopColor="#10B981" />
+      <stop offset="100%" stopColor="#34D399" />
+    </linearGradient>
+    <linearGradient id="fav-grad-2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#22C55E" />
+      <stop offset="50%" stopColor="#10B981" />
+      <stop offset="100%" stopColor="#047857" />
+    </linearGradient>
+    <linearGradient id="fav-sparkle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#A7F3D0" />
+      <stop offset="100%" stopColor="#34D399" />
+    </linearGradient>
+  </defs>
+
+  <rect width="120" height="120" rx="28" fill="#064E3B" />
+  
+  <g transform="translate(6, 6)">
+    <path
+      d="M 52 98 C 42 98, 20 88, 14 62 C 9 42, 17 22, 28 14 C 32 11, 37 15, 36 21 C 34 32, 38 48, 50 62 C 57 70, 64 77, 68 83 C 69 85, 67 90, 64 93 C 60 97, 56 98, 52 98 Z"
+      fill="url(#fav-grad-1)"
+    />
+    <path
+      d="M 56 98 C 54 94, 52 87, 54 80 C 58 64, 72 45, 88 28 C 98 18, 108 10, 115 6 C 117 5, 118 8, 117 11 C 113 25, 103 48, 88 66 C 76 81, 66 94, 59 98 C 58 98, 57 98, 56 98 Z"
+      fill="url(#fav-grad-2)"
+    />
+    <ellipse cx="62" cy="32" rx="9" ry="14" transform="rotate(28 62 32)" fill="url(#fav-sparkle)" />
+    <circle cx="55" cy="94" r="5" fill="#34D399" />
+  </g>
+</svg>

@@ -3,8 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 export const ADMIN_EMAIL = 'professionnal.a@gmail.com';
 export const ADMIN_PASSWORD = 'alaa.JABIR06';
 
-const AUTH_STORAGE_KEY = 'mimouzza_admin_auth_v1';
-const AUTH_EVENT_NAME = 'mimouzza_auth_change';
+const AUTH_STORAGE_KEY = 'vitalive_admin_auth_v1';
+const LEGACY_AUTH_STORAGE_KEY = 'mimouzza_admin_auth_v1';
+const AUTH_EVENT_NAME = 'vitalive_auth_change';
 
 export interface AdminSession {
   email: string;
@@ -15,7 +16,9 @@ export interface AdminSession {
 export function getAdminSession(): AdminSession | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    const raw =
+      window.localStorage.getItem(AUTH_STORAGE_KEY) ||
+      window.localStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AdminSession;
     if (parsed && parsed.role === 'admin' && parsed.email) {
@@ -73,6 +76,7 @@ export function logoutAdmin(): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
     window.dispatchEvent(new Event(AUTH_EVENT_NAME));
   } catch {
     // ignore storage errors

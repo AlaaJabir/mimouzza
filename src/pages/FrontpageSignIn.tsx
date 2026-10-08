@@ -198,7 +198,7 @@ export const FrontpageSignIn: React.FC<FrontpageSignInProps> = ({
               {/* Quiet Editorial Kicker */}
               <div className="flex flex-wrap items-center gap-2.5 text-xs font-bold text-[#C80C32] tracking-wide">
                 <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-r from-[#FF9A3C] to-[#C80C32]" />
-                <span>Mimouzza Commerce Platform</span>
+                <span>VITALIVE Commerce Platform</span>
                 <span aria-hidden="true" className="text-[#C80C32]/40">·</span>
                 <span className="text-[#6E4850] font-medium">
                   Cash-on-Delivery Landing Pages & Order Operations
@@ -214,7 +214,7 @@ export const FrontpageSignIn: React.FC<FrontpageSignInProps> = ({
                   </span>
                 </h1>
                 <p className="text-base sm:text-lg text-[#573A41] leading-relaxed max-w-2xl font-normal">
-                  Mimouzza is the all-in-one e-commerce platform crafted for modern Cash-on-Delivery brands. Launch persuasive Arabic RTL product pages in seconds, capture 1-step mobile orders with smart bundle pricing, and synchronize your entire fulfillment workflow in real time.
+                  VITALIVE is the all-in-one e-commerce platform crafted for modern Cash-on-Delivery brands. Launch persuasive Arabic RTL product pages in seconds, capture 1-step mobile orders with smart bundle pricing, and synchronize your entire fulfillment workflow in real time.
                 </p>
               </div>
 
@@ -616,7 +616,7 @@ export const FrontpageSignIn: React.FC<FrontpageSignInProps> = ({
         </div>
       </section>
 
-      {/* ==================== SECTION 2: WHAT MIMOUZZA OFFERS (CORE CAPABILITIES) ==================== */}
+      {/* ==================== SECTION 2: WHAT VITALIVE OFFERS (CORE CAPABILITIES) ==================== */}
       <section
         id="capabilities"
         className="py-16 lg:py-24 bg-white border-b border-[#EEDCDD]"
@@ -875,7 +875,7 @@ export const FrontpageSignIn: React.FC<FrontpageSignInProps> = ({
                         {prod.name}
                       </h3>
                       <p className="text-xs text-[#6E4850] line-clamp-2">
-                        {prod.subtitle || prod.tagline}
+                        {prod.shortDescription || prod.offerText || prod.description}
                       </p>
                     </div>
                   </div>
@@ -915,7 +915,7 @@ export const FrontpageSignIn: React.FC<FrontpageSignInProps> = ({
               Admin Sign In
             </button>
             <span>·</span>
-            <span>© {new Date().getFullYear()} Mimouzza</span>
+            <span>© {new Date().getFullYear()} VITALIVE</span>
           </div>
         </div>
       </footer>

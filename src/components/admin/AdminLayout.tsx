@@ -134,7 +134,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Orders');
-    XLSX.writeFile(wb, `Mimouzza_COD_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `Vitalive_COD_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   // Compute Order Distribution donut percentages
@@ -751,19 +751,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                               <td className="py-3.5">
                                 <span
                                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                                    prod.publishStatus === 'published'
+                                    prod.isPublished || prod.status === 'ACTIVE'
                                       ? 'bg-[#E8F8F0] text-[#129A56]'
                                       : 'bg-neutral-100 text-neutral-500'
                                   }`}
                                 >
                                   <span
                                     className={`w-1.5 h-1.5 rounded-full ${
-                                      prod.publishStatus === 'published'
+                                      prod.isPublished || prod.status === 'ACTIVE'
                                         ? 'bg-[#129A56]'
                                         : 'bg-neutral-400'
                                     }`}
                                   />
-                                  {prod.publishStatus === 'published' ? 'Active' : 'Draft'}
+                                  {prod.isPublished || prod.status === 'ACTIVE' ? 'Active' : 'Draft'}
                                 </span>
                               </td>
                               <td className="py-3.5 pr-2 text-right">

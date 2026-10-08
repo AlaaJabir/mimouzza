@@ -381,7 +381,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({
             <MimouzzaLogo height={30} />
           </div>
           <p className="text-xs text-white/90 font-semibold text-center sm:text-right">
-            جميع الحقوق محفوظة © Mimouzza — الدفع عند الاستلام وشحن سريع لكافة المدن
+            جميع الحقوق محفوظة © VITALIVE — الدفع عند الاستلام وشحن سريع لكافة المدن
           </p>
         </div>
       </footer>
