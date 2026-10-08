@@ -397,7 +397,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
 
               <div className="sm:col-span-2 p-4 rounded-2xl border border-neutral-200 bg-[#F8F8F6] space-y-3">
                 <label className="block text-xs font-bold text-[#111111]">
-                  Full Product Description (Arabic) &amp; Description Images
+                  Full Product Description (Arabic) &amp; Description Media (Images / MP4 Videos)
                 </label>
                 <textarea
                   rows={6}

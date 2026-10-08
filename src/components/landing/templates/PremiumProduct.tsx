@@ -8,6 +8,7 @@ import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { MimouzzaLogo } from '../../ui/MimouzzaLogo';
+import { DescriptionMediaItem } from '../DescriptionMediaItem';
 import { trackEvent } from '../../../lib/tracking';
 import {
   Star,
@@ -283,19 +284,17 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({
               </div>
             )}
 
-            {/* Description Images / PNGs below description text inside the description box */}
+            {/* Description Images / MP4 Videos below description text inside the description box */}
             {product.descriptionImages && product.descriptionImages.length > 0 && (
               <div className="space-y-4 pt-2">
-                {product.descriptionImages.map((imgUrl, idx) => (
+                {product.descriptionImages.map((mediaUrl, idx) => (
                   <div
                     key={idx}
                     className="w-full rounded-xl overflow-hidden border border-neutral-700/70 bg-neutral-900/40"
                   >
-                    <img
-                      src={imgUrl}
+                    <DescriptionMediaItem
+                      url={mediaUrl}
                       alt={`${product.name} - تفصيل ${idx + 1}`}
-                      referrerPolicy="no-referrer"
-                      loading="lazy"
                       className="w-full h-auto object-contain mx-auto block"
                     />
                   </div>

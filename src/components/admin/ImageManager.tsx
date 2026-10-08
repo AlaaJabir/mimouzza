@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Upload, Link, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Upload, Link, CheckCircle2, Video, Play } from 'lucide-react';
 import { Button } from '../ui/button';
 import { db } from '../../../convex/db';
+import { isVideoUrl } from '../../lib/media';
 
 interface ImageManagerProps {
   images: string[];
