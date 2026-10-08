@@ -9,7 +9,6 @@ import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { MimouzzaLogo } from '../../ui/MimouzzaLogo';
-import { DescriptionMediaItem } from '../DescriptionMediaItem';
 import { trackEvent } from '../../../lib/tracking';
 import {
   Star,
@@ -19,6 +18,49 @@ import {
   MessageCircle,
   AlertCircle,
 } from 'lucide-react';
+
+const isVideoMedia = (url: string) => {
+  if (!url) return false;
+  const clean = url.trim().toLowerCase();
+  if (clean.includes('/video/upload/') || clean.includes('/video/authenticated/')) return true;
+  return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?(#.*)?$/i.test(clean);
+};
+
+const DescriptionMediaItem: React.FC<{ url: string; alt?: string; className?: string }> = ({
+  url,
+  alt = '',
+  className = 'w-full h-auto object-contain mx-auto block',
+}) => {
+  if (!url) return null;
+  const isVideo = isVideoMedia(url);
+
+  if (isVideo) {
+    return (
+      <div className="relative w-full overflow-hidden bg-black/5 rounded-xl">
+        <video
+          src={url}
+          autoPlay
+          loop
+          muted
+          playsInline
+          controls
+          preload="metadata"
+          className={`${className} w-full rounded-xl`}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt={alt}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      className={className}
+    />
+  );
+};
 
 interface ClassicCODProps {
   product: Product;
