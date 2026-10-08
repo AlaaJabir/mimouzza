@@ -478,10 +478,10 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
         <div>
           <label className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
             <ImageIcon className="w-4 h-4 text-[#FF6B00]" />
-            <span>Description Feature Images (PNG / JPG below Arabic description)</span>
+            <span>Description Feature Images & MP4 Videos (below Arabic description)</span>
           </label>
           <p className="text-[11px] text-neutral-500 mt-0.5">
-            Displayed directly below the product description across all landing page templates.
+            Displayed directly below the product description. Supports PNG, JPG, and MP4 video links (auto-play).
           </p>
         </div>
 
@@ -518,7 +518,7 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-neutral-700 flex items-center gap-1">
             <Link className="w-3.5 h-3.5 text-[#FF6B00]" />
-            <span>Image URL Input Slots:</span>
+            <span>Media URL Input Slots (Image or MP4 Video):</span>
           </span>
           <button
             type="button"
@@ -544,7 +544,7 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
                       handleAddLinkFromBox(idx);
                     }
                   }}
-                  placeholder={`Slot #${idx + 1}: Paste image or PNG URL (https://...)`}
+                  placeholder={`Slot #${idx + 1}: Paste Image URL or MP4 Video URL (https://.../video.mp4)`}
                   dir="ltr"
                   className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00] font-mono text-left"
                 />
@@ -571,36 +571,60 @@ export const DescriptionImagesManager: React.FC<DescriptionImagesManagerProps> =
         </div>
       </div>
 
-      {/* Added Description Images List */}
+      {/* Added Description Media List */}
       {images.length > 0 && (
         <div className="space-y-2 pt-1">
           <div className="text-[11px] font-bold text-[#111111]">
-            Saved Description Images ({images.length}):
+            Saved Description Media ({images.length}):
           </div>
           <div className="space-y-2">
             {images.map((imgUrl, index) => {
-              const isDataUri = imgUrl.startsWith('data:');
+              const isDataUri = imgUrl.startsWith('data:image/');
+              const isVideo = isVideoUrl(imgUrl);
               return (
                 <div
                   key={index}
                   className="flex items-center gap-3 p-2.5 rounded-2xl border border-neutral-200 bg-[#F8F8F6]"
                 >
-                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border border-neutral-200 shrink-0 flex items-center justify-center">
-                    <img
-                      src={imgUrl}
-                      alt={`Description img ${index + 1}`}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-contain"
-                    />
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-black/5 border border-neutral-200 shrink-0 relative flex items-center justify-center">
+                    {isVideo ? (
+                      <>
+                        <video
+                          src={imgUrl}
+                          muted
+                          playsInline
+                          autoPlay
+                          loop
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
+                          <Play className="w-4 h-4 text-white fill-white drop-shadow" />
+                        </div>
+                      </>
+                    ) : (
+                      <img
+                        src={imgUrl}
+                        alt={`Description media ${index + 1}`}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-contain"
+                      />
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-extrabold text-white bg-[#111111] px-2.5 py-0.5 rounded-full">
-                        Desc Image #{index + 1}
-                      </span>
+                      {isVideo ? (
+                        <span className="text-[11px] font-extrabold text-white bg-purple-700 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                          <Video className="w-3 h-3" />
+                          <span>MP4 Video #{index + 1}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-extrabold text-white bg-[#111111] px-2.5 py-0.5 rounded-full">
+                          Desc Image #{index + 1}
+                        </span>
+                      )}
                       <span className="text-[10px] text-emerald-700 font-semibold">
-                        ✓ Saved in DB
+                        {isVideo ? '✓ Auto-play Active' : '✓ Saved in DB'}
                       </span>
                     </div>
 
