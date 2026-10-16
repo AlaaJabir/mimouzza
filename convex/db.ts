@@ -1010,37 +1010,87 @@ export class ConvexMemoryStore {
         } catch {}
       }
 
-      const payload = {
+      // Strip redundant bulky fields (userAgent, nested query strings, duplicate fbclid)
+      // to keep telemetry document tiny (< 150 KB) and well within Convex Cloud's 1 MiB limit
+      const compactEvents = this.analyticsEvents.slice(-200).map((e) => ({
+        eventId: e.eventId,
+        eventType: e.eventType,
+        visitorId: e.visitorId,
+        sessionId: e.sessionId,
+        productId: e.productId,
+        timestamp: e.timestamp,
+        createdAt: e.createdAt || e.timestamp,
+        ctaId: e.ctaId || e.metadata?.ctaId || undefined,
+        pageUrl: (e.pageUrl || '').split('?')[0].slice(0, 120),
+        referrer: (e.referrer || '').slice(0, 80),
+        utmSource: e.utmSource || '',
+        utmMedium: e.utmMedium || '',
+        utmCampaign: e.utmCampaign || '',
+      }));
+
+      const compactSessions = this.sessions.slice(-120).map((s) => ({
+        sessionId: s.sessionId,
+        visitorId: s.visitorId,
+        productId: s.productId,
+        landingPage: (s.landingPage || '').split('?')[0].slice(0, 120),
+        utmSource: s.utmSource || '',
+        utmMedium: s.utmMedium || '',
+        utmCampaign: s.utmCampaign || '',
+        referrer: (s.referrer || '').slice(0, 80),
+        startedAt: s.startedAt,
+        lastSeenAt: s.lastSeenAt || s.startedAt,
+      }));
+
+      const compactVisitors = this.visitors.slice(-120).map((v) => ({
+        visitorId: v.visitorId,
+        firstSeenAt: v.firstSeenAt,
+        lastSeenAt: v.lastSeenAt || v.firstSeenAt,
+      }));
+
+      const payload: Record<string, any> = {
         type: 'TELEMETRY_RECORD',
-        visitors: this.visitors.slice(-500),
-        sessions: this.sessions.slice(-500),
-        analyticsEvents: this.analyticsEvents.slice(-800),
-        orderStatusHistory: this.orderStatusHistory.slice(-400),
+        visitors: compactVisitors,
+        sessions: compactSessions,
+        analyticsEvents: compactEvents,
+        orderStatusHistory: this.orderStatusHistory.slice(-50),
         deletedOrderIds: Array.from(this.deletedOrderIds),
       };
+
+      let payloadJson = JSON.stringify(payload);
+      if (payloadJson.length > 350000) {
+        payload.analyticsEvents = compactEvents.slice(-100);
+        payload.sessions = compactSessions.slice(-60);
+        payload.visitors = compactVisitors.slice(-60);
+        payloadJson = JSON.stringify(payload);
+      }
 
       const targetDocId = (found.ok && found.value?._id) || this.telemetryConvexDocId;
       if (targetDocId) {
         this.telemetryConvexDocId = targetDocId;
-        await this.callConvexMutation('products:update', {
+        const res = await this.callConvexMutation('products:update', {
           id: targetDocId,
           updates: {
-            description: JSON.stringify(payload),
+            description: payloadJson,
             isPublished: false,
             status: 'ARCHIVED',
           },
         });
+        if (!res.ok) {
+          console.warn('Convex telemetry update failed:', res.errorMessage);
+        }
         this.saveProductsBackup();
         return;
       }
 
       const createArgs = buildConvexSystemDocArgs(sysSlug, '__SYS_TELEMETRY__', payload, 0);
+      createArgs.description = payloadJson;
       const created = await this.callConvexMutation<string>('products:create', createArgs);
       if (created.ok && typeof created.value === 'string' && created.value) {
         this.telemetryConvexDocId = created.value;
       }
       this.saveProductsBackup();
-    } catch {
+    } catch (err) {
+      console.warn('Telemetry sync error:', err);
     } finally {
       this.isSyncingTelemetry = false;
       if (this.pendingTelemetryResync) {
@@ -1208,6 +1258,16 @@ export class ConvexMemoryStore {
       void this.syncWithConvexCloud();
       void this.syncWithServer();
     }, 4000);
+
+    // Flush telemetry immediately on mobile tab hidden or pagehide
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        void this.persistTelemetryToConvexCloud();
+      }
+    });
+    window.addEventListener('pagehide', () => {
+      void this.persistTelemetryToConvexCloud();
+    });
   }
 
   public async waitForHydration(): Promise<void> {
@@ -2379,7 +2439,13 @@ export class ConvexMemoryStore {
     this.analyticsEvents.push(newEvent);
     this.saveProductsBackup();
     notifySubscribers();
-    this.scheduleTelemetryConvexSync();
+    this.scheduleTelemetryConvexSync(
+      event.eventType === 'PAGE_VIEW' ||
+      event.eventType === 'PRODUCT_VIEW' ||
+      event.eventType === 'ORDER_CREATED'
+        ? 100
+        : 300
+    );
 
     if (typeof window !== 'undefined') {
       void fetch('/api/db/event', {
@@ -2391,7 +2457,11 @@ export class ConvexMemoryStore {
           session,
         }),
       })
-        .then((r) => r.json())
+        .then((r) => {
+          const ct = r.headers.get('content-type') || '';
+          if (ct.includes('application/json')) return r.json();
+          return null;
+        })
         .then((res) => {
           if (res && res.ok && res.event) {
             const idx = this.analyticsEvents.findIndex((e) => e._id === newEvent._id);
