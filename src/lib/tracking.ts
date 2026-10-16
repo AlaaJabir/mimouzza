@@ -358,10 +358,25 @@ export function getDiagnosticEvents(): DiagnosticEventRecord[] {
  */
 export const DEFAULT_META_PIXEL_ID = '135752956164308';
 
-const initializedMetaPixelIds = new Set<string>([DEFAULT_META_PIXEL_ID]);
+const initializedMetaPixelIds = new Set<string>();
 const trackedMetaPageViews = new Set<string>();
 let tiktokPixelInjected = false;
 let gaInjected = false;
+
+export function getMetaTestEventCode(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeFromUrl = urlParams.get('test_event_code') || urlParams.get('test_code');
+    if (codeFromUrl) {
+      sessionStorage.setItem('meta_test_event_code', codeFromUrl.trim());
+      return codeFromUrl.trim();
+    }
+    return sessionStorage.getItem('meta_test_event_code') || null;
+  } catch {
+    return null;
+  }
+}
 
 export function ensureMetaPixelBaseScript() {
   if (typeof window === 'undefined') return;
@@ -413,7 +428,12 @@ export function activateMetaPixelId(pixelId?: string, trackPageViewNow = false) 
       const pathKey = `${cleanId}:${window.location.pathname}${window.location.search}`;
       if (!trackedMetaPageViews.has(pathKey)) {
         trackedMetaPageViews.add(pathKey);
-        window.fbq('track', 'PageView');
+        const testCode = getMetaTestEventCode();
+        if (testCode) {
+          window.fbq('track', 'PageView', {}, { test_event_code: testCode });
+        } else {
+          window.fbq('track', 'PageView');
+        }
         recordDiagnosticEvent({
           eventType: 'PageView',
           target: 'Meta',
@@ -655,10 +675,15 @@ export function trackEvent(params: {
 
   if (window.fbq) {
     try {
-      const fbEventId = { eventID: eventId };
+      const testCode = getMetaTestEventCode();
+      const fbEventOptions: Record<string, any> = { eventID: eventId };
+      if (testCode) {
+        fbEventOptions.test_event_code = testCode;
+      }
+
       switch (params.eventType) {
         case 'PAGE_VIEW':
-          window.fbq('track', 'PageView', {}, fbEventId);
+          window.fbq('track', 'PageView', {}, fbEventOptions);
           recordDiagnosticEvent({ eventType: 'PageView', target: 'Meta' });
           break;
         case 'PRODUCT_VIEW':
@@ -673,16 +698,16 @@ export function trackEvent(params: {
               value: params.price || 0,
               currency: params.currency || 'MAD',
             },
-            fbEventId
+            fbEventOptions
           );
           recordDiagnosticEvent({ eventType: 'ViewContent', target: 'Meta' });
           break;
         case 'CTA_CLICK':
-          window.fbq('trackCustom', 'CTA_Click', { ctaId }, fbEventId);
+          window.fbq('trackCustom', 'CTA_Click', { ctaId }, fbEventOptions);
           recordDiagnosticEvent({ eventType: 'CTA_Click', target: 'Meta', metadata: { ctaId } });
           break;
         case 'FORM_START':
-          window.fbq('track', 'InitiateCheckout', {}, fbEventId);
+          window.fbq('track', 'InitiateCheckout', {}, fbEventOptions);
           recordDiagnosticEvent({ eventType: 'InitiateCheckout', target: 'Meta' });
           break;
         case 'ORDER_CREATED':
@@ -694,7 +719,7 @@ export function trackEvent(params: {
               value: params.price || 0,
               currency: params.currency || 'MAD',
             },
-            fbEventId
+            fbEventOptions
           );
           window.fbq(
             'track',
@@ -703,7 +728,7 @@ export function trackEvent(params: {
               value: params.price || 0,
               currency: params.currency || 'MAD',
             },
-            fbEventId
+            fbEventOptions
           );
           recordDiagnosticEvent({ eventType: 'Lead & Purchase', target: 'Meta' });
           break;

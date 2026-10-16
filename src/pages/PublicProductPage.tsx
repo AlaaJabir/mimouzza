@@ -98,7 +98,7 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
 
     const customMeta = product.customMetaPixelId?.trim();
     const globalMeta = settings?.metaPixelId?.trim() || '135752956164308';
-    const metaPixelId = customMeta || globalMeta;
+    const metaPixelId = customMeta || globalMeta || '135752956164308';
 
     const customTikTok = product.customTikTokPixelId?.trim();
     const globalTikTok = settings?.tiktokPixelId?.trim();

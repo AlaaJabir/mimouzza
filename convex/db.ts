@@ -1620,7 +1620,11 @@ export class ConvexMemoryStore {
 
   // --- PRODUCTS ---
   public getProducts(): Product[] {
-    return [...this.products];
+    return this.products.map((p) => ({
+      ...p,
+      customMetaPixelId: p.customMetaPixelId?.trim() || '135752956164308',
+      useCustomPixels: true,
+    }));
   }
 
   public getProductBySlug(slug: string): Product | null | undefined {
@@ -1636,11 +1640,26 @@ export class ConvexMemoryStore {
     if (!found && !this.isHydrated) {
       return undefined;
     }
-    return found;
+    if (found) {
+      return {
+        ...found,
+        customMetaPixelId: found.customMetaPixelId?.trim() || '135752956164308',
+        useCustomPixels: true,
+      };
+    }
+    return null;
   }
 
   public getProductById(id: string): Product | null {
-    return this.products.find((p) => p._id === id) || null;
+    const found = this.products.find((p) => p._id === id) || null;
+    if (found) {
+      return {
+        ...found,
+        customMetaPixelId: found.customMetaPixelId?.trim() || '135752956164308',
+        useCustomPixels: true,
+      };
+    }
+    return null;
   }
 
   public async createProduct(
@@ -1654,6 +1673,8 @@ export class ConvexMemoryStore {
 
     const newProduct: Product = {
       ...data,
+      customMetaPixelId: data.customMetaPixelId?.trim() || '135752956164308',
+      useCustomPixels: true,
       _id: 'prod_' + now.toString(36) + '_' + Math.random().toString(36).substring(2, 7),
       slug: uniqueSlug,
       status: resolvedStatus,

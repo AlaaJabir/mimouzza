@@ -47,6 +47,8 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       const status = getProductStatus(initialProduct);
       return {
         ...rest,
+        customMetaPixelId: initialProduct.customMetaPixelId?.trim() || '135752956164308',
+        useCustomPixels: true,
         status,
         isPublished: status === 'ACTIVE',
       };
@@ -81,6 +83,8 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
         { question: 'متى سأستلم طلبي؟', answer: 'يصلك الطلب خلال 24 إلى 48 ساعة بعد تأكيد العنوان هاتفياً.' },
         { question: 'كيف يتم الدفع؟', answer: 'الدفع يتم نقداً عند الاستلام بعد معاينة المنتج.' },
       ],
+      customMetaPixelId: '135752956164308',
+      useCustomPixels: true,
     };
   });
 
@@ -168,8 +172,11 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           ? formData.images[0]
           : '';
 
+    const resolvedMetaPixel = formData.customMetaPixelId?.trim() || '135752956164308';
     const payloadToSave = {
       ...formData,
+      customMetaPixelId: resolvedMetaPixel,
+      useCustomPixels: true,
       slug: desiredSlug,
       status: resolvedStatus,
       isPublished: resolvedStatus === 'ACTIVE',
@@ -181,9 +188,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     setErrorMsg('');
 
     try {
-      if (formData.customMetaPixelId?.trim()) {
-        activateMetaPixelId(formData.customMetaPixelId.trim(), true);
-      }
+      activateMetaPixelId(resolvedMetaPixel, true);
       let saved: Product;
       if (isEditing && initialProduct?._id) {
         saved = await updateProduct({
@@ -839,17 +844,17 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
 
             <div className="space-y-3">
               <p className="text-[11px] text-neutral-500 leading-relaxed">
-                Your global store Meta Pixel (<code className="font-mono font-bold text-[#111111]">135752956164308</code>) is active on all landing pages by default. Enter an ID below only if you want a dedicated pixel for this product:
+                Le pixel Meta (<code className="font-mono font-bold text-[#111111]">135752956164308</code>) يتم ربطه وتفعيله تلقائياً في جميع صفحات الهبوط التي تنشئها بدون الحاجة لأي إعداد يدوي. يمكنك تخصيص Pixel ID آخر إذا أردت:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <div>
                   <label className="block text-xs font-bold text-[#111111] mb-1">
-                    Custom Meta Pixel ID (Optional)
+                    Meta Pixel ID (Facebook &amp; Instagram Ads)
                   </label>
                   <input
                     type="text"
-                    value={formData.customMetaPixelId || ''}
+                    value={formData.customMetaPixelId ?? '135752956164308'}
                     onChange={(e) => {
                       const val = e.target.value;
                       setFormData((prev) => ({
@@ -859,9 +864,13 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                       }));
                     }}
                     placeholder="135752956164308"
-                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-[#F8F8F6] font-mono text-left focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-neutral-200 bg-white font-mono text-left focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                     dir="ltr"
                   />
+                  <p className="text-[10px] text-emerald-600 mt-1 font-semibold flex items-center gap-1">
+                    <span>✓</span>
+                    <span>مفعّل تلقائياً لكل صفحة هبوط (135752956164308)</span>
+                  </p>
                 </div>
 
                 <div>
