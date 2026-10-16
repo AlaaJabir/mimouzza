@@ -107,13 +107,15 @@ export const PublicProductPage: React.FC<PublicProductPageProps> = ({
     const enableMeta = Boolean(metaPixelId);
     const enableTikTok = Boolean(tiktokPixelId);
 
+    const gaId = settings?.googleAnalyticsId?.trim() || 'G-SY0FCG79E6';
+
     initMarketingPixels({
       metaPixelId,
       enableMeta,
       tiktokPixelId,
       enableTikTok,
-      gaId: settings?.googleAnalyticsId,
-      enableGA: Boolean(settings?.enableGoogleAnalytics && settings?.googleAnalyticsId),
+      gaId,
+      enableGA: settings?.enableGoogleAnalytics ?? true,
     });
   }, [product, settings]);
 

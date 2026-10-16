@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useAppRouter } from './lib/router';
 import { useQuery } from './lib/convex-client';
 import { api } from '../convex/api';
-import { initMarketingPixels, DEFAULT_META_PIXEL_ID } from './lib/tracking';
+import { initMarketingPixels, DEFAULT_META_PIXEL_ID, DEFAULT_GA_ID } from './lib/tracking';
 import { PublicProductPage } from './pages/PublicProductPage';
 import { FrontpageSignIn } from './pages/FrontpageSignIn';
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -16,13 +16,14 @@ export function App() {
 
   useEffect(() => {
     const metaPixelId = settings?.metaPixelId?.trim() || DEFAULT_META_PIXEL_ID;
+    const gaId = settings?.googleAnalyticsId?.trim() || DEFAULT_GA_ID;
     initMarketingPixels({
       metaPixelId,
       enableMeta: settings?.enableMetaPixel ?? true,
       tiktokPixelId: settings?.tiktokPixelId,
       enableTikTok: Boolean(settings?.enableTikTokPixel && settings?.tiktokPixelId),
-      gaId: settings?.googleAnalyticsId,
-      enableGA: Boolean(settings?.enableGoogleAnalytics && settings?.googleAnalyticsId),
+      gaId,
+      enableGA: settings?.enableGoogleAnalytics ?? true,
     });
   }, [
     route.type,

@@ -357,6 +357,7 @@ export function getDiagnosticEvents(): DiagnosticEventRecord[] {
  * Dynamic Pixel Injections
  */
 export const DEFAULT_META_PIXEL_ID = '135752956164308';
+export const DEFAULT_GA_ID = 'G-SY0FCG79E6';
 
 const initializedMetaPixelIds = new Set<string>();
 const trackedMetaPageViews = new Set<string>();
@@ -526,25 +527,29 @@ export function initMarketingPixels(options: {
     }
   }
 
-  // 3. Google Analytics 4
-  if (options.enableGA && options.gaId && !gaInjected) {
+  // 3. Google Analytics 4 (Google tag G-SY0FCG79E6)
+  const targetGaId = (options.gaId || DEFAULT_GA_ID).trim();
+  const shouldEnableGA = options.enableGA !== false && Boolean(targetGaId);
+  if (shouldEnableGA && !gaInjected) {
     try {
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(options.gaId)}`;
-      document.head.appendChild(script);
+      if (!window.gtag) {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () {
+          window.dataLayer!.push(arguments);
+        };
+        window.gtag('js', new Date());
+        window.gtag('config', targetGaId);
 
-      window.dataLayer = window.dataLayer || [];
-      window.gtag = function () {
-        window.dataLayer!.push(arguments);
-      };
-      window.gtag('js', new Date());
-      window.gtag('config', options.gaId);
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(targetGaId)}`;
+        document.head.appendChild(script);
+      }
       gaInjected = true;
       recordDiagnosticEvent({
         eventType: 'Pixel_Init',
         target: 'Google',
-        metadata: { gaId: options.gaId },
+        metadata: { gaId: targetGaId },
       });
     } catch (e) {
       console.warn('Google Analytics initialization failed:', e);
@@ -793,6 +798,76 @@ export function trackEvent(params: {
       }
     } catch (e) {
       console.warn('TikTok pixel track error:', e);
+    }
+  }
+
+  // 4. Dispatch to Google tag (gtag.js G-SY0FCG79E6)
+  if (typeof window !== 'undefined' && window.gtag) {
+    try {
+      switch (params.eventType) {
+        case 'PAGE_VIEW':
+          window.gtag('event', 'page_view', {
+            page_path: window.location.pathname,
+            page_location: window.location.href,
+          });
+          recordDiagnosticEvent({ eventType: 'PageView', target: 'Google' });
+          break;
+        case 'PRODUCT_VIEW':
+        case 'VIEW_CONTENT':
+          window.gtag('event', 'view_item', {
+            currency: params.currency || 'MAD',
+            value: params.price || 0,
+            items: [
+              {
+                item_id: params.productId,
+                item_name: params.productName || params.productId,
+                price: params.price || 0,
+              },
+            ],
+          });
+          recordDiagnosticEvent({ eventType: 'ViewContent', target: 'Google' });
+          break;
+        case 'CTA_CLICK':
+          window.gtag('event', 'select_item', {
+            item_list_name: ctaId,
+          });
+          recordDiagnosticEvent({ eventType: 'CTA_Click', target: 'Google', metadata: { ctaId } });
+          break;
+        case 'FORM_START':
+          window.gtag('event', 'begin_checkout', {
+            currency: params.currency || 'MAD',
+            value: params.price || 0,
+            items: [
+              {
+                item_id: params.productId,
+                item_name: params.productName || params.productId,
+                price: params.price || 0,
+              },
+            ],
+          });
+          recordDiagnosticEvent({ eventType: 'InitiateCheckout', target: 'Google' });
+          break;
+        case 'ORDER_CREATED':
+        case 'ORDER_SUCCESS':
+          window.gtag('event', 'purchase', {
+            transaction_id: eventId,
+            value: params.price || 0,
+            currency: params.currency || 'MAD',
+            items: [
+              {
+                item_id: params.productId,
+                item_name: params.productName || params.productId,
+                price: params.price || 0,
+              },
+            ],
+          });
+          recordDiagnosticEvent({ eventType: 'Purchase', target: 'Google' });
+          break;
+        default:
+          break;
+      }
+    } catch (e) {
+      console.warn('Google Analytics event dispatch error:', e);
     }
   }
 

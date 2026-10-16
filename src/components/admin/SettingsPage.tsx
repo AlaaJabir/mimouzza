@@ -31,8 +31,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
   const [enableMetaPixel, setEnableMetaPixel] = useState(true);
   const [tiktokPixelId, setTiktokPixelId] = useState('');
   const [enableTikTokPixel, setEnableTikTokPixel] = useState(false);
-  const [googleAnalyticsId, setGoogleAnalyticsId] = useState('');
-  const [enableGoogleAnalytics, setEnableGoogleAnalytics] = useState(false);
+  const [googleAnalyticsId, setGoogleAnalyticsId] = useState('G-SY0FCG79E6');
+  const [enableGoogleAnalytics, setEnableGoogleAnalytics] = useState(true);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,8 +50,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenDiagnostics })
       setEnableMetaPixel(settings.enableMetaPixel ?? Boolean(resolvedMetaId));
       setTiktokPixelId(settings.tiktokPixelId || '');
       setEnableTikTokPixel(Boolean(settings.enableTikTokPixel));
-      setGoogleAnalyticsId(settings.googleAnalyticsId || '');
-      setEnableGoogleAnalytics(Boolean(settings.enableGoogleAnalytics));
+      const resolvedGaId = settings.googleAnalyticsId || 'G-SY0FCG79E6';
+      setGoogleAnalyticsId(resolvedGaId);
+      setEnableGoogleAnalytics(settings.enableGoogleAnalytics ?? true);
     }
   }, [settings]);
 

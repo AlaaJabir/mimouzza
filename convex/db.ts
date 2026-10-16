@@ -504,8 +504,8 @@ export const INITIAL_SETTINGS: StoreSettings = {
   enableMetaPixel: true,
   tiktokPixelId: '',
   enableTikTokPixel: false,
-  googleAnalyticsId: '',
-  enableGoogleAnalytics: false,
+  googleAnalyticsId: 'G-SY0FCG79E6',
+  enableGoogleAnalytics: true,
   campaignAdSpends: {},
 };
 
@@ -1600,8 +1600,10 @@ export class ConvexMemoryStore {
                 incomingHistories.push(...parsed.history);
               }
             }
-          } else if (slug === '__cod_sys_telemetry' && parsed.type === 'TELEMETRY_RECORD') {
-            this.telemetryConvexDocId = doc._id;
+          } else if (slug.startsWith('__cod_sys_telemetry') && parsed.type === 'TELEMETRY_RECORD') {
+            if (slug === '__cod_sys_telemetry') {
+              this.telemetryConvexDocId = doc._id;
+            }
             if (Array.isArray(parsed.deletedOrderIds)) {
               parsed.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
             }
