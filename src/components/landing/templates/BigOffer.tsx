@@ -5,6 +5,7 @@ import { ProductGallery } from '../ProductGallery';
 import { Benefits } from '../Benefits';
 import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
+import { QuickOrderModal } from '../QuickOrderModal';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
@@ -74,6 +75,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({
 }) => {
   const initialDuration = (product.countdownDurationMinutes || 120) * 60;
   const [secondsRemaining, setSecondsRemaining] = useState(initialDuration);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
   useEffect(() => {
     if (isPreview) return;
@@ -127,7 +129,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({
         isPreview,
       });
     }
-    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+    setIsOrderModalOpen(true);
   };
 
   const handleMidCtaClick = () => {
@@ -143,7 +145,7 @@ export const BigOffer: React.FC<BigOfferProps> = ({
         isPreview,
       });
     }
-    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+    setIsOrderModalOpen(true);
   };
 
   const handleWhatsAppClick = () => {
@@ -434,6 +436,17 @@ export const BigOffer: React.FC<BigOfferProps> = ({
         ctaText={product.ctaText}
         productId={product._id}
         productName={product.name}
+        isPreview={isPreview}
+        onOpenOrderModal={() => setIsOrderModalOpen(true)}
+      />
+
+      {/* Quick Order Popup Modal (High Conversion Popup) */}
+      <QuickOrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        product={product}
+        utmParams={utmParams}
+        accentColor="rose"
         isPreview={isPreview}
       />
     </div>

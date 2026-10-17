@@ -9,6 +9,7 @@ interface StickyOrderButtonProps {
   productId?: string;
   productName?: string;
   isPreview?: boolean;
+  onOpenOrderModal?: () => void;
 }
 
 export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
@@ -18,6 +19,7 @@ export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
   productId,
   productName,
   isPreview = false,
+  onOpenOrderModal,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -41,7 +43,7 @@ export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToForm = () => {
+  const handleClick = () => {
     if (productId && !isPreview) {
       trackEvent({
         eventType: 'CTA_CLICK',
@@ -53,6 +55,11 @@ export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
         metadata: { ctaId: 'sticky_cta', elementId: 'sticky_cta' },
         isPreview,
       });
+    }
+
+    if (onOpenOrderModal) {
+      onOpenOrderModal();
+      return;
     }
 
     const formEl = document.getElementById('order-form-container');
@@ -79,7 +86,7 @@ export const StickyOrderButton: React.FC<StickyOrderButtonProps> = ({
         </div>
 
         <button
-          onClick={scrollToForm}
+          onClick={handleClick}
           type="button"
           className="flex-1 py-3 px-4 rounded-2xl bg-[#FF6B00] hover:bg-[#e66000] text-white font-black text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
         >

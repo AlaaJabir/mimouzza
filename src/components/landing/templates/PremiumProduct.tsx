@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '../../../../convex/schema';
 import { TopAnnouncementBar } from '../OfferBanner';
 import { ProductGallery } from '../ProductGallery';
@@ -6,6 +6,7 @@ import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
+import { QuickOrderModal } from '../QuickOrderModal';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
 import { MimouzzaLogo } from '../../ui/MimouzzaLogo';
 import { trackEvent } from '../../../lib/tracking';
@@ -78,6 +79,8 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({
   utmParams,
   isPreview = false,
 }) => {
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+
   const discountPct =
     product.compareAtPrice > product.price
       ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
@@ -116,7 +119,7 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({
         isPreview,
       });
     }
-    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+    setIsOrderModalOpen(true);
   };
 
   const handleMidCtaClick = () => {
@@ -132,7 +135,7 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({
         isPreview,
       });
     }
-    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+    setIsOrderModalOpen(true);
   };
 
   const handleWhatsAppClick = () => {
@@ -398,6 +401,17 @@ export const PremiumProduct: React.FC<PremiumProductProps> = ({
         ctaText={product.ctaText}
         productId={product._id}
         productName={product.name}
+        isPreview={isPreview}
+        onOpenOrderModal={() => setIsOrderModalOpen(true)}
+      />
+
+      {/* Quick Order Popup Modal */}
+      <QuickOrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        product={product}
+        utmParams={utmParams}
+        accentColor="amber"
         isPreview={isPreview}
       />
     </div>

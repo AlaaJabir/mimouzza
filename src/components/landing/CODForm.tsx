@@ -39,6 +39,8 @@ interface CODFormProps {
   onOrderSuccess?: (orderId: string, orderNumber: string) => void;
   className?: string;
   isPreview?: boolean;
+  isModal?: boolean;
+  onClose?: () => void;
 }
 
 const CITY_SEARCH_ALIASES: Record<string, string[]> = {
@@ -102,6 +104,8 @@ export const CODForm: React.FC<CODFormProps> = ({
   onOrderSuccess,
   className = '',
   isPreview = false,
+  isModal = false,
+  onClose,
 }) => {
   const settings = useQuery(api.settings.get);
   const createOrder = useMutation(api.orders.create);
@@ -559,19 +563,29 @@ export const CODForm: React.FC<CODFormProps> = ({
           <span>يرجى إبقاء هاتفك مشغلاً للرد على اتصال موزع الشحن.</span>
         </div>
 
-        <Button
-          onClick={() => {
-            setSubmittedOrder(null);
-            setCustomerName('');
-            setPhone('');
-            setAddress('');
-            setForceSubmitDuplicate(false);
-          }}
-          variant="outline"
-          className="w-full text-xs"
-        >
-          طلب منتج آخر أو تعديل الطلب
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          {isModal && onClose && (
+            <Button
+              onClick={onClose}
+              className="w-full text-xs bg-[#129A56] hover:bg-[#0f8247] text-white font-bold py-2.5 cursor-pointer"
+            >
+              تم — إغلاق النافذة
+            </Button>
+          )}
+          <Button
+            onClick={() => {
+              setSubmittedOrder(null);
+              setCustomerName('');
+              setPhone('');
+              setAddress('');
+              setForceSubmitDuplicate(false);
+            }}
+            variant="outline"
+            className="w-full text-xs cursor-pointer"
+          >
+            طلب منتج آخر أو تعديل الطلب
+          </Button>
+        </div>
       </div>
     );
   }
@@ -580,25 +594,54 @@ export const CODForm: React.FC<CODFormProps> = ({
   return (
     <div
       ref={formContainerRef}
-      id="order-form-container"
-      className={`bg-white rounded-3xl border border-neutral-200/80 shadow-xl ${className}`}
+      id={isModal ? 'order-form-modal-container' : 'order-form-container'}
+      className={`bg-white ${isModal ? 'rounded-3xl' : 'rounded-3xl border border-neutral-200/80 shadow-xl'} ${className}`}
       dir="rtl"
     >
       {/* Header Banner */}
-      <div className="bg-[#C80C32] text-white p-5 sm:p-6 text-center space-y-2 rounded-t-3xl">
+      <div className="bg-[#C80C32] text-white p-4 sm:p-6 text-center space-y-2 rounded-t-3xl relative">
         <div dir="ltr" className="flex items-center justify-center mb-1">
-          <MimouzzaLogo height={30} />
+          <MimouzzaLogo height={isModal ? 26 : 30} />
         </div>
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-white/15 border border-white/25 text-white rounded-full text-xs font-extrabold uppercase tracking-wide">
-          <Truck className="w-4 h-4 text-amber-300" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-white/15 border border-white/25 text-white rounded-full text-xs font-extrabold uppercase tracking-wide">
+          <Truck className="w-3.5 h-3.5 text-amber-300" />
           الدفع نقداً عند الاستلام (COD)
         </div>
-        <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white">
-          نموذج الطلب السريع
+        <h3 className="text-base sm:text-xl font-extrabold text-white">
+          {isModal ? 'طلب سريع — الدفع عند الاستلام' : 'نموذج الطلب السريع'}
         </h3>
-        <p className="text-xs sm:text-sm text-white/90 mt-1">
-          املأ بياناتك أسفله وسيصلك المنتج لباب منزلك دون دفع مسبق!
-        </p>
+        {!isModal && (
+          <p className="text-xs sm:text-sm text-white/90 mt-1">
+            املأ بياناتك أسفله وسيصلك المنتج لباب منزلك دون دفع مسبق!
+          </p>
+        )}
+
+        {/* Product preview mini-bar inside modal */}
+        {isModal && (
+          <div className="mt-2 pt-2 border-t border-white/20 flex items-center justify-between bg-black/15 rounded-xl p-2 text-right">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {product.images && product.images[0] && (
+                <img
+                  src={product.images[0]}
+                  alt={product.name}
+                  className="w-10 h-10 rounded-lg object-cover bg-white shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-white truncate max-w-[200px] sm:max-w-[260px]">
+                  {product.name}
+                </div>
+                <div className="text-[11px] text-amber-200 font-semibold">
+                  🚚 توصيل مجاني وسريع لكافة المدن
+                </div>
+              </div>
+            </div>
+            <div className="shrink-0 text-left pl-1">
+              <span className="text-base font-black text-white font-mono">{product.price}</span>{' '}
+              <span className="text-xs font-extrabold text-amber-300">{product.currency || 'DH'}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Duplicate Order Warning Modal / Notice */}

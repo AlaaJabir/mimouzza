@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '../../../../convex/schema';
 import { TopAnnouncementBar, OfferBanner } from '../OfferBanner';
 import { ProductGallery } from '../ProductGallery';
 import { Benefits } from '../Benefits';
 import { TrustBadges } from '../TrustBadges';
 import { CODForm } from '../CODForm';
+import { QuickOrderModal } from '../QuickOrderModal';
 import { FAQ } from '../FAQ';
 import { StickyOrderButton } from '../StickyOrderButton';
 import { LiveOrdersTicker } from '../LiveOrdersTicker';
@@ -79,6 +80,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
   utmParams,
   isPreview = false,
 }) => {
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const discountPct =
     product.compareAtPrice > product.price
       ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
@@ -118,7 +120,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
         isPreview,
       });
     }
-    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+    setIsOrderModalOpen(true);
   };
 
   const handleMidCtaClick = () => {
@@ -134,7 +136,7 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
         isPreview,
       });
     }
-    document.getElementById('order-form-container')?.scrollIntoView({ behavior: 'smooth' });
+    setIsOrderModalOpen(true);
   };
 
   const handleWhatsAppClick = () => {
@@ -387,6 +389,17 @@ export const ClassicCOD: React.FC<ClassicCODProps> = ({
         ctaText={product.ctaText}
         productId={product._id}
         productName={product.name}
+        isPreview={isPreview}
+        onOpenOrderModal={() => setIsOrderModalOpen(true)}
+      />
+
+      {/* Quick Order Popup Modal */}
+      <QuickOrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        product={product}
+        utmParams={utmParams}
+        accentColor="amber"
         isPreview={isPreview}
       />
     </div>
