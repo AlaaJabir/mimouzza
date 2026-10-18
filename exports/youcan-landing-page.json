@@ -1,0 +1,615 @@
+{
+  "sections": [
+    {
+      "id": "PBS-mimouzza-announcement",
+      "name": "rich-text",
+      "label": "شريط التوصيل والثقة",
+      "blocks": {
+        "parameters": {
+          "background-image": null,
+          "background-color": "#C80C32",
+          "background-overlay-enabled": false,
+          "overlay-color": "rgba(0, 0, 0, 0.3)",
+          "overlay-style": "solid",
+          "gradient-direction": "down"
+        },
+        "style": {
+          "direction": "column",
+          "vertical-on-mobile": false,
+          "alignment": "center",
+          "position": "center",
+          "gap": 8,
+          "width": "full",
+          "height": "small",
+          "border-width": 0,
+          "border-color": "#C80C32",
+          "border-style": "none",
+          "border-opacity": 100,
+          "corner-radius": 0,
+          "padding-top": 12,
+          "padding-bottom": 12,
+          "css-content": "{ }"
+        }
+      },
+      "children": [
+        {
+          "id": "PBS-mimouzza-announcement-text",
+          "name": "text",
+          "label": "إعلان التوصيل",
+          "blocks": {
+            "parameters": {
+              "content": "<p>🚚 التوصيل لجميع مدن المغرب · الدفع عند الاستلام</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "normal",
+              "text-alignment": "center",
+              "font-size": 14,
+              "font-weight": "bold",
+              "text-color": "#FFFFFF",
+              "background-enabled": false,
+              "background-color": "#C80C32",
+              "corner-radius": 0,
+              "padding-top": 0,
+              "padding-right": 0,
+              "padding-bottom": 0,
+              "padding-left": 0,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        }
+      ],
+      "locked": false
+    },
+    {
+      "id": "PBS-mimouzza-hero",
+      "name": "hero",
+      "label": "واجهة المنتج",
+      "blocks": {
+        "parameters": {
+          "media-1": null,
+          "media-2": null,
+          "alt-text": "صورة المنتج",
+          "stack-on-mobile": true,
+          "different-mobile-media": false,
+          "mobile-media-1": null,
+          "mobile-media-2": null,
+          "background-image": null,
+          "background-color": "#F8F8F6",
+          "background-overlay-enabled": false,
+          "overlay-color": "rgba(0, 0, 0, 0.3)",
+          "overlay-style": "solid",
+          "gradient-direction": "down",
+          "type": "none",
+          "target-external-section": "#order"
+        },
+        "style": {
+          "direction": "column",
+          "vertical-on-mobile": true,
+          "alignment": "center",
+          "position": "center",
+          "gap": 16,
+          "width": "full",
+          "height": "medium",
+          "custom-height": 100,
+          "blurred-reflection": false,
+          "blurred-reflection-opacity": 75,
+          "media-overlay": false,
+          "media-overlay-color": "rgba(0, 0, 0, 0.25)",
+          "media-overlay-style": "gradient",
+          "media-overlay-direction": "up",
+          "margin-top": 0,
+          "margin-right": 0,
+          "margin-bottom": 0,
+          "margin-left": 0,
+          "padding-top": 32,
+          "padding-bottom": 32,
+          "css-content": "{ }"
+        }
+      },
+      "children": [
+        {
+          "id": "PBS-mimouzza-hero-title",
+          "name": "heading",
+          "label": "عنوان المنتج",
+          "blocks": {
+            "parameters": {
+              "content": "<p>[اسم المنتج]</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "normal",
+              "text-alignment": "center",
+              "font-size": 30,
+              "font-weight": "bold",
+              "text-color": "#111111",
+              "background-enabled": false,
+              "background-color": "#F3F4F6",
+              "corner-radius": 8,
+              "padding-top": 0,
+              "padding-right": 8,
+              "padding-bottom": 0,
+              "padding-left": 8,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        },
+        {
+          "id": "PBS-mimouzza-hero-description",
+          "name": "text",
+          "label": "وصف مختصر",
+          "blocks": {
+            "parameters": {
+              "content": "<p>[وصف مختصر للمنتج وفائدته الأساسية]</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "narrow",
+              "text-alignment": "center",
+              "font-size": 15,
+              "font-weight": "normal",
+              "text-color": "#4B5563",
+              "background-enabled": false,
+              "background-color": "#F3F4F6",
+              "corner-radius": 8,
+              "padding-top": 0,
+              "padding-right": 12,
+              "padding-bottom": 0,
+              "padding-left": 12,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        },
+        {
+          "id": "PBS-mimouzza-hero-cta",
+          "name": "button",
+          "label": "زر الطلب",
+          "blocks": {
+            "parameters": {
+              "label": "اطلب الآن — الدفع عند الاستلام",
+              "type": "none",
+              "target-external-section": "#order",
+              "open-in-new-tab": false
+            },
+            "style": {
+              "button-alignment": "center",
+              "desktop-width-mode": "fit",
+              "desktop-width": 100,
+              "mobile-width-mode": "fit",
+              "mobile-width": 100,
+              "margin-top": 8,
+              "margin-right": 0,
+              "margin-bottom": 0,
+              "margin-left": 0,
+              "padding-top": 15,
+              "padding-right": 28,
+              "padding-bottom": 15,
+              "padding-left": 28,
+              "font-size": 17,
+              "border-radius-top-left": 14,
+              "border-radius-top-right": 14,
+              "border-radius-bottom-right": 14,
+              "border-radius-bottom-left": 14,
+              "style": "primary",
+              "accent-color": "#C80C32",
+              "text-color": "#FFFFFF",
+              "border-width": 0,
+              "border-color": "#C80C32",
+              "background-color": "#C80C32",
+              "hover-text-color": "#FFFFFF",
+              "hover-background-color": "#A90A2B",
+              "hover-border-color": "#A90A2B",
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        }
+      ],
+      "locked": false
+    },
+    {
+      "id": "PBS-mimouzza-benefits",
+      "name": "rich-text",
+      "label": "المميزات والفوائد",
+      "blocks": {
+        "parameters": {
+          "background-image": null,
+          "background-color": "#FFFFFF",
+          "background-overlay-enabled": false,
+          "overlay-color": "rgba(0, 0, 0, 0.3)",
+          "overlay-style": "solid",
+          "gradient-direction": "down"
+        },
+        "style": {
+          "direction": "column",
+          "vertical-on-mobile": false,
+          "alignment": "center",
+          "position": "center",
+          "gap": 16,
+          "width": "page",
+          "height": "small",
+          "border-width": 0,
+          "border-color": "#D7D9DB",
+          "border-style": "none",
+          "border-opacity": 100,
+          "corner-radius": 0,
+          "padding-top": 28,
+          "padding-bottom": 28,
+          "css-content": "{ }"
+        }
+      },
+      "children": [
+        {
+          "id": "PBS-mimouzza-benefits-heading",
+          "name": "heading",
+          "label": "عنوان المميزات",
+          "blocks": {
+            "parameters": {
+              "content": "<p>لماذا تختار [اسم المنتج]؟</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "normal",
+              "text-alignment": "center",
+              "font-size": 24,
+              "font-weight": "bold",
+              "text-color": "#111111",
+              "background-enabled": false,
+              "background-color": "#F3F4F6",
+              "corner-radius": 8,
+              "padding-top": 0,
+              "padding-right": 8,
+              "padding-bottom": 0,
+              "padding-left": 8,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        },
+        {
+          "id": "PBS-mimouzza-benefits-copy",
+          "name": "text",
+          "label": "قائمة المميزات",
+          "blocks": {
+            "parameters": {
+              "content": "<p>✓ [الميزة الأولى]</p><p>✓ [الميزة الثانية]</p><p>✓ [الميزة الثالثة]</p><p>✓ [الميزة الرابعة]</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "narrow",
+              "text-alignment": "right",
+              "font-size": 16,
+              "font-weight": "normal",
+              "text-color": "#26292E",
+              "background-enabled": false,
+              "background-color": "#FFFFFF",
+              "corner-radius": 12,
+              "padding-top": 16,
+              "padding-right": 20,
+              "padding-bottom": 16,
+              "padding-left": 20,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        }
+      ],
+      "locked": false
+    },
+    {
+      "id": "PBS-mimouzza-details",
+      "name": "rich-text",
+      "label": "تفاصيل المنتج",
+      "blocks": {
+        "parameters": {
+          "background-image": null,
+          "background-color": "#F8F8F6",
+          "background-overlay-enabled": false,
+          "overlay-color": "rgba(0, 0, 0, 0.3)",
+          "overlay-style": "solid",
+          "gradient-direction": "down"
+        },
+        "style": {
+          "direction": "column",
+          "vertical-on-mobile": false,
+          "alignment": "center",
+          "position": "center",
+          "gap": 12,
+          "width": "page",
+          "height": "small",
+          "border-width": 0,
+          "border-color": "#E5E7EB",
+          "border-style": "solid",
+          "border-opacity": 100,
+          "corner-radius": 18,
+          "padding-top": 28,
+          "padding-bottom": 28,
+          "css-content": "{ }"
+        }
+      },
+      "children": [
+        {
+          "id": "PBS-mimouzza-details-heading",
+          "name": "heading",
+          "label": "عنوان التفاصيل",
+          "blocks": {
+            "parameters": {
+              "content": "<p>تفاصيل [اسم المنتج]</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "normal",
+              "text-alignment": "center",
+              "font-size": 24,
+              "font-weight": "bold",
+              "text-color": "#111111",
+              "background-enabled": false,
+              "background-color": "#F3F4F6",
+              "corner-radius": 8,
+              "padding-top": 0,
+              "padding-right": 8,
+              "padding-bottom": 0,
+              "padding-left": 8,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        },
+        {
+          "id": "PBS-mimouzza-details-copy",
+          "name": "text",
+          "label": "الوصف الكامل",
+          "blocks": {
+            "parameters": {
+              "content": "<p>[أضف هنا الوصف الكامل والمكونات وطريقة الاستخدام والمواصفات الصحيحة للمنتج.]</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "narrow",
+              "text-alignment": "right",
+              "font-size": 15,
+              "font-weight": "normal",
+              "text-color": "#374151",
+              "background-enabled": false,
+              "background-color": "#F8F8F6",
+              "corner-radius": 8,
+              "padding-top": 0,
+              "padding-right": 12,
+              "padding-bottom": 0,
+              "padding-left": 12,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        }
+      ],
+      "locked": false
+    },
+    {
+      "id": "PBS-mimouzza-trust",
+      "name": "rich-text",
+      "label": "معلومات الطلب والثقة",
+      "blocks": {
+        "parameters": {
+          "background-image": null,
+          "background-color": "#FFFFFF",
+          "background-overlay-enabled": false,
+          "overlay-color": "rgba(0, 0, 0, 0.3)",
+          "overlay-style": "solid",
+          "gradient-direction": "down"
+        },
+        "style": {
+          "direction": "column",
+          "vertical-on-mobile": false,
+          "alignment": "center",
+          "position": "center",
+          "gap": 12,
+          "width": "page",
+          "height": "small",
+          "border-width": 0,
+          "border-color": "#D7D9DB",
+          "border-style": "none",
+          "border-opacity": 100,
+          "corner-radius": 0,
+          "padding-top": 24,
+          "padding-bottom": 24,
+          "css-content": "{ }"
+        }
+      },
+      "children": [
+        {
+          "id": "PBS-mimouzza-trust-heading",
+          "name": "heading",
+          "label": "ضمانات الطلب",
+          "blocks": {
+            "parameters": {
+              "content": "<p>اطلب بكل سهولة واطمئنان</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "normal",
+              "text-alignment": "center",
+              "font-size": 23,
+              "font-weight": "bold",
+              "text-color": "#111111",
+              "background-enabled": false,
+              "background-color": "#F3F4F6",
+              "corner-radius": 8,
+              "padding-top": 0,
+              "padding-right": 8,
+              "padding-bottom": 0,
+              "padding-left": 8,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        },
+        {
+          "id": "PBS-mimouzza-trust-copy",
+          "name": "text",
+          "label": "سياسة التوصيل",
+          "blocks": {
+            "parameters": {
+              "content": "<p>🚚 التوصيل: راجع إعدادات الشحن في متجرك.</p><p>💵 الأداء: الدفع عند الاستلام إذا كان مفعّلاً في متجرك.</p><p>↩️ الإرجاع والاستبدال: حسب السياسة المعتمدة في المتجر.</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "narrow",
+              "text-alignment": "right",
+              "font-size": 15,
+              "font-weight": "normal",
+              "text-color": "#26292E",
+              "background-enabled": false,
+              "background-color": "#FFFFFF",
+              "corner-radius": 8,
+              "padding-top": 8,
+              "padding-right": 12,
+              "padding-bottom": 8,
+              "padding-left": 12,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        }
+      ],
+      "locked": false
+    },
+    {
+      "id": "PBS-mimouzza-faq",
+      "name": "rich-text",
+      "label": "الأسئلة الشائعة",
+      "blocks": {
+        "parameters": {
+          "background-image": null,
+          "background-color": "#F8F8F6",
+          "background-overlay-enabled": false,
+          "overlay-color": "rgba(0, 0, 0, 0.3)",
+          "overlay-style": "solid",
+          "gradient-direction": "down"
+        },
+        "style": {
+          "direction": "column",
+          "vertical-on-mobile": false,
+          "alignment": "center",
+          "position": "center",
+          "gap": 12,
+          "width": "page",
+          "height": "small",
+          "border-width": 0,
+          "border-color": "#E5E7EB",
+          "border-style": "solid",
+          "border-opacity": 100,
+          "corner-radius": 16,
+          "padding-top": 28,
+          "padding-bottom": 28,
+          "css-content": "{ }"
+        }
+      },
+      "children": [
+        {
+          "id": "PBS-mimouzza-faq-heading",
+          "name": "heading",
+          "label": "عنوان الأسئلة",
+          "blocks": {
+            "parameters": {
+              "content": "<p>الأسئلة الشائعة</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "normal",
+              "text-alignment": "center",
+              "font-size": 24,
+              "font-weight": "bold",
+              "text-color": "#111111",
+              "background-enabled": false,
+              "background-color": "#F3F4F6",
+              "corner-radius": 8,
+              "padding-top": 0,
+              "padding-right": 8,
+              "padding-bottom": 0,
+              "padding-left": 8,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        },
+        {
+          "id": "PBS-mimouzza-faq-copy",
+          "name": "text",
+          "label": "الأسئلة والأجوبة",
+          "blocks": {
+            "parameters": {
+              "content": "<p><strong>كيف يمكنني الطلب؟</strong><br>املأ نموذج الطلب الموجود أسفل الصفحة إذا كان متاحاً.</p><p><strong>كيف يتم الأداء؟</strong><br>الدفع عند الاستلام إذا كان مفعّلاً في المتجر.</p><p><strong>متى يصل الطلب؟</strong><br>مدة التوصيل حسب المدينة وإعدادات الشحن.</p>"
+            },
+            "style": {
+              "width": "fill",
+              "max-width": "narrow",
+              "text-alignment": "right",
+              "font-size": 15,
+              "font-weight": "normal",
+              "text-color": "#26292E",
+              "background-enabled": false,
+              "background-color": "#F8F8F6",
+              "corner-radius": 8,
+              "padding-top": 8,
+              "padding-right": 12,
+              "padding-bottom": 8,
+              "padding-left": 12,
+              "css-content": "{ }"
+            }
+          },
+          "children": null,
+          "locked": false
+        }
+      ],
+      "locked": false
+    },
+    {
+      "id": "PBS-mimouzza-order",
+      "name": "express-checkout-form",
+      "label": "نموذج الطلب الأصلي من YouCan",
+      "blocks": {
+        "parameters": {},
+        "style": {}
+      },
+      "children": [],
+      "locked": false
+    }
+  ],
+  "settings": {
+    "page-direction": "rtl",
+    "page-product-ids": [],
+    "is-full-width": true,
+    "width": null,
+    "center-elements": false,
+    "background-color": "#F8F8F6",
+    "background-image": null,
+    "background-repeat": "no-repeat",
+    "background-position": "center",
+    "background-size": "cover",
+    "font-family": "Lato",
+    "font-size-desktop": 16,
+    "font-size-mobile": 14,
+    "text-color": "#111111",
+    "content-alignment": "center",
+    "section-alignment": "center",
+    "margin-top": 0,
+    "margin-right": 0,
+    "margin-bottom": 0,
+    "margin-left": 0
+  }
+}
