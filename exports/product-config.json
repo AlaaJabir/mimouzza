@@ -1,0 +1,59 @@
+{
+  "$schemaNote": "Configuration specification only; YouCan Import page does not automatically read this file.",
+  "productBinding": {
+    "mode": "select-in-YouCan-page-settings",
+    "productId": null,
+    "productSlug": null
+  },
+  "product": {
+    "title": "",
+    "shortDescription": "",
+    "description": "",
+    "images": [],
+    "price": null,
+    "compareAtPrice": null,
+    "currency": "MAD",
+    "variants": [],
+    "inventory": {
+      "display": false,
+      "source": "YouCan authoritative inventory only"
+    },
+    "benefits": [],
+    "features": [],
+    "ingredients": [],
+    "specifications": [],
+    "faqs": [],
+    "testimonials": {
+      "items": [],
+      "onlyUseVerifiedReviews": true
+    },
+    "rating": null,
+    "reviewCount": null
+  },
+  "delivery": {
+    "message": "",
+    "codEnabled": "confirm-in-YouCan-store-settings",
+    "shippingCosts": "YouCan shipping rules"
+  },
+  "cta": {
+    "label": "اطلب الآن — الدفع عند الاستلام",
+    "formLabels": {
+      "name": "الاسم الكامل",
+      "phone": "رقم الهاتف",
+      "city": "المدينة",
+      "address": "العنوان",
+      "quantity": "الكمية",
+      "variant": "الاختيار"
+    }
+  },
+  "seo": {
+    "title": "",
+    "description": ""
+  },
+  "validation": {
+    "mustNotHardcodeProductData": true,
+    "mustNotInventStockOrReviews": true,
+    "priceSource": "YouCan selected product",
+    "orderSubmission": "YouCan native checkout only"
+  }
+}
