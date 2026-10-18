@@ -915,6 +915,54 @@ export class ConvexMemoryStore {
         productImage:
           order.productImage && order.productImage.startsWith('data:') ? '' : order.productImage,
       };
+
+      // 1. Attempt direct persistence into the Convex Cloud `orders` table via `orders:create`
+      const orderArgs = {
+        productId: compactOrder.productId,
+        productName: compactOrder.productName,
+        productImage: compactOrder.productImage || '',
+        customerName: compactOrder.customerName,
+        phone: compactOrder.phone,
+        city: compactOrder.city,
+        address: compactOrder.address,
+        quantity: Number(compactOrder.quantity) || 1,
+        variants: compactOrder.variants || {},
+        notes: compactOrder.notes || '',
+        total: Number(compactOrder.total) || 0,
+        amount: Number(compactOrder.total) || 0,
+        currency: compactOrder.currency || 'DH',
+        status: compactOrder.status || 'NEW',
+        visitorId: compactOrder.visitorId || '',
+        sessionId: compactOrder.sessionId || '',
+        eventId: compactOrder.eventId || '',
+        utmSource: compactOrder.utmSource || '',
+        utmMedium: compactOrder.utmMedium || '',
+        utmCampaign: compactOrder.utmCampaign || '',
+        utmContent: compactOrder.utmContent || '',
+        utmTerm: compactOrder.utmTerm || '',
+        fbclid: compactOrder.fbclid || '',
+        fbc: compactOrder.fbc || '',
+        fbp: compactOrder.fbp || '',
+        landingPage: compactOrder.landingPage || '',
+      };
+
+      let directRes = await this.callConvexMutation<{ _id: string; orderNumber?: string }>(
+        'orders:create',
+        orderArgs
+      );
+      if (!directRes.ok) {
+        directRes = await this.callConvexMutation<{ _id: string; orderNumber?: string }>(
+          'orders:createConvex',
+          orderArgs
+        );
+      }
+
+      if (directRes.ok && directRes.value?._id) {
+        this.orderConvexDocIds.set(order._id, directRes.value._id);
+        return;
+      }
+
+      // 2. Fallback cloud sync mechanism
       const orderHistory = this.orderStatusHistory.filter((h) => h.orderId === order._id);
       const sysSlug = `__cod_sys_order_${order._id}`;
       const sysName = `__SYS_ORDER__${order.orderNumber}`;
@@ -1577,6 +1625,19 @@ export class ConvexMemoryStore {
         const rawDocs = prodRes.value;
         const incomingOrders: Order[] = [];
         const incomingHistories: OrderStatusHistory[] = [];
+
+        // Check direct Convex `orders` table
+        try {
+          const directOrdersRes = await this.callConvexQuery<Order[]>('orders:list', {});
+          if (directOrdersRes.ok && Array.isArray(directOrdersRes.value) && directOrdersRes.value.length > 0) {
+            const validOrders = directOrdersRes.value.filter(
+              (o) => o && o._id && !this.deletedOrderIds.has(o._id) && !isLegacyFakeOrder(o)
+            );
+            if (validOrders.length > 0) {
+              incomingOrders.push(...validOrders);
+            }
+          }
+        } catch {}
 
         for (const doc of rawDocs) {
           if (!doc || !isSystemCloudDoc(doc)) continue;
@@ -2276,6 +2337,7 @@ export class ConvexMemoryStore {
     notifySubscribers();
 
     void this.persistOrderToConvexCloud(updatedOrder);
+    void this.callConvexMutation('orders:updateStatus', { orderId: updatedOrder._id, status });
     this.scheduleTelemetryConvexSync();
 
     if (typeof window !== 'undefined') {
@@ -2351,6 +2413,7 @@ export class ConvexMemoryStore {
     for (const targetOrder of targetOrders) {
       void this.persistOrderToConvexCloud(targetOrder);
     }
+    void this.callConvexMutation('orders:removeMany', { orderIds: Array.from(idSet) });
     this.scheduleTelemetryConvexSync();
 
     if (typeof window !== 'undefined') {

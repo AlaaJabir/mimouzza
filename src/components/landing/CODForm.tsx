@@ -380,10 +380,18 @@ export const CODForm: React.FC<CODFormProps> = ({
     }
   };
 
-  const totalPrice = computeAuthoritativeOrderTotal(product, quantity, selectedVariants);
+  const isFormValid = useMemo(() => {
+    const hasName = customerName.trim().length >= 3;
+    const hasPhone = validateMoroccanPhone(phone);
+    const hasCity = Boolean(city.trim() && citiesList.includes(city.trim()));
+    const hasAddress = address.trim().length >= 4;
+    const hasQuantity = quantity >= 1;
+    return hasName && hasPhone && hasCity && hasAddress && hasQuantity;
+  }, [customerName, phone, city, citiesList, address, quantity]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     // Track Final CTA Click when user clicks submit button
     if (!isPreview) {
@@ -1085,8 +1093,12 @@ export const CODForm: React.FC<CODFormProps> = ({
         <button
           id="final_cta"
           type="submit"
-          disabled={isSubmitting}
-          className="w-full py-4 px-6 rounded-2xl font-extrabold text-base sm:text-lg bg-[#FF6B00] hover:bg-[#e66000] text-white shadow-md hover:shadow-lg transition-all transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5"
+          disabled={isSubmitting || !isFormValid}
+          className={`w-full py-4 px-6 rounded-2xl font-extrabold text-base sm:text-lg transition-all transform flex items-center justify-center gap-2.5 ${
+            isSubmitting || !isFormValid
+              ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-70 shadow-none'
+              : 'bg-[#FF6B00] hover:bg-[#e66000] text-white shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer'
+          }`}
         >
           {isSubmitting ? (
             <div className="flex items-center gap-2">
@@ -1096,7 +1108,11 @@ export const CODForm: React.FC<CODFormProps> = ({
           ) : (
             <>
               <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>{product.ctaText || 'تأكيد الطلب الآن (الدفع عند الاستلام)'}</span>
+              <span>
+                {!isFormValid
+                  ? 'الرجاء إدخال بياناتك لتفعيل الطلب'
+                  : product.ctaText || 'تأكيد الطلب الآن (الدفع عند الاستلام)'}
+              </span>
             </>
           )}
         </button>

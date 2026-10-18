@@ -868,9 +868,9 @@ async function startServer() {
   // 7. Authoritative Order Creation & Validation Endpoint
   app.post('/api/db/order', (req, res) => {
     const serverNow = Date.now();
-    const incomingOrder = req.body?.order as Order | undefined;
-    const incomingHistory = req.body?.statusHistory as OrderStatusHistory | undefined;
-    const incomingEvent = req.body?.orderEvent as AnalyticsEvent | undefined;
+    const incomingOrder = (req.body?.order || req.body) as Order | undefined;
+    const incomingHistory = (req.body?.statusHistory || req.body?.history) as OrderStatusHistory | undefined;
+    const incomingEvent = (req.body?.orderEvent || req.body?.event) as AnalyticsEvent | undefined;
 
     if (!incomingOrder || !incomingOrder._id || !incomingOrder.productId) {
       res.status(400).json({ ok: false, error: 'Invalid order payload' });
