@@ -1444,6 +1444,19 @@ async function startServer() {
     }
   });
 
+  // Explicit route for downloads (ZIP theme exports and settings JSON)
+  const downloadsDir = path.join(process.cwd(), 'public', 'downloads');
+  app.use('/downloads', express.static(downloadsDir, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.zip')) {
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', 'attachment; filename="big-offer-youcan-theme.zip"');
+      } else if (filePath.endsWith('.json')) {
+        res.setHeader('Content-Type', 'application/json');
+      }
+    }
+  }));
+
   // Vite middleware for development or static serving in production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

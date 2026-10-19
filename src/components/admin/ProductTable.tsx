@@ -16,6 +16,7 @@ import {
   Archive,
   Package,
   Image as ImageIcon,
+  Download,
 } from 'lucide-react';
 
 interface ProductTableProps {
@@ -99,13 +100,25 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onCreateNew}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B00] hover:bg-[#e66000] text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Add New Product</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="/downloads/big-offer-youcan-theme.zip"
+            download="big-offer-youcan-theme.zip"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+            title="تحميل قالب صفحة الهبوط Big-Offer لمنصة YouCan (ZIP)"
+          >
+            <Download className="w-4 h-4 stroke-[2.5]" />
+            <span>تصدير قالب YouCan (ZIP)</span>
+          </a>
+
+          <button
+            onClick={onCreateNew}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B00] hover:bg-[#e66000] active:scale-95 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Add New Product</span>
+          </button>
+        </div>
       </div>
 
       {noticeMessage && (

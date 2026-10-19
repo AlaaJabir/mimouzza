@@ -1,0 +1,331 @@
+{
+  "id": "b0263afe-3c4a-11ea-9d70-06db6ed384f3",
+  "name": "YouCan Big-Offer COD Ultra Theme",
+  "version": "2.1.0",
+  "author": "VITALIVE Ecommerce",
+  "is_default": false,
+  "theme_setting": {
+    "store_settings": {
+      "is_coupon_visible": true,
+      "currencyPrecision": false,
+      "header": {
+        "notice": {
+          "mobile": {
+            "above": false,
+            "enabled": true,
+            "content": "<p style=\"text-align: center; font-weight: bold;\">🔥 عرض خاص: شحن مجاني لكافة مدن المغرب والدفع عند الاستلام</p>",
+            "color": "#FFFFFF",
+            "bgColor": "#FF6B00"
+          },
+          "desktop": {
+            "above": true,
+            "enabled": true,
+            "content": "<p style=\"text-align: center; font-weight: bold;\">🔥 عرض خاص: شحن مجاني لكافة مدن المغرب والدفع عند الاستلام</p>",
+            "color": "#FFFFFF",
+            "bgColor": "#FF6B00"
+          }
+        },
+        "mobile": {
+          "left": [],
+          "center": [],
+          "right": [],
+          "color": {
+            "background": "#FFFFFF",
+            "icons": "#111111"
+          },
+          "border": {
+            "exists": true,
+            "color": "#F0F0F0"
+          }
+        },
+        "desktop": {
+          "left": [],
+          "center": [],
+          "right": [],
+          "color": {
+            "background": "#FFFFFF",
+            "icons": "#111111"
+          },
+          "border": {
+            "exists": true,
+            "color": "#F0F0F0"
+          }
+        }
+      },
+      "footer": {
+        "custom": true,
+        "style": {
+          "color": {
+            "background": "#111111",
+            "text": "#FFFFFF"
+          },
+          "border": {
+            "exists": false,
+            "color": "#00000000"
+          }
+        },
+        "content": "<p style=\"text-align:center; padding: 20px;\">جميع الحقوق محفوظة © 2026 — توصيل سريع ودفع عند الاستلام</p>"
+      },
+      "font": {
+        "menu": {
+          "text": "Cairo",
+          "value": "Cairo",
+          "category": "sans-serif"
+        },
+        "body": {
+          "text": "Cairo",
+          "value": "Cairo",
+          "category": "sans-serif"
+        }
+      },
+      "breadcrumbs": {
+        "global": false,
+        "checkout": false
+      }
+    },
+    "checkout_settings": {
+      "one_page_checkout": true,
+      "colors": {
+        "page_background_color": "#FFFFFF",
+        "page_foreground_color": "#111111",
+        "header_background_color": "#FFFFFF",
+        "sum_box_background_color": "#FFF3EB",
+        "sum_box_foreground_color": "#111111",
+        "accent_color": "#FF6B00"
+      },
+      "font": {
+        "font_family": {
+          "text": "Cairo",
+          "value": "Cairo",
+          "category": "sans-serif"
+        }
+      },
+      "logo": {
+        "logo_width": "120",
+        "logo_file": []
+      }
+    },
+    "product_settings": {
+      "enable_reviews": true,
+      "skip_to_checkout": true,
+      "sticky_on_mobile": true,
+      "sticky_on_desktop": false,
+      "read_more": false,
+      "enable_facebook_share": false,
+      "enable_twitter_share": false,
+      "enable_whatssap_share": true,
+      "enable_product_quantity_selector": true,
+      "related_products_section": false,
+      "direct_add_to_cart": true,
+      "cart_text": "اطلب الآن بالدفع عند الاستلام",
+      "sections": {
+        "preview": {
+          "type": "preview",
+          "show": true,
+          "name": "معاينة المنتج والصور"
+        },
+        "title": {
+          "type": "title",
+          "show": true,
+          "name": "عنوان المنتج والتقييم"
+        },
+        "countdown": {
+          "type": "countdown",
+          "show": true,
+          "name": "العداد التنازلي للعرض"
+        },
+        "visitors": {
+          "type": "visitors",
+          "show": true,
+          "name": "عدد الزوار الحاليين"
+        },
+        "price": {
+          "type": "price",
+          "show": true,
+          "name": "السعر والخصم"
+        },
+        "add_to_cart": {
+          "type": "add_to_cart",
+          "show": true,
+          "name": "زر الطلب المباشر"
+        },
+        "variants": {
+          "type": "variants",
+          "show": true,
+          "name": "خيارات المنتج"
+        },
+        "description": {
+          "type": "description",
+          "show": true,
+          "name": "فيديوهات وتفاصيل المنتج"
+        },
+        "express-checkout": {
+          "type": "express-checkout",
+          "show": true,
+          "name": "نموذج الدفع عند الاستلام"
+        },
+        "scarcity": {
+          "type": "scarcity",
+          "show": true,
+          "name": "مؤشر الكمية المتبقية"
+        }
+      },
+      "visitors": {
+        "max": "94",
+        "min": "68"
+      },
+      "fakeStock": {
+        "max": "24",
+        "min": "7"
+      },
+      "time": {
+        "days": 0,
+        "hours": 2,
+        "minutes": 0,
+        "seconds": 0
+      },
+      "style": {
+        "padding": {
+          "top": 20,
+          "bottom": 20
+        },
+        "background": {
+          "color": "#FFFFFF"
+        },
+        "text": {
+          "color": "#111111"
+        },
+        "link": {
+          "color": "#FF6B00"
+        },
+        "title": {
+          "color": "#111111"
+        },
+        "price": {
+          "before": {
+            "color": "#999999"
+          },
+          "after": {
+            "color": "#FF6B00"
+          }
+        },
+        "addToCart": {
+          "text": {
+            "color": "#FFFFFF"
+          },
+          "background": {
+            "color": "#FF6B00"
+          },
+          "border": {
+            "color": "#FF6B00"
+          },
+          "hover": {
+            "text": {
+              "color": "#FFFFFF"
+            },
+            "background": {
+              "color": "#E05300"
+            },
+            "border": {
+              "color": "#E05300"
+            }
+          }
+        },
+        "quantityButtons": {
+          "text": {
+            "color": "#111111"
+          },
+          "background": {
+            "color": "#F8F8F6"
+          },
+          "border": {
+            "color": "#E5E5E5"
+          },
+          "hover": {
+            "text": {
+              "color": "#FFFFFF"
+            },
+            "background": {
+              "color": "#FF6B00"
+            },
+            "border": {
+              "color": "#FF6B00"
+            }
+          }
+        },
+        "primary": {
+          "color": "#FF6B00"
+        },
+        "secondary": {
+          "color": "#129A56"
+        },
+        "option": {
+          "border": {
+            "color": "#FF6B00"
+          }
+        },
+        "bundles": {
+          "priceCurrent": {
+            "color": "#FF6B00"
+          },
+          "priceCompare": {
+            "color": "#999999"
+          },
+          "border": {
+            "color": "#E5E7EB"
+          },
+          "selectedBorder": {
+            "color": "#FF6B00"
+          },
+          "headingLabel": {
+            "color": "#111111"
+          },
+          "title": {
+            "color": "#111111"
+          },
+          "containerBackground": {
+            "color": "#FFF3EB"
+          },
+          "cardBackground": {
+            "color": "#FFFFFF"
+          }
+        }
+      },
+      "cart_safe_badges": "assets/images/trust_badges.png"
+    },
+    "pages_settings": {
+      "home": [
+        {
+          "id": "section-big-offer-hero",
+          "type": "hero",
+          "settings": {
+            "title": "مكمل القولون 30 كبسولة",
+            "offerText": "🔥 خصم حصري لفترة محدودة + شحن مجاني لكافة المدن",
+            "price": 200,
+            "comparePrice": 397,
+            "currency": "DH"
+          }
+        },
+        {
+          "id": "section-cod-checkout",
+          "type": "express-checkout",
+          "settings": {
+            "title": "املأ بياناتك أدناه لتأكيد الطلب — الدفع عند الاستلام",
+            "shipping": "مجاني 100% لكافة المدن"
+          }
+        }
+      ]
+    },
+    "colors_settings": {
+      "primary": "#FF6B00",
+      "light-primary": "#FFF3EB",
+      "dark-primary": "#E05300",
+      "secondary": "#129A56",
+      "body-background": "#FFFFFF",
+      "success": "#129A56",
+      "info": "#0284C7",
+      "warning": "#F59E0B",
+      "danger": "#E11D48"
+    }
+  }
+}

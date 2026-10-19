@@ -3,8 +3,10 @@ import { v } from 'convex/values';
 import { db } from './db';
 import { Order, OrderStatus } from './schema';
 
-const mutation = mutationGeneric;
-const query = queryGeneric;
+const mutation =
+  typeof window === 'undefined' ? mutationGeneric : ((definition: any) => definition as any);
+const query =
+  typeof window === 'undefined' ? queryGeneric : ((definition: any) => definition as any);
 
 export const orderArgsValidator = {
   productId: v.string(),

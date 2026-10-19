@@ -13,6 +13,7 @@ import {
   Bell,
   LogOut,
   Globe,
+  Download,
 } from 'lucide-react';
 import { useMutation, useQuery } from '../../lib/convex-client';
 import { api } from '../../../convex/api';
@@ -149,6 +150,17 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
         {/* Right Actions & Profile Pill */}
         <div className="order-2 xl:order-3 flex items-center gap-2.5">
+          {/* Download YouCan Theme ZIP */}
+          <a
+            href="/downloads/big-offer-youcan-theme.zip"
+            download="big-offer-youcan-theme.zip"
+            title="تحميل ملف قالب YouCan المضغوط (ZIP)"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black transition-all shadow-xs cursor-pointer animate-pulse hover:animate-none"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>تحميل قالب YouCan (ZIP)</span>
+          </a>
+
           {/* AYA Isolated AI Landing Page Agent (Demo) */}
           <button
             type="button"

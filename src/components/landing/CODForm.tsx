@@ -133,6 +133,10 @@ export const CODForm: React.FC<CODFormProps> = ({
     return initial;
   });
 
+  const totalPrice = useMemo(() => {
+    return computeAuthoritativeOrderTotal(product, quantity, selectedVariants);
+  }, [product, quantity, selectedVariants]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState<{
